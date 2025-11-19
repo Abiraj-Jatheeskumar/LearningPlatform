@@ -32,15 +32,21 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:5174",
+
+        # Your live frontend
         "https://zoomlearningapp.de",
         "https://www.zoomlearningapp.de",
-        "https://*.zoom.us",  # Allow Zoom domains
-        "https://app.zoom.us",
+
+        # Your Vercel deployments
+        "https://learning-app-alpha-one.vercel.app",
+        "https://learning-lopy2je2b-arunpragashs-projects-baf0c862.vercel.app",
+        "https://learning-app-git-master-arunpragashs-projects-baf0c862.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Authentication middleware
 auth_middleware = AuthMiddleware()
