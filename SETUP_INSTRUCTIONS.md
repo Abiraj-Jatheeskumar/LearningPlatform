@@ -1,146 +1,218 @@
-# Setup Instructions - Registration & Login with MongoDB
+# 🚀 Setup Instructions - JWT Authentication & Bug Fixes
 
-## Prerequisites
-- Python 3.10+ installed
-- Node.js 16+ installed
-- MongoDB Atlas account (or local MongoDB)
+## ✅ What Was Done
 
-## Step 1: Start the Backend Server
+### 1. **JWT Authentication Implementation**
+- ✅ Added JWT token generation in backend (`backend/src/routers/auth.py`)
+- ✅ Updated frontend to receive and store JWT tokens
+- ✅ Fixed API endpoint paths (now using `/api/auth` correctly)
+- ✅ Implemented secure token storage in localStorage
 
-Open a terminal in the project root:
+### 2. **Fixed 404 Error on Page Refresh**
+- ✅ Added `historyApiFallback` configuration to Vite
+- ✅ Now page refresh works on any route without 404 errors
 
-```powershell
+### 3. **Files Modified**
+- `backend/src/routers/auth.py` - Added JWT token generation
+- `frontend/src/services/authService.ts` - Fixed API endpoints and added token handling
+- `frontend/src/context/AuthContext.tsx` - Store/retrieve/clear JWT tokens
+- `frontend/vite.config.ts` - Added history API fallback for routing
+
+---
+
+## 🔧 Setup Required
+
+### **IMPORTANT: Create `.env` File in Backend**
+
+You need to create a `.env` file in the `backend` folder with the following content:
+
+```bash
+# JWT Configuration
+JWT_SECRET=your-secret-key-change-this-in-production-make-it-long-and-random-jwt-secret-2024
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
+
+# MongoDB Configuration
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=learning_platform
+
+# Server Configuration
+PORT=3001
+HOST=0.0.0.0
+```
+
+**⚠️ Security Note:** 
+- The `.env` file is NOT tracked by Git (it's in `.gitignore`)
+- Change `JWT_SECRET` to a secure random string in production
+- Never commit the `.env` file to GitHub
+
+---
+
+## 🏃 How to Run
+
+### **1. Start Backend**
+
+```bash
 cd backend
-python -m pip install -r requirements.txt
-python main.py
+python src/main.py
 ```
 
-You should see:
-```
-✅ Connected to MongoDB Atlas: learning_platform
-🚀 Server running on http://localhost:3001
-```
+Backend will start on: `http://localhost:3001`
 
-**Important:** Make sure you see "Connected to MongoDB" - if not, check your MongoDB connection string in `backend/.env`
+### **2. Start Frontend**
 
-## Step 2: Start the Frontend Server
-
-Open a NEW terminal in the project root:
-
-```powershell
-npm install
+```bash
+cd frontend
 npm run dev
 ```
 
-You should see:
+Frontend will start on: `http://localhost:5173`
+
+---
+
+## 🧪 Testing the Changes
+
+### **Test JWT Token:**
+1. Open browser and go to `http://localhost:5173`
+2. Login with your credentials
+3. Open DevTools → Application → Local Storage
+4. You should see:
+   - `access_token` - Your JWT token
+   - `token_type` - "bearer"
+   - `user` - User information
+
+### **Test Page Refresh Fix:**
+1. Login to the application
+2. Navigate to any route (e.g., `/dashboard/student`)
+3. Press F5 or click browser refresh
+4. ✅ Should stay on the same page (no 404 error)
+
+---
+
+## 📡 API Endpoints
+
+All auth endpoints now properly return JWT tokens:
+
+### **Register:**
 ```
-VITE ready at http://localhost:5173
+POST http://localhost:3001/api/auth/register
 ```
 
-## Step 3: Test Registration
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": "...",
+    "firstName": "...",
+    "lastName": "...",
+    "email": "...",
+    "role": "student"
+  }
+}
+```
 
-1. Open browser: `http://localhost:5173`
-2. Click "Register" or go to `http://localhost:5173/register`
-3. Fill in the form:
-   - First Name: John
-   - Last Name: Doe
-   - Email: john@example.com
-   - Password: password123
-   - Role: Student
-4. Click "Create Account"
-5. You should see "Registration successful!"
+### **Login:**
+```
+POST http://localhost:3001/api/auth/login
+```
 
-## Step 4: View Registered Users
+**Response:** Same as register
 
-1. Login as instructor:
-   - Email: `instructor@example.com`
-   - Password: `password123`
-2. Click "Users" in the sidebar
-3. You should see all registered users from MongoDB
+---
 
-## Troubleshooting "Failed to Fetch"
+## 🔐 Using JWT Token in API Calls
 
-### Issue: Frontend can't connect to backend
+The token is automatically included in authenticated requests:
 
-**Check 1: Is backend running?**
-- Backend must be running on `http://localhost:3001`
-- You should see the startup messages in the backend terminal
+```typescript
+// Example: Making an authenticated API call
+const response = await fetch(`${API_BASE_URL}/api/some-endpoint`, {
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+  }
+});
+```
 
-**Check 2: Check the backend terminal for errors**
-- Look for "✅ Connected to MongoDB" message
-- If you see MongoDB connection errors, check your `.env` file
+Or use the helper function:
+```typescript
+import { authService } from './services/authService';
+// The getAuthHeaders() function automatically adds the token
+```
 
-**Check 3: Test backend directly**
-- Open browser: `http://localhost:3001/health`
-- You should see: `{"status":"ok","message":"Server is running"}`
-- If this doesn't work, the backend is not running properly
+---
 
-**Check 4: Check browser console**
-- Press F12 to open developer tools
-- Go to Console tab
-- Look for error messages
-- Common errors:
-  - `net::ERR_CONNECTION_REFUSED` - Backend not running
-  - `CORS error` - Backend CORS settings (should be fixed)
+## 🎉 What's Fixed
 
-**Check 5: Verify ports**
-- Frontend should be on: `http://localhost:5173`
-- Backend should be on: `http://localhost:3001`
+### ✅ **Issue 1: Missing JWT Token**
+- **Before:** Login/Register didn't return any token
+- **After:** Both endpoints return JWT token that expires in 24 hours
 
-## MongoDB Connection
+### ✅ **Issue 2: 404 on Refresh**
+- **Before:** Refreshing on `/dashboard/student` showed 404 error
+- **After:** Page refresh works perfectly on any route
 
-The backend needs MongoDB to store user data. You have two options:
+---
 
-### Option 1: MongoDB Atlas (Cloud - Recommended)
-1. Create account at https://www.mongodb.com/cloud/atlas
-2. Create a free cluster
-3. Get connection string
-4. Update `backend/.env`:
-   ```
-   MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/
-   DATABASE_NAME=learning_platform
-   ```
+## 📝 Git Commit
 
-### Option 2: Local MongoDB
-1. Install MongoDB locally
-2. Start MongoDB service
-3. Update `backend/.env`:
-   ```
-   MONGODB_URL=mongodb://localhost:27017
-   DATABASE_NAME=learning_platform
-   ```
+**Commit Hash:** `e0ccc4c`
 
-## Default Test Accounts
+**Commit Message:**
+```
+Add JWT authentication and fix 404 on page refresh
 
-After first run, these accounts are automatically created:
+- Implemented JWT token generation in backend auth endpoints
+- Added JWT token storage in frontend localStorage
+- Updated authService to use correct API endpoints (/api/auth)
+- Fixed 404 error on page refresh by adding historyApiFallback to Vite config
+- Updated AuthContext to handle token storage and cleanup on logout
+```
 
-- **Student**: `student@example.com` / `password123`
-- **Instructor**: `instructor@example.com` / `password123`
-- **Admin**: `admin@example.com` / `password123`
+**Pushed to:** `origin/master`
 
-## API Endpoints
+---
 
-Once backend is running:
+## 🔗 GitHub Repository
 
-- Health Check: `GET http://localhost:3001/health`
-- Register: `POST http://localhost:3001/api/auth/register`
-- Login: `POST http://localhost:3001/api/auth/login`
-- Get Users: `GET http://localhost:3001/api/auth/users` (instructor/admin only)
+Your changes have been successfully pushed to:
+- Repository: `https://github.com/Arunpragash22/learningApp.git`
+- Branch: `master`
 
-## Still Having Issues?
+---
 
-1. **Restart both servers** (backend and frontend)
-2. **Clear browser cache** (Ctrl + F5)
-3. **Check MongoDB is connected** - look for the success message in backend terminal
-4. **Test backend health endpoint** - `http://localhost:3001/health`
-5. **Check backend terminal for errors** - especially MongoDB connection errors
+## 🚨 Important Notes
 
-## Success Indicators
+1. **Create `.env` file** - The app won't work without it
+2. **MongoDB Required** - Make sure MongoDB is running on `localhost:27017`
+3. **JWT Secret** - Use a strong, random secret in production
+4. **Token Expiration** - Tokens expire after 24 hours (configurable in `.env`)
 
-✅ Backend terminal shows: "Connected to MongoDB Atlas"
-✅ Backend health endpoint works: `http://localhost:3001/health`
-✅ Frontend loads without errors
-✅ Registration form submits successfully
-✅ Can view users in User Management page
+---
 
+## 🆘 Troubleshooting
 
+### Backend won't start:
+- Check if `.env` file exists in `backend/` folder
+- Check if MongoDB is running: `mongod --version`
+- Check if port 3001 is available
+
+### Frontend shows 404:
+- Make sure you restarted the Vite dev server after changes
+- Clear browser cache
+- Try incognito mode
+
+### Token not working:
+- Check if `JWT_SECRET` is set in `.env`
+- Clear localStorage and login again
+- Check browser console for errors
+
+---
+
+**Status:** ✅ Ready for Testing & Deployment
+
+**Last Updated:** November 21, 2025
