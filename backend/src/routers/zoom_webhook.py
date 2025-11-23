@@ -78,6 +78,7 @@ async def zoom_events(
     # 3. FETCH DATABASE + OBJECT DATA
     # ---------------------------------------------------------
     db = get_database()
+    print("👉 USING DATABASE:", db.name)
 
     obj = data.get("payload", {}).get("object", {})
     participant = obj.get("participant", {})
