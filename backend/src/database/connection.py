@@ -4,10 +4,12 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-import ssl
 from urllib.parse import quote_plus, urlparse, urlunparse
 
-# Set UTF-8 encoding for Windows console
+
+# ---------------------------------------------------
+# UTF-8 fix for Windows console (safe to keep)
+# ---------------------------------------------------
 if sys.platform == "win32":
     try:
         import codecs
@@ -16,40 +18,50 @@ if sys.platform == "win32":
     except:
         pass
 
-# Load .env file from backend directory
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+
+# ---------------------------------------------------
+# LOAD .env ONLY IN LOCAL DEVELOPMENT
+# ---------------------------------------------------
+# Railway sets environment variable: RAILWAY_ENVIRONMENT
+if not os.getenv("RAILWAY_ENVIRONMENT"):
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print("🔧 Loaded .env (local development)")
+    else:
+        print("⚠️ .env not found — using system environment")
+else:
+    print("🚀 Running on Railway — using Railway environment variables")
+
 
 class MongoDB:
     client: Optional[AsyncIOMotorClient] = None
     database = None
 
-# Global database instance
+
+# Global DB instance
 db = MongoDB()
 
+
+# ---------------------------------------------------
+# ESCAPE CREDENTIALS IN THE MONGODB URL
+# ---------------------------------------------------
 def escape_mongodb_url(url: str) -> str:
-    """
-    Properly escape username and password in MongoDB connection string.
-    Handles both mongodb:// and mongodb+srv:// formats.
-    """
     if not url or "://" not in url:
         return url
-    
-    # Parse the URL
+
     parsed = urlparse(url)
-    
-    # If there's no username/password, return as is
+
+    # No username or password present
     if not parsed.username and not parsed.password:
         return url
-    
-    # Escape username and password using quote_plus (RFC 3986)
+
     username = quote_plus(parsed.username) if parsed.username else ""
     password = quote_plus(parsed.password) if parsed.password else ""
-    
-    # Reconstruct the netloc with escaped credentials
+
+    # Host & optional port
     if username and password:
         netloc = f"{username}:{password}@{parsed.hostname}"
-        # Only add port if it exists (mongodb+srv:// doesn't have ports)
         if parsed.port:
             netloc += f":{parsed.port}"
     elif username:
@@ -58,9 +70,8 @@ def escape_mongodb_url(url: str) -> str:
             netloc += f":{parsed.port}"
     else:
         netloc = parsed.netloc
-    
-    # Reconstruct the full URL
-    escaped_url = urlunparse((
+
+    return urlunparse((
         parsed.scheme,
         netloc,
         parsed.path,
@@ -68,71 +79,69 @@ def escape_mongodb_url(url: str) -> str:
         parsed.query,
         parsed.fragment
     ))
-    
-    return escaped_url
 
+
+# ---------------------------------------------------
+# CONNECT TO MONGODB
+# ---------------------------------------------------
 async def connect_to_mongo():
-    """Create database connection"""
-    mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-    database_name = os.getenv("DATABASE_NAME", "learning_platform")
-    
-    # Escape username and password in the connection string
+    mongodb_url = os.getenv("MONGODB_URL")
+    database_name = os.getenv("DATABASE_NAME")
+
+    if not mongodb_url:
+        raise RuntimeError("❌ MONGODB_URL is not set in environment variables.")
+
+    if not database_name:
+        raise RuntimeError("❌ DATABASE_NAME is not set in environment variables.")
+
     mongodb_url = escape_mongodb_url(mongodb_url)
-    
-    # Check if using MongoDB Atlas (mongodb+srv://)
-    if "mongodb+srv://" in mongodb_url:
-        print("🔗 Connecting to MongoDB Atlas...")
-        # For MongoDB Atlas, we need to handle SSL/TLS
-        # Create SSL context that doesn't verify certificates (for development)
-        # In production, you should use proper certificate verification
-        try:
-            import certifi
-            # Use certifi certificates if available
-            tls_ca_file = certifi.where()
-            db.client = AsyncIOMotorClient(
-                mongodb_url,
-                tlsCAFile=tls_ca_file,
-                tlsAllowInvalidCertificates=False
-            )
-        except ImportError:
-            # If certifi is not installed, disable certificate verification (development only)
-            print("⚠️  Warning: certifi not found. SSL verification disabled (development mode)")
-            db.client = AsyncIOMotorClient(
-                mongodb_url,
-                tlsAllowInvalidCertificates=True
-            )
-    else:
-        print("🔗 Connecting to MongoDB...")
-        db.client = AsyncIOMotorClient(mongodb_url)
-    
+
+    print("🔗 Connecting to MongoDB Atlas...")
+
+    try:
+        import certifi
+        tls_ca_file = certifi.where()
+        db.client = AsyncIOMotorClient(
+            mongodb_url,
+            tlsCAFile=tls_ca_file,
+            tlsAllowInvalidCertificates=False
+        )
+    except Exception:
+        print("⚠️ Warning: certifi not available, using insecure TLS")
+        db.client = AsyncIOMotorClient(
+            mongodb_url,
+            tlsAllowInvalidCertificates=True
+        )
+
     db.database = db.client[database_name]
-    
+
     # Test connection
     try:
-        await db.client.admin.command('ping')
+        await db.client.admin.command("ping")
         print(f"✅ Connected to MongoDB Atlas: {database_name}")
         print(f"📍 Database: {database_name}")
     except Exception as e:
         print(f"❌ Failed to connect to MongoDB: {e}")
-        print("💡 Make sure:")
-        print("   1. Your MongoDB Atlas connection string is correct")
-        print("   2. Your IP address is whitelisted in MongoDB Atlas")
-        print("   3. Your database user password is correct")
         raise
 
+
+# ---------------------------------------------------
+# DISCONNECT
+# ---------------------------------------------------
 async def close_mongo_connection():
-    """Close database connection"""
     if db.client:
         db.client.close()
-        print("✅ MongoDB connection closed")
+        print("🔌 MongoDB connection closed")
 
+
+# ---------------------------------------------------
+# ACCESS HELPERS
+# ---------------------------------------------------
 def get_database():
-    """Get database instance"""
     return db.database
 
+
 def get_database_by_name(database_name: str):
-    """Get a specific database by name"""
     if db.client is None:
         return None
     return db.client[database_name]
-
