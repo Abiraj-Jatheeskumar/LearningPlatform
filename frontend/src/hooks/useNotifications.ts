@@ -44,7 +44,8 @@ export function useNotifications(options: UseNotificationsOptions) {
     // Convert HTTP(S) to WS(S)
     const wsUrl = apiUrl.replace(/^http/, 'ws');
     const studentIdentifier = studentId || studentEmail || studentName || 'anonymous';
-    return `${wsUrl}/ws/notifications/${meetingId}/${studentIdentifier}`;
+    // Use the new /ws endpoint (not /ws/notifications)
+    return `${wsUrl}/ws/${meetingId}/${studentIdentifier}`;
   }, [meetingId, studentId, studentEmail, studentName]);
 
   const connect = useCallback(() => {
@@ -66,6 +67,7 @@ export function useNotifications(options: UseNotificationsOptions) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log('WS Connected');
         console.log('✅ Connected to notification system');
         setIsConnected(true);
         setError(null);
@@ -74,14 +76,41 @@ export function useNotifications(options: UseNotificationsOptions) {
 
       ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
-          console.log('📬 Received notification:', message);
+          const data = JSON.parse(event.data);
+          console.log('📬 Received notification:', data);
 
-          if (message.type === 'question_triggered') {
-            setCurrentNotification(message);
+          // Handle quiz/question notifications
+          if (data.type === 'quiz' || data.type === 'question_triggered') {
+            const question = data.question || data.data?.question;
+            
+            if (question) {
+              // Show alert for immediate notification
+              alert('NEW QUESTION: ' + question);
+            }
+            
+            // Also set the notification state for the popup
+            if (data.type === 'question_triggered') {
+              setCurrentNotification(data);
+            } else if (data.type === 'quiz') {
+              // Convert quiz format to question_triggered format
+              setCurrentNotification({
+                type: 'question_triggered',
+                data: {
+                  sessionToken: data.sessionToken || '',
+                  question: data.question || '',
+                  options: data.options || [],
+                  timeLimit: data.timeLimit || 30,
+                  questionUrl: data.questionUrl || '',
+                  instructorName: data.instructorName || 'Instructor',
+                  triggeredAt: data.triggeredAt || new Date().toISOString()
+                },
+                timestamp: data.timestamp || new Date().toISOString()
+              });
+            }
+            
             // Play notification sound
             playNotificationSound();
-          } else if (message.type === 'connected') {
+          } else if (data.type === 'connected') {
             console.log('✅ Notification system ready');
           }
         } catch (error) {
@@ -89,12 +118,8 @@ export function useNotifications(options: UseNotificationsOptions) {
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        setError('Connection error');
-      };
-
       ws.onclose = () => {
+        console.log('WS Closed');
         console.log('🔌 Disconnected from notifications');
         setIsConnected(false);
         
@@ -108,6 +133,12 @@ export function useNotifications(options: UseNotificationsOptions) {
             connect();
           }, delay);
         }
+      };
+
+      ws.onerror = (err) => {
+        console.log('WS Error', err);
+        console.error('❌ WebSocket error:', err);
+        setError('Connection error');
       };
 
       // Send heartbeat every 30 seconds

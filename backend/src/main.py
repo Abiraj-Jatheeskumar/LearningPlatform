@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from src.middleware.auth import AuthMiddleware
 from src.database.connection import connect_to_mongo, close_mongo_connection
+from src.services.ws_manager import ws_manager
 
 
 # --------------------------------------------------------
@@ -99,6 +100,7 @@ from src.routers import (
     course,
     live_question,
     websocket_notifications,
+    live,
 )
 
 app.include_router(auth.router)
@@ -110,6 +112,7 @@ app.include_router(zoom_chatbot.router)
 app.include_router(course.router)
 app.include_router(live_question.router)
 app.include_router(websocket_notifications.router)
+app.include_router(live.router)
 
 
 # --------------------------------------------------------
@@ -118,3 +121,21 @@ app.include_router(websocket_notifications.router)
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "time": datetime.now().isoformat()}
+
+
+# --------------------------------------------------------
+# WEBSOCKET ENDPOINT
+# --------------------------------------------------------
+@app.websocket("/ws/{meeting_id}/{student_id}")
+async def websocket_endpoint(websocket: WebSocket, meeting_id: str, student_id: str):
+    """
+    WebSocket endpoint for real-time student notifications
+    Students connect here to receive question triggers and updates
+    """
+    try:
+        await ws_manager.connect(websocket, meeting_id, student_id)
+        while True:
+            # Keep connection alive, receive heartbeat or other messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(meeting_id, student_id)

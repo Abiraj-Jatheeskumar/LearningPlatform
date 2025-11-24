@@ -90,14 +90,24 @@ async def trigger_question(
         question_url = f"{base_url}/question/{session['sessionToken']}"
         
         # 🔔 Send real-time notification to all connected students
-        from .websocket_notifications import notify_question_triggered
-        notification_count = await notify_question_triggered(
+        from ..services.ws_manager import ws_manager
+        
+        # Prepare notification message
+        notification_message = {
+            "type": "quiz",
+            "question": question["question"],
+            "options": question["options"],
+            "sessionToken": session['sessionToken'],
+            "questionUrl": question_url,
+            "instructorName": f"{current_user.get('firstName', '')} {current_user.get('lastName', '')}",
+            "timeLimit": time_limit,
+            "triggeredAt": triggered_at.isoformat(),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        notification_count = await ws_manager.broadcast_to_meeting(
             meeting_id=request_data.zoomMeetingId,
-            question_data=question,
-            session_token=session['sessionToken'],
-            question_url=question_url,
-            instructor_name=f"{current_user.get('firstName', '')} {current_user.get('lastName', '')}",
-            time_limit=time_limit
+            message=notification_message
         )
         print(f"✅ Sent notifications to {notification_count} students")
         
