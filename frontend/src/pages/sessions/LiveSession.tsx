@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { MessageSquareIcon, UsersIcon, MicIcon, VideoIcon, ShareIcon, MessageCircleIcon, HandIcon, BarChart2Icon, AlertTriangleIcon, ZapIcon, ThumbsUpIcon, SmileIcon, BrainIcon, Settings2Icon, TargetIcon, ChevronRightIcon } from 'lucide-react';
+import { MessageSquareIcon, UsersIcon, MicIcon, VideoIcon, ShareIcon, HandIcon, BarChart2Icon, ZapIcon, ThumbsUpIcon, SmileIcon, BrainIcon, Settings2Icon, TargetIcon } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -202,7 +202,7 @@ export const LiveSession = () => {
     const newMessage = {
       id: chatMessages.length + 1,
       sender: `${user?.firstName} ${user?.lastName}`,
-      role: user?.role,
+      role: user?.role || 'student',
       message: message.trim(),
       time: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -225,7 +225,12 @@ export const LiveSession = () => {
         setIsQuestionBankLoading(true);
         const fetchedQuestions = await questionService.getAllQuestions();
         if (isMounted) {
-          setQuestionBank(fetchedQuestions.length > 0 ? fetchedQuestions : DEFAULT_SESSION_QUESTIONS);
+          // Map questions to ensure createdAt is always present
+          const normalizedQuestions = fetchedQuestions.map(q => ({
+            ...q,
+            createdAt: q.createdAt || new Date().toISOString()
+          }));
+          setQuestionBank(normalizedQuestions.length > 0 ? normalizedQuestions : DEFAULT_SESSION_QUESTIONS);
         }
       } catch (error) {
         console.error('Error loading question bank:', error);
