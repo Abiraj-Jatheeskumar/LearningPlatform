@@ -89,6 +89,18 @@ async def trigger_question(
         base_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         question_url = f"{base_url}/question/{session['sessionToken']}"
         
+        # 🔔 Send real-time notification to all connected students
+        from .websocket_notifications import notify_question_triggered
+        notification_count = await notify_question_triggered(
+            meeting_id=request_data.zoomMeetingId,
+            question_data=question,
+            session_token=session['sessionToken'],
+            question_url=question_url,
+            instructor_name=f"{current_user.get('firstName', '')} {current_user.get('lastName', '')}",
+            time_limit=time_limit
+        )
+        print(f"✅ Sent notifications to {notification_count} students")
+        
         # Send to Zoom chat if requested
         zoom_sent = False
         if request_data.sendToZoom:
@@ -114,7 +126,8 @@ async def trigger_question(
             "message": "Question triggered successfully",
             "session": session,
             "questionUrl": question_url,
-            "zoomMessageSent": zoom_sent
+            "zoomMessageSent": zoom_sent,
+            "notificationsSent": notification_count
         }
     
     except HTTPException:

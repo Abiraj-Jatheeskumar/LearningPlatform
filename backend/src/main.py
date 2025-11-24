@@ -98,6 +98,7 @@ from src.routers import (
     zoom_chatbot,
     course,
     live_question,
+    websocket_notifications,
 )
 
 app.include_router(auth.router)
@@ -108,6 +109,7 @@ app.include_router(zoom_webhook.router)
 app.include_router(zoom_chatbot.router)
 app.include_router(course.router)
 app.include_router(live_question.router)
+app.include_router(websocket_notifications.router)
 
 
 # --------------------------------------------------------

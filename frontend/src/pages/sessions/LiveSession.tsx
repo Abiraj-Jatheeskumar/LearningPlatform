@@ -12,6 +12,8 @@ import { quizService, QuizPerformance as QuizPerformanceType } from '../../servi
 import { questionService } from '../../services/questionService';
 import { clusteringService, StudentCluster } from '../../services/clusteringService';
 import { toast } from 'sonner';
+import { useNotifications } from '../../hooks/useNotifications';
+import { QuestionNotificationPopup } from '../../components/notifications/QuestionNotificationPopup';
 
 const DEFAULT_SESSION_QUESTIONS: Question[] = [
   {
@@ -99,6 +101,22 @@ export const LiveSession = () => {
 
   // Determine if user is instructor (must be before useEffect hooks that use it)
   const isInstructor = user?.role === 'instructor' || user?.role === 'admin';
+
+  // 🔔 Real-time Notifications for Students
+  const {
+    isConnected: isNotificationConnected,
+    currentNotification,
+    error: notificationError,
+    connect: connectNotifications,
+    disconnect: disconnectNotifications,
+    clearNotification
+  } = useNotifications({
+    meetingId: sessionId || null,
+    studentId: user?.id,
+    studentName: `${user?.firstName} ${user?.lastName}`,
+    studentEmail: user?.email,
+    autoConnect: !isInstructor && !!sessionId // Auto-connect for students only
+  });
 
   // Mock session data
   const session = {
@@ -537,6 +555,26 @@ export const LiveSession = () => {
 
   return (
     <div className="w-full h-full flex flex-col" style={{ minHeight: '600px' }}>
+      {/* 🔔 Notification Popup for Students */}
+      {!isInstructor && currentNotification && (
+        <QuestionNotificationPopup
+          notification={{
+            sessionToken: currentNotification.data.sessionToken,
+            question: currentNotification.data.question,
+            options: currentNotification.data.options,
+            timeLimit: currentNotification.data.timeLimit,
+            questionUrl: currentNotification.data.questionUrl,
+            instructorName: currentNotification.data.instructorName,
+            triggeredAt: currentNotification.data.triggeredAt
+          }}
+          onClose={clearNotification}
+          onAnswer={() => {
+            clearNotification();
+            // User will be redirected to question page
+          }}
+        />
+      )}
+      
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg flex-shrink-0">
         <div className="px-4 py-4 sm:py-5 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -554,6 +592,18 @@ export const LiveSession = () => {
             <Badge variant={session.status === 'live' ? 'success' : 'default'} className="text-xs">
               {session.status === 'live' ? 'LIVE' : 'RECORDED'}
             </Badge>
+            {!isInstructor && (
+              <div title={isNotificationConnected ? 'Connected to notifications' : 'Connecting...'}>
+                <Badge 
+                  variant={isNotificationConnected ? 'success' : 'warning'} 
+                  className="text-xs flex items-center gap-1"
+                >
+                  <span className={`w-2 h-2 rounded-full ${isNotificationConnected ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`}></span>
+                  <span className="hidden sm:inline">{isNotificationConnected ? 'Notifications ON' : 'Connecting...'}</span>
+                  <span className="sm:hidden">🔔</span>
+                </Badge>
+              </div>
+            )}
             <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
               <UsersIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               <span className="hidden sm:inline">{session.participants} participants</span>
