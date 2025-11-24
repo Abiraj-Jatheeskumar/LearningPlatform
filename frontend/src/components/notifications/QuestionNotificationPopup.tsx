@@ -90,7 +90,7 @@ export const QuestionNotificationPopup: React.FC<QuestionNotificationPopupProps>
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-lg">
-                    New Question!
+                    🎯 You Got a Quiz!
                   </h3>
                   <p className="text-indigo-100 text-sm">
                     From {notification.instructorName}
@@ -155,7 +155,7 @@ export const QuestionNotificationPopup: React.FC<QuestionNotificationPopupProps>
 
             {/* Note */}
             <p className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
-              💡 Click "Answer Now" to open the question in a new view
+              💡 Your instructor just sent you a quiz question! Click "Answer Now" to start.
             </p>
           </div>
         </div>
