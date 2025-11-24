@@ -186,9 +186,21 @@ export const authService = {
         body: JSON.stringify(userData),
       });
 
+      // Check if response has content
+      const contentType = response.headers.get('content-type');
+      const hasJson = contentType && contentType.includes('application/json');
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Registration failed');
+        if (hasJson) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Registration failed');
+        } else {
+          throw new Error(`Server error: ${response.status} ${response.statusText}. Please ensure the backend is running.`);
+        }
+      }
+
+      if (!hasJson) {
+        throw new Error('Invalid response from server. Expected JSON.');
       }
 
       return await response.json();
@@ -209,9 +221,22 @@ export const authService = {
         body: JSON.stringify({ email, password }),
       });
 
+      // Check if response has content
+      const contentType = response.headers.get('content-type');
+      const hasJson = contentType && contentType.includes('application/json');
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Login failed');
+        if (hasJson) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Login failed');
+        } else {
+          // Backend returned non-JSON error (likely HTML error page or empty response)
+          throw new Error(`Server error: ${response.status} ${response.statusText}. Please ensure the backend is running.`);
+        }
+      }
+
+      if (!hasJson) {
+        throw new Error('Invalid response from server. Expected JSON.');
       }
 
       return await response.json();
