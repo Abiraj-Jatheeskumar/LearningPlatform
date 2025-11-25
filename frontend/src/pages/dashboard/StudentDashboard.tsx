@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BellIcon,
   TrendingUpIcon,
   CheckCircleIcon,
   ActivityIcon,
+  PlayIcon,
+  CalendarIcon,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
+import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
+import { sessionService, Session } from "../../services/sessionService";
 
 // --------------------------------------
 // QUIZ POPUP COMPONENT
@@ -111,25 +115,6 @@ const QuizPopup = ({ quiz, onClose }: any) => {
 // --------------------------------------
 // DEFAULT DASHBOARD CONTENT
 // --------------------------------------
-const upcomingSessions = [
-  {
-    id: "1",
-    title: "Introduction to Machine Learning",
-    course: "CS301: Machine Learning Fundamentals",
-    instructor: "Dr. Jane Smith",
-    date: "2023-10-15",
-    time: "10:00 AM - 11:30 AM",
-  },
-  {
-    id: "2",
-    title: "Data Structures and Algorithms",
-    course: "CS201: Algorithms",
-    instructor: "Prof. John Doe",
-    date: "2023-10-16",
-    time: "2:00 PM - 3:30 PM",
-  },
-];
-
 const recentActivities = [
   {
     id: "1",
@@ -162,6 +147,34 @@ const performanceData = {
 export const StudentDashboard = () => {
   const { user } = useAuth();
   const [incomingQuiz, setIncomingQuiz] = useState<any | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+
+  // ===========================================================
+  // ⭐ LOAD REAL SESSIONS FROM BACKEND
+  // ===========================================================
+  useEffect(() => {
+    const loadSessions = async () => {
+      const allSessions = await sessionService.getAllSessions();
+      // Show only upcoming and live sessions
+      const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
+      setSessions(filtered.slice(0, 5)); // Show max 5
+    };
+    loadSessions();
+    
+    const interval = setInterval(loadSessions, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // ===========================================================
+  // ⭐ JOIN ZOOM MEETING (STUDENT)
+  // ===========================================================
+  const handleJoinSession = (session: Session) => {
+    if (!session.join_url) {
+      alert("❌ Zoom join URL missing");
+      return;
+    }
+    window.open(session.join_url, '_blank');
+  };
 
   // ===========================================================
   // ⭐ GLOBAL WebSocket — Receive Notifications
@@ -272,30 +285,52 @@ export const StudentDashboard = () => {
 
       {/* Upcoming + Recent */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Upcoming */}
+        {/* REAL Upcoming Sessions */}
         <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5">
-            <h3 className="text-lg font-medium text-gray-900">Upcoming Sessions</h3>
+          <div className="px-4 py-5 flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">Your Sessions</h3>
+            <Link to="/dashboard/sessions">
+              <span className="text-sm text-indigo-600 hover:text-indigo-800">View All</span>
+            </Link>
           </div>
 
-          {upcomingSessions.map((session) => (
-            <div key={session.id} className="px-4 py-4 border-t">
-              <p className="text-sm font-medium text-indigo-600">
-                {session.title}
-              </p>
-              <p className="text-xs text-gray-500">
-                {session.course} • {session.instructor}
-              </p>
-              <div className="mt-2 flex justify-end">
-                <Link
-                  to={`/dashboard/sessions/${session.id}`}
-                  className="text-sm font-medium text-indigo-600"
-                >
-                  Join Session
-                </Link>
-              </div>
+          {sessions.length === 0 ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              <p className="text-sm">No upcoming sessions</p>
             </div>
-          ))}
+          ) : (
+            sessions.map((session) => (
+              <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-indigo-600">
+                        {session.title}
+                      </p>
+                      {session.status === 'live' && (
+                        <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {session.course} • {session.instructor}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                      <CalendarIcon className="h-3 w-3" />
+                      {session.date} • {session.time}
+                    </p>
+                  </div>
+                  <Button
+                    variant={session.status === 'live' ? 'primary' : 'outline'}
+                    size="sm"
+                    leftIcon={<PlayIcon className="h-4 w-4" />}
+                    onClick={() => handleJoinSession(session)}
+                  >
+                    {session.status === 'live' ? 'Join' : 'Join'}
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Activity */}

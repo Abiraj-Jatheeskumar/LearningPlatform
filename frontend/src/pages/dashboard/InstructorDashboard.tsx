@@ -1,14 +1,43 @@
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { useState, useEffect } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/Button";
-import { BarChart3Icon, TargetIcon } from "lucide-react";
-
-
+import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon } from "lucide-react";
+import { sessionService, Session } from "../../services/sessionService";
+import { Badge } from "../../components/ui/Badge";
 
 export const InstructorDashboard = () => {
   const { user } = useAuth();
+  const [sessions, setSessions] = useState<Session[]>([]);
+
+  // ================================
+  // ⭐ LOAD REAL SESSIONS FROM BACKEND
+  // ================================
+  useEffect(() => {
+    const loadSessions = async () => {
+      const allSessions = await sessionService.getAllSessions();
+      // Show only upcoming and live sessions
+      const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
+      setSessions(filtered.slice(0, 5)); // Show max 5
+    };
+    loadSessions();
+    
+    const interval = setInterval(loadSessions, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // ================================
+  // ⭐ JOIN ZOOM MEETING (INSTRUCTOR)
+  // ================================
+  const handleJoinSession = (session: Session) => {
+    if (!session.start_url) {
+      alert("❌ Zoom host start URL missing");
+      return;
+    }
+    window.open(session.start_url, '_blank');
+  };
 
   // ================================
   // ⭐ TRIGGER QUESTION FUNCTION
@@ -133,43 +162,67 @@ export const InstructorDashboard = () => {
         </div>
       </div>
 
-      {/* ================= UPCOMING SESSION LIST ================= */}
+      {/* ================= REAL UPCOMING SESSION LIST ================= */}
       <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">Upcoming Sessions</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium text-gray-900">Your Sessions</h2>
+          <Link to="/dashboard/sessions">
+            <Button variant="outline" size="sm">View All</Button>
+          </Link>
+        </div>
+        
         <div className="mt-2 bg-white shadow overflow-hidden sm:rounded-md">
-
-          <ul className="divide-y divide-gray-200">
-
-            <li className="px-4 py-4 sm:px-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-indigo-600 truncate">
-                  Machine Learning: Neural Networks
-                </p>
-                <p className="px-2 inline-flex text-xs rounded-full bg-green-100 text-green-800">
-                  Today, 2:00 PM
-                </p>
-              </div>
-              <p className="mt-1 text-sm text-gray-500">
-                Machine Learning Fundamentals • 45 students
-              </p>
-            </li>
-
-            <li className="px-4 py-4 sm:px-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-indigo-600 truncate">
-                  Database Design: Normalization
-                </p>
-                <p className="px-2 inline-flex text-xs rounded-full bg-yellow-100 text-yellow-800">
-                  Tomorrow, 10:00 AM
-                </p>
-              </div>
-              <p className="mt-1 text-sm text-gray-500">
-                Database Systems • 38 students
-              </p>
-            </li>
-
-          </ul>
-
+          {sessions.length === 0 ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              <p>No upcoming sessions</p>
+              <Link to="/dashboard/sessions/create">
+                <Button variant="primary" className="mt-4">Create Your First Session</Button>
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {sessions.map((session) => (
+                <li key={session.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-indigo-600 truncate">
+                          {session.title}
+                        </p>
+                        {session.status === 'live' && (
+                          <Badge variant="danger" className="bg-red-600 text-white">LIVE</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500 flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon className="h-4 w-4" />
+                          {session.date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          {session.time}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {session.course} ({session.courseCode})
+                      </p>
+                    </div>
+                    
+                    <div className="ml-4">
+                      <Button
+                        variant={session.status === 'live' ? 'primary' : 'outline'}
+                        size="sm"
+                        leftIcon={<PlayIcon className="h-4 w-4" />}
+                        onClick={() => handleJoinSession(session)}
+                      >
+                        {session.status === 'live' ? 'Join Now' : 'Start Meeting'}
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
