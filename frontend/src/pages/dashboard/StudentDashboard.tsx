@@ -49,7 +49,7 @@ const QuizPopup = ({ quiz, onClose }: any) => {
         sessionId: quiz.sessionId || "GLOBAL",
       };
 
-      const res = await fetch(`${API_BASE_URL}/quiz/submit`, {
+      const res = await fetch(`${API_BASE_URL}/api/quiz/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
