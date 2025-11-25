@@ -122,6 +122,22 @@ app.include_router(live.router)
 async def health_check():
     return {"status": "ok", "time": datetime.now().isoformat()}
 
+# --------------------------------------------------------
+# TEST – BROADCAST TO ALL WEBSOCKET CLIENTS
+# --------------------------------------------------------
+@app.get("/test-ws")
+async def test_ws():
+    message = {
+        "type": "test_message",
+        "title": "Hello from Backend 👋",
+        "body": "If you see this in browser console, WebSocket broadcast works.",
+        "timestamp": datetime.now().isoformat()
+    }
+
+    sent = await ws_manager.broadcast_to_all(message)
+    return {"success": True, "sent": sent}
+
+
 
 # --------------------------------------------------------
 # WEBSOCKET ENDPOINT
