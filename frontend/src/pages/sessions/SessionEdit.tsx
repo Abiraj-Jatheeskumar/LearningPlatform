@@ -1,83 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { SessionForm, SessionFormData } from '../../components/sessions/SessionForm';
-import { Card } from '../../components/ui/Card';
-import { ArrowLeftIcon } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { toast } from 'sonner';
-import { sessionService } from '../../services/sessionService';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+
+import { SessionForm, SessionFormData } from "../../components/sessions/SessionForm";
+import { Card } from "../../components/ui/Card";
+import { ArrowLeftIcon } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { toast } from "sonner";
 
 export const SessionEdit = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+
   const [initialData, setInitialData] = useState<Partial<SessionFormData> | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Check if user is instructor or admin
-  const isInstructor = user?.role === 'instructor' || user?.role === 'admin';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL;
+  const isInstructor = user?.role === "instructor" || user?.role === "admin";
 
+  // ---------------------------------------
+  // Load existing session from backend
+  // ---------------------------------------
   useEffect(() => {
-    // Load session data
-    const loadSession = () => {
+    const load = async () => {
       try {
-        if (sessionId) {
-          const session = sessionService.getSessionById(sessionId);
-          if (session) {
-            setInitialData({
-              title: session.title,
-              course: session.course,
-              courseCode: session.courseCode,
-              date: session.date,
-              startTime: session.startTime,
-              endTime: session.endTime,
-              duration: session.duration,
-              description: session.description || '',
-              materials: session.materials || []
-            });
-          } else {
-            toast.error('Session not found.');
-          }
+        const res = await fetch(`${API_BASE}/api/session/${sessionId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          toast.error("Failed to load session");
+          return;
         }
-      } catch (error) {
-        console.error('Error loading session:', error);
-        toast.error('Failed to load session data.');
+
+        setInitialData({
+          title: data.title,
+          course: data.course,
+          courseCode: data.courseCode,
+          date: data.date,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          duration: data.duration,
+          description: data.description,
+          materials: data.materials || [],
+        });
+      } catch (err) {
+        console.error(err);
+        toast.error("Error fetching session");
       } finally {
-        setLoadingSession(false);
+        setLoading(false);
       }
     };
 
-    if (sessionId) {
-      loadSession();
-    }
+    load();
   }, [sessionId]);
 
   if (!isInstructor) {
     return (
       <div className="py-6">
-        <Card className="p-6">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
-            <p className="text-gray-600 mb-4">Only instructors can edit sessions.</p>
-            <Button variant="primary" onClick={() => navigate('/dashboard/sessions')}>
-              Go to Sessions
-            </Button>
-          </div>
+        <Card className="p-6 text-center">
+          <h2 className="text-xl font-semibold">Access Denied</h2>
+          <p>Only instructors can edit sessions.</p>
+          <Button onClick={() => navigate("/dashboard/sessions")}>
+            Go Back
+          </Button>
         </Card>
       </div>
     );
   }
 
-  if (loadingSession) {
+  if (loading) {
     return (
       <div className="py-6">
-        <Card className="p-6">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading session...</p>
-          </div>
+        <Card className="p-6 text-center">
+          <div className="animate-spin h-12 w-12 rounded-full border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading session...</p>
         </Card>
       </div>
     );
@@ -86,78 +89,68 @@ export const SessionEdit = () => {
   if (!initialData) {
     return (
       <div className="py-6">
-        <Card className="p-6">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Session Not Found</h2>
-            <p className="text-gray-600 mb-4">The session you're looking for doesn't exist.</p>
-            <Button variant="primary" onClick={() => navigate('/dashboard/sessions')}>
-              Go to Sessions
-            </Button>
-          </div>
+        <Card className="p-6 text-center">
+          <h2 className="text-xl font-semibold">Session not found</h2>
+          <Button onClick={() => navigate("/dashboard/sessions")}>
+            Go Back
+          </Button>
         </Card>
       </div>
     );
   }
 
+  // ---------------------------------------
+  // Save updated session
+  // ---------------------------------------
   const handleSubmit = async (data: SessionFormData) => {
-    setIsLoading(true);
+    setSaving(true);
+
     try {
-      if (!sessionId) {
-        toast.error('Session ID is missing.');
+      const res = await fetch(`${API_BASE}/api/session/update/${sessionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error(result.detail || "Update failed");
         return;
       }
 
-      const updated = sessionService.updateSession(sessionId, {
-        title: data.title,
-        course: data.course,
-        courseCode: data.courseCode,
-        date: data.date,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        duration: data.duration,
-        description: data.description,
-        materials: data.materials || []
-      });
-
-      if (updated) {
-        console.log('Session updated:', updated);
-        toast.success('Session updated successfully!');
-        navigate('/dashboard/sessions');
-      } else {
-        toast.error('Session not found.');
-      }
-    } catch (error) {
-      console.error('Error updating session:', error);
-      toast.error('Failed to update session. Please try again.');
+      toast.success("Session updated!");
+      navigate("/dashboard/sessions");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error updating session");
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
   };
 
   return (
     <div className="py-6">
-      <div className="mb-6">
-        <Button
-          variant="outline"
-          leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
-          onClick={() => navigate('/dashboard/sessions')}
-          className="mb-4"
-        >
-          Back to Sessions
-        </Button>
-        <h1 className="text-2xl font-semibold text-gray-900">Edit Session</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Update the session details and materials
-        </p>
-      </div>
+      <Button
+        variant="outline"
+        leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
+        onClick={() => navigate("/dashboard/sessions")}
+        className="mb-4"
+      >
+        Back
+      </Button>
+
+      <h1 className="text-2xl font-semibold">Edit Session</h1>
 
       <SessionForm
         initialData={initialData}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/dashboard/sessions')}
-        isLoading={isLoading}
+        isLoading={saving}
+        onCancel={() => navigate("/dashboard/sessions")}
       />
     </div>
   );
 };
-

@@ -1,110 +1,138 @@
-# src/routers/live.py
-from typing import List, Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, status
+# src/routers/session.py
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from datetime import datetime
+from typing import List, Optional
 from bson import ObjectId
+from datetime import datetime
 
 from src.database.connection import db
 from src.middleware.auth import get_current_user, require_instructor
-from src.services.zoom_service import create_zoom_meeting
+from src.services.zoom_service import create_zoom_meeting, ZoomServiceError
 
 router = APIRouter(prefix="/api/sessions", tags=["Sessions"])
 
 
-class SessionCreateRequest(BaseModel):
+class SessionCreate(BaseModel):
     title: str
-    courseName: str
+    course: str
     courseCode: str
-    description: str | None = None
-    date: str          # "2025-11-30"
-    startTime: str     # "10:00"
-    endTime: str       # "11:30"
+    date: str          # "2025-11-25"
+    time: str          # "10:00 AM - 11:00 AM" or "10:00"
     durationMinutes: int
+    timezone: str = "Asia/Colombo"
 
 
-def session_to_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "id": str(doc["_id"]),
-        "title": doc["title"],
-        "courseName": doc["courseName"],
-        "courseCode": doc["courseCode"],
-        "description": doc.get("description"),
-        "date": doc["date"],
-        "startTime": doc["startTime"],
-        "endTime": doc["endTime"],
-        "durationMinutes": doc["durationMinutes"],
-        "status": doc.get("status", "upcoming"),
-        "instructorId": doc["instructorId"],
-        "instructorName": doc.get("instructorName"),
-        "zoom": {
-            "meetingId": doc["zoom"]["meetingId"],
-            "joinUrl": doc["zoom"]["joinUrl"],
-            "startUrl": doc["zoom"]["startUrl"],
-            "password": doc["zoom"].get("password"),
-        },
-    }
+class SessionOut(BaseModel):
+    id: str
+    title: str
+    course: str
+    courseCode: str
+    instructor: str
+    date: str
+    time: str
+    duration: str
+    status: str
+    participants: Optional[int] = 0
+    expectedParticipants: Optional[int] = 0
+    engagement: Optional[int] = 0
+    recordingAvailable: Optional[bool] = False
+    zoomMeetingId: Optional[str] = None
+    join_url: Optional[str] = None
+    start_url: Optional[str] = None
 
 
-@router.post("", status_code=201)
+def _session_doc_to_out(doc) -> SessionOut:
+    return SessionOut(
+        id=str(doc["_id"]),
+        title=doc["title"],
+        course=doc["course"],
+        courseCode=doc["courseCode"],
+        instructor=doc["instructor"],
+        date=doc["date"],
+        time=doc["time"],
+        duration=doc["duration"],
+        status=doc.get("status", "upcoming"),
+        participants=doc.get("participants", 0),
+        expectedParticipants=doc.get("expectedParticipants", 0),
+        engagement=doc.get("engagement", 0),
+        recordingAvailable=doc.get("recordingAvailable", False),
+        zoomMeetingId=str(doc.get("zoomMeetingId")) if doc.get("zoomMeetingId") else None,
+        join_url=doc.get("join_url"),
+        start_url=doc.get("start_url"),
+    )
+
+
+@router.post("", response_model=SessionOut)
 async def create_session(
-    payload: SessionCreateRequest,
+    payload: SessionCreate,
     user: dict = Depends(require_instructor),
 ):
     """
-    Instructor creates a session + Zoom meeting.
+    Create session + Zoom meeting.
     """
     try:
-        # combine date + time to ISO string (Zoom needs this)
-        start_dt_str = f"{payload.date}T{payload.startTime}:00"
-        # simple: assume local timezone; Zoom timezone handled in service
+        # 1) parse date+time into ISO for Zoom
+        # simple version: just use today's date/time string if parsing fails
+        try:
+            # Expect "HH:MM" 24h time
+            dt = datetime.fromisoformat(f"{payload.date}T{payload.time}")
+        except Exception:
+            # fallback = now + 10 minutes
+            dt = datetime.utcnow()
 
-        zoom_meeting = await create_zoom_meeting(
+        zoom_time_iso = dt.isoformat(timespec="seconds")
+
+        zoom = await create_zoom_meeting(
             topic=payload.title,
-            start_time=start_dt_str,
+            start_time_iso=zoom_time_iso,
             duration_minutes=payload.durationMinutes,
+            timezone=payload.timezone,
         )
 
         doc = {
             "title": payload.title,
-            "courseName": payload.courseName,
+            "course": payload.course,
             "courseCode": payload.courseCode,
-            "description": payload.description,
+            "instructor": f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
+                          or user.get("email", "Unknown Instructor"),
             "date": payload.date,
-            "startTime": payload.startTime,
-            "endTime": payload.endTime,
-            "durationMinutes": payload.durationMinutes,
+            "time": payload.time,
+            "duration": f"{payload.durationMinutes} minutes",
             "status": "upcoming",
-            "instructorId": user["id"],
-            "instructorName": f"{user.get('firstName', '')} {user.get('lastName', '')}".strip(),
+            "participants": 0,
+            "expectedParticipants": 0,
+            "engagement": 0,
+            "recordingAvailable": False,
+            "zoomMeetingId": str(zoom["meeting_id"]),
+            "join_url": zoom["join_url"],
+            "start_url": zoom["start_url"],
             "createdAt": datetime.utcnow(),
-            "zoom": {
-                "meetingId": zoom_meeting["id"],
-                "joinUrl": zoom_meeting["join_url"],
-                "startUrl": zoom_meeting["start_url"],
-                "password": zoom_meeting.get("password"),
-            },
         }
 
         result = await db.database.sessions.insert_one(doc)
-        doc["_id"] = result.inserted_id
+        saved = await db.database.sessions.find_one({"_id": result.inserted_id})
+        return _session_doc_to_out(saved)
 
-        return {"success": True, "session": session_to_dict(doc)}
-
+    except ZoomServiceError as ze:
+        raise HTTPException(status_code=400, detail=str(ze))
     except Exception as e:
-        print("Create session error:", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create session",
-        )
+        print("Error creating session:", e)
+        raise HTTPException(status_code=500, detail="Failed to create session")
 
 
-@router.get("")
+@router.get("", response_model=List[SessionOut])
 async def list_sessions(user: dict = Depends(get_current_user)):
-    """
-    List all sessions (simple version).
-    Later you can filter by instructorId / enrolled courses.
-    """
-    cursor = db.database.sessions.find({}).sort("date", 1)
-    items = [session_to_dict(doc) async for doc in cursor]
-    return {"success": True, "sessions": items}
+    cursor = db.database.sessions.find().sort("date", -1)
+    sessions = await cursor.to_list(length=None)
+    return [_session_doc_to_out(doc) for doc in sessions]
+
+
+@router.get("/{session_id}", response_model=SessionOut)
+async def get_session(session_id: str, user: dict = Depends(get_current_user)):
+    try:
+        doc = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return _session_doc_to_out(doc)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Session not found")
