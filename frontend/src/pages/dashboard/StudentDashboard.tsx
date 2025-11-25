@@ -67,14 +67,14 @@ export const StudentDashboard = () => {
     const studentId = user?.id || user?.id || `STUDENT_${Date.now()}`;
   
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-    const wsBase = import.meta.env.VITE_WS_URL || apiUrl.replace(/^http/, "ws");
-  
-    // 🔥 CORRECT WebSocket URL — Backend requires query params!
-    const socketUrl = `${wsBase}/ws/global?meeting_id=GLOBAL&student_id=${studentId}`;
-  
-    console.log("🔌 Connecting WS:", socketUrl);
-  
+    const wsBase = import.meta.env.VITE_WS_URL;
+
+    const socketUrl = `${wsBase}/ws/global/${studentId}`;
+    
+    console.log("Connecting WS:", socketUrl);
+    
     const ws = new WebSocket(socketUrl);
+    
   
     ws.onopen = () => console.log("🌍 GLOBAL WS CONNECTED");
     ws.onclose = () => console.log("❌ WS CLOSED");
