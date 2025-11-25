@@ -95,6 +95,7 @@ export const SessionCreate = () => {
           leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
           onClick={() => navigate("/dashboard/sessions")}
           className="mb-4"
+          
         >
           Back to Sessions
         </Button>
@@ -102,7 +103,7 @@ export const SessionCreate = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Create New Session</h1>
         <p className="mt-1 text-sm text-gray-500">
           Fill in the details below to create a new learning session
-          
+
         </p>
       </div>
 
