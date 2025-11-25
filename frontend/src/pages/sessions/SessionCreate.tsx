@@ -1,3 +1,5 @@
+// src/pages/sessions/SessionCreate.tsx
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -13,7 +15,8 @@ export const SessionCreate = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_BACKEND_URL; // ⭐ must be in .env
+  // ✅ use the SAME variable you already use everywhere else
+  const API_BASE = import.meta.env.VITE_API_URL;   // e.g. https://learningapp-production.up.railway.app
 
   const isInstructor = user?.role === "instructor" || user?.role === "admin";
 
@@ -33,9 +36,6 @@ export const SessionCreate = () => {
     );
   }
 
-  // ----------------------------------------------------
-  // ⭐ HANDLE SUBMIT → SEND TO FASTAPI BACKEND
-  // ----------------------------------------------------
   const handleSubmit = async (data: SessionFormData) => {
     setIsLoading(true);
 
@@ -50,30 +50,31 @@ export const SessionCreate = () => {
         duration: data.duration,
         description: data.description,
         instructorId: user?.id,
-        instructorName: `${user?.firstName} ${user?.lastName}`,
+        instructorName: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || user?.email,
       };
 
       console.log("📤 Sending session create payload:", payload);
 
+      const token = localStorage.getItem("access_token") || "";
+
       const res = await fetch(`${API_BASE}/api/session/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("access_token")}`
-      },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({} as any));
+      console.log("🔄 Session create response:", res.status, result);
 
       if (!res.ok) {
-        console.error("❌ Backend error:", result);
         toast.error(result.detail || "Failed to create session");
         return;
       }
 
-      console.log("✅ Backend created session:", result);
-
       toast.success("Session created successfully!");
-
       navigate("/dashboard/sessions");
     } catch (err) {
       console.error("❌ Error creating session:", err);
@@ -101,7 +102,11 @@ export const SessionCreate = () => {
         </p>
       </div>
 
-      <SessionForm onSubmit={handleSubmit} onCancel={() => navigate("/dashboard/sessions")} isLoading={isLoading} />
+      <SessionForm
+        onSubmit={handleSubmit}
+        onCancel={() => navigate("/dashboard/sessions")}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
