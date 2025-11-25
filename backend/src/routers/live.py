@@ -1,39 +1,38 @@
 """
 Live Learning Router
-Simplified trigger for sending questions to students via WebSocket
+Trigger questions → Sent to ALL students via GLOBAL WebSocket
 """
 from fastapi import APIRouter
 from bson import ObjectId
 from src.services.ws_manager import ws_manager
-from src.database.connection import db  # IMPORTANT: You must import your DB instance
+from src.database.connection import db
 import random
 from datetime import datetime
 
 router = APIRouter(prefix="/api/live", tags=["Live Learning"])
 
 
+# ================================================================
+# ⭐ TRIGGER QUESTION (Instructor clicks → ALL students get quiz)
+# ================================================================
 @router.post("/trigger/{meeting_id}")
 async def trigger_question(meeting_id: str):
     """
-    Trigger a random question to all students in a meeting
-    
-    Args:
-        meeting_id: Zoom meeting ID
-        
-    Returns:
-        Success status, number of students notified, and question details
+    Instructor triggers a question.
+    A random question is selected from MongoDB and sent to ALL students.
     """
+
     try:
-        # Fetch all questions from DB
+        # 1) Fetch all questions from MongoDB
         questions = await db.database.questions.find({}).to_list(length=None)
-        
+
         if not questions:
             return {"success": False, "message": "No questions found in DB"}
-        
-        # Randomly select 1 question
+
+        # 2) Pick one question randomly
         q = random.choice(questions)
-        
-        # Prepare message for students
+
+        # 3) Prepare WebSocket broadcast message
         message = {
             "type": "quiz",
             "questionId": str(q["_id"]),
@@ -44,20 +43,18 @@ async def trigger_question(meeting_id: str):
             "category": q.get("category", "General"),
             "timestamp": datetime.now().isoformat()
         }
-        
-        # Broadcast to all connected students in meeting
-        #sent_count = await ws_manager.broadcast_to_meeting(meeting_id, message)
+
+        # 4) Send to ALL connected students (GLOBAL WS)
         sent_count = await ws_manager.broadcast_global(message)
 
-        
-        print(f"✅ Triggered question to {sent_count} students in meeting {meeting_id}")
-        
+        print(f"✅ Question broadcast to {sent_count} students")
+
         return {
             "success": True,
             "sent": sent_count,
             "sentQuestion": message
         }
-    
+
     except Exception as e:
         print(f"❌ Error triggering question: {e}")
         return {
@@ -66,35 +63,19 @@ async def trigger_question(meeting_id: str):
         }
 
 
+# ================================================================
+# ⭐ MEETING STATS (Optional – still works)
+# ================================================================
 @router.get("/stats/{meeting_id}")
 async def get_meeting_stats(meeting_id: str):
-    """
-    Get WebSocket connection statistics for a meeting
-    
-    Args:
-        meeting_id: Zoom meeting ID
-        
-    Returns:
-        Connection statistics
-    """
     stats = ws_manager.get_meeting_stats(meeting_id)
-    return {
-        "success": True,
-        "stats": stats
-    }
+    return {"success": True, "stats": stats}
 
 
+# ================================================================
+# ⭐ GLOBAL STATS (Optional)
+# ================================================================
 @router.get("/stats")
 async def get_all_stats():
-    """
-    Get WebSocket connection statistics for all meetings
-    
-    Returns:
-        Overall connection statistics
-    """
     stats = ws_manager.get_all_stats()
-    return {
-        "success": True,
-        "stats": stats
-    }
-
+    return {"success": True, "stats": stats}
