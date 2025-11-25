@@ -2,6 +2,7 @@ from typing import Optional, Callable
 from fastapi import Request, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ..models.user import UserModel
+from ..utils.jwt_utils import decode_access_token
 
 
 class AuthMiddleware:
@@ -9,51 +10,61 @@ class AuthMiddleware:
         self.security = HTTPBearer(auto_error=False)
 
     async def __call__(self, request: Request, call_next: Callable):
-        # Mock authentication - in real app, verify JWT token
-        # For development, allow requests without auth header
+        # Extract JWT token from Authorization header
         auth_header = request.headers.get("authorization")
-        user_id = request.headers.get("x-user-id")
-        user_email = request.headers.get("x-user-email")
-
-        # If user info is provided in headers, fetch the user
-        if user_id or user_email:
-            try:
-                if user_id:
-                    user = await UserModel.find_by_id(user_id)
-                elif user_email:
-                    user = await UserModel.find_by_email(user_email)
-                else:
-                    user = None
+        
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+            # Decode JWT token
+            payload = decode_access_token(token)
+            
+            if payload:
+                # Extract user info from token
+                user_id = payload.get("sub")
+                user_email = payload.get("email")
+                user_role = payload.get("role")
                 
-                if user:
-                    request.state.user = user
-                else:
-                    # Mock user if not found
+                # Try to fetch full user from database
+                try:
+                    if user_id:
+                        user = await UserModel.find_by_id(user_id)
+                        if user:
+                            request.state.user = user
+                        else:
+                            # Use token data if user not in DB
+                            request.state.user = {
+                                "id": user_id,
+                                "email": user_email,
+                                "role": user_role,
+                                "firstName": "User",
+                                "lastName": ""
+                            }
+                    else:
+                        # Use token data
+                        request.state.user = {
+                            "id": user_id or "unknown",
+                            "email": user_email,
+                            "role": user_role,
+                            "firstName": "User",
+                            "lastName": ""
+                        }
+                except Exception as e:
+                    print(f"Error fetching user: {e}")
+                    # Fallback to token data
                     request.state.user = {
-                        "id": "user123",
-                        "role": request.headers.get("x-user-role", "student"),
-                        "email": "test@example.com",
-                        "firstName": "Test",
-                        "lastName": "User"
+                        "id": user_id or "unknown",
+                        "email": user_email,
+                        "role": user_role,
+                        "firstName": "User",
+                        "lastName": ""
                     }
-            except:
-                # Fallback to mock user
-                request.state.user = {
-                    "id": "user123",
-                    "role": request.headers.get("x-user-role", "student"),
-                    "email": "test@example.com",
-                    "firstName": "Test",
-                    "lastName": "User"
-                }
+            else:
+                # Invalid token - set no user (will fail auth checks)
+                request.state.user = None
         else:
-            # Mock user - in real app, decode JWT and get user from database
-            request.state.user = {
-                "id": "user123",
-                "role": request.headers.get("x-user-role", "student"),
-                "email": "test@example.com",
-                "firstName": "Test",
-                "lastName": "User"
-            }
+            # No auth header - set no user
+            request.state.user = None
 
         response = await call_next(request)
         return response

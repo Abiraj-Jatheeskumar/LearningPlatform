@@ -1,6 +1,6 @@
 // src/pages/sessions/SessionCreate.tsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -56,8 +56,7 @@ export const SessionCreate = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
         },
         body: JSON.stringify(payload)
       });
