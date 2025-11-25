@@ -46,7 +46,9 @@ async def trigger_question(meeting_id: str):
         }
         
         # Broadcast to all connected students in meeting
-        sent_count = await ws_manager.broadcast_to_meeting(meeting_id, message)
+        #sent_count = await ws_manager.broadcast_to_meeting(meeting_id, message)
+        sent_count = await ws_manager.broadcast_global(message)
+
         
         print(f"✅ Triggered question to {sent_count} students in meeting {meeting_id}")
         

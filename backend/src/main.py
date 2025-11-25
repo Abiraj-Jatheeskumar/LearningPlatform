@@ -1,19 +1,17 @@
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from datetime import datetime
-import os
 from contextlib import asynccontextmanager
 
 from src.middleware.auth import AuthMiddleware
 from src.database.connection import connect_to_mongo, close_mongo_connection
 
-# ✅ Use ONLY this manager — the correct one
+# ✅ Only the correct WebSocket manager
 from src.services.ws_manager import ws_manager
 
 
 # --------------------------------------------------------
-# LIFESPAN
+# LIFESPAN (DB connect/disconnect)
 # --------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,7 +24,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 # --------------------------------------------------------
-# CORS (open for Zoom + Frontend)
+# CORS (Open for Zoom + Vercel Frontend)
 # --------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -38,26 +36,22 @@ app.add_middleware(
 
 
 # --------------------------------------------------------
-# AUTH MIDDLEWARE (ALLOW /api/zoom/events)
+# AUTH MIDDLEWARE (Skip Zoom webhook path)
 # --------------------------------------------------------
 auth_middleware = AuthMiddleware()
 
 @app.middleware("http")
 async def auth_middleware_wrapper(request: Request, call_next):
-
-    # Allow Zoom webhooks without authentication
     if request.url.path.startswith("/api/zoom/events"):
         return await call_next(request)
-
     return await auth_middleware(request, call_next)
 
 
 # --------------------------------------------------------
-# SECURITY HEADERS (DISABLE FOR /api/zoom/events)
+# SECURITY HEADERS (Disable for Zoom webhook)
 # --------------------------------------------------------
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
-
     response = await call_next(request)
 
     if request.url.path.startswith("/api/zoom/events"):
@@ -73,22 +67,20 @@ async def security_headers_middleware(request: Request, call_next):
             response.headers.pop(h, None)
         return response
 
-    # Default security headers
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self' https:; "
-        "frame-ancestors 'self' https://*.zoom.us;"
+        "default-src 'self' https:; frame-ancestors 'self' https://*.zoom.us;"
     )
 
     return response
 
 
 # --------------------------------------------------------
-# ROUTERS  (NO websocket_notifications ANYWHERE!!)
+# IMPORT ROUTERS (NO websocket_notifications!)
 # --------------------------------------------------------
 from src.routers import (
     auth,
@@ -122,34 +114,35 @@ async def health_check():
 
 
 # --------------------------------------------------------
-# TEST – BROADCAST TO ALL STUDENTS
+# TEST GLOBAL BROADCAST (Use for debugging)
 # --------------------------------------------------------
 @app.get("/test-ws")
 async def test_ws():
     message = {
         "type": "test_message",
         "title": "Hello from Backend 👋",
-        "body": "If you see this message in the browser, WebSocket works!",
+        "body": "If you see this in browser, WebSocket works!",
         "timestamp": datetime.now().isoformat()
     }
-    sent = await ws_manager.broadcast_to_all(message)
+    sent = await ws_manager.broadcast_global(message)
     return {"success": True, "sent": sent}
 
 
 # --------------------------------------------------------
-# WEBSOCKET ENDPOINT (ONLY ONE CORRECT ENDPOINT)
+# GLOBAL STUDENT WEBSOCKET ENDPOINT
 # --------------------------------------------------------
-@app.websocket("/ws/{meeting_id}/{student_id}")
-async def websocket_endpoint(websocket: WebSocket, meeting_id: str, student_id: str):
+@app.websocket("/ws/global/{student_id}")
+async def websocket_global(websocket: WebSocket, student_id: str):
     """
-    Real-time WebSocket notifications for students
+    Every student connects here.
+    Instructor sends broadcast (global).
     """
     try:
-        await ws_manager.connect(websocket, meeting_id, student_id)
+        await ws_manager.connect_global(websocket)
 
-        # Keep alive forever
+        # keep websocket alive
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        ws_manager.disconnect(meeting_id, student_id)
+        ws_manager.disconnect_global(websocket)

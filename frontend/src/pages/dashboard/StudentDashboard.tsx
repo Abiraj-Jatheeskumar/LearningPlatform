@@ -1,6 +1,11 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpenIcon, CalendarIcon, ClockIcon, BellIcon, TrendingUpIcon, CheckCircleIcon, ActivityIcon } from 'lucide-react';
+import {
+  BellIcon,
+  TrendingUpIcon,
+  CheckCircleIcon,
+  ActivityIcon
+} from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,8 +16,7 @@ const upcomingSessions = [
     course: 'CS301: Machine Learning Fundamentals',
     instructor: 'Dr. Jane Smith',
     date: '2023-10-15',
-    time: '10:00 AM - 11:30 AM',
-    status: 'upcoming'
+    time: '10:00 AM - 11:30 AM'
   },
   {
     id: '2',
@@ -20,8 +24,7 @@ const upcomingSessions = [
     course: 'CS201: Algorithms',
     instructor: 'Prof. John Doe',
     date: '2023-10-16',
-    time: '2:00 PM - 3:30 PM',
-    status: 'upcoming'
+    time: '2:00 PM - 3:30 PM'
   }
 ];
 
@@ -54,30 +57,58 @@ const performanceData = {
 export const StudentDashboard = () => {
   const { user } = useAuth();
 
-  // --------------------------
-  // ✅ WebSocket Test Code
-  // --------------------------
+  // ===========================================================
+  // ⭐ GLOBAL WebSocket — Receive Notifications
+  // ===========================================================
   useEffect(() => {
-    const meetingId = "TEST_MEETING";
-    const studentId = "TEST_STUDENT";
+    if (!user) return;
+
+    // SAFE — no error even if user._id doesn't exist
+    // SAFE — works for user.id or user._id or fallback
+    const studentId =
+    user?.id ?? user?.id ?? `STUDENT_${Date.now()}`;
+
+
+    console.log("👤 Student ID:", studentId);
 
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-    //add
 
-    // Convert http → ws  AND  https → wss
+    // Convert http → ws OR https → wss
     const wsBase = import.meta.env.VITE_WS_URL || apiUrl.replace(/^http/, "ws");
 
-    const ws = new WebSocket(
-      `${wsBase}/ws/${meetingId}/${studentId}`
-    );
+    // Backend expects: /ws/global/{studentId}
+    const socketUrl = `${wsBase}/ws/global/${studentId}`;
 
-    ws.onopen = () => console.log("WS CONNECTED ✔");
-    ws.onmessage = (event) => console.log("WS MESSAGE:", event.data);
-    ws.onclose = () => console.log("WS CLOSED");
-    ws.onerror = (err) => console.log("WS ERROR:", err);
+    console.log("🔌 Connecting WS:", socketUrl);
+
+    const ws = new WebSocket(socketUrl);
+
+    ws.onopen = () => console.log("🌍 GLOBAL WS CONNECTED");
+    ws.onclose = () => console.log("❌ WS CLOSED");
+    ws.onerror = (err) => console.error("⚠️ WS ERROR:", err);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📩 WS MESSAGE:", data);
+
+        if (data.type === "quiz") {
+          alert("📝 New Quiz:\n" + data.question);
+        }
+
+        if (data.type === "test_message") {
+          console.log("🔥 Test Broadcast:", data);
+        }
+
+      } catch (e) {
+        console.error("WS JSON PARSE ERROR:", e);
+      }
+    };
 
     return () => ws.close();
-  }, []);
+  }, [user]);
+
+  // ===========================================================
 
   return (
     <div className="py-6">
@@ -103,165 +134,98 @@ export const StudentDashboard = () => {
         </Link>
       </div>
 
-      {/* Performance Summary */}
+      {/* ================= Performance Summary ================= */}
       <div className="mb-8 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div className="flex justify-between">
           <div>
             <h2 className="text-xl font-bold">Your Learning Summary</h2>
             <p className="text-indigo-100 mt-1">
-              You're in the{' '}
-              <span className="font-semibold">Active Participants</span> cluster
+              You are in <span className="font-semibold">Active Participants</span>
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white bg-opacity-25 text-white">
-              {performanceData.engagementScore}% Engagement
-            </span>
-          </div>
+          <span className="px-3 py-1 rounded-full bg-white bg-opacity-25 text-sm font-medium">
+            {performanceData.engagementScore}% Engagement
+          </span>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <div className="flex items-center">
-              <CheckCircleIcon className="h-6 w-6 mr-2 text-green-300" />
-              <div>
-                <p className="text-sm font-medium">Attendance Rate</p>
-                <p className="text-lg font-bold">
-                  {performanceData.attendanceRate}%
-                </p>
-              </div>
-            </div>
+            <CheckCircleIcon className="h-6 w-6 text-green-300" />
+            <p className="text-sm font-medium">Attendance Rate</p>
+            <p className="text-lg font-bold">{performanceData.attendanceRate}%</p>
           </div>
 
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <div className="flex items-center">
-              <BellIcon className="h-6 w-6 mr-2 text-yellow-300" />
-              <div>
-                <p className="text-sm font-medium">Questions Asked</p>
-                <p className="text-lg font-bold">
-                  {performanceData.questionsAsked}
-                </p>
-              </div>
-            </div>
+            <BellIcon className="h-6 w-6 text-yellow-300" />
+            <p className="text-sm font-medium">Questions Asked</p>
+            <p className="text-lg font-bold">{performanceData.questionsAsked}</p>
           </div>
 
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <div className="flex items-center">
-              <TrendingUpIcon className="h-6 w-6 mr-2 text-blue-300" />
-              <div>
-                <p className="text-sm font-medium">Quiz Average</p>
-                <p className="text-lg font-bold">
-                  {performanceData.quizAverage}%
-                </p>
-              </div>
-            </div>
+            <TrendingUpIcon className="h-6 w-6 text-blue-300" />
+            <p className="text-sm font-medium">Quiz Average</p>
+            <p className="text-lg font-bold">{performanceData.quizAverage}%</p>
           </div>
 
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Next Class</p>
-                <p className="text-lg font-bold">7 days</p>
-              </div>
-            </div>
+            <p className="text-sm font-medium">Next Class</p>
+            <p className="text-lg font-bold">7 days</p>
           </div>
         </div>
       </div>
 
-      {/* Upcoming Sessions */}
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-        {/* Column 1 */}
+      {/* ================= Upcoming Sessions ================= */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Sessions */}
         <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Upcoming Sessions
-            </h3>
+          <div className="px-4 py-5">
+            <h3 className="text-lg font-medium text-gray-900">Upcoming Sessions</h3>
           </div>
 
-          <div className="divide-y divide-gray-200">
-            {upcomingSessions.map((session) => (
-              <div key={session.id} className="px-4 py-4 sm:px-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium text-indigo-600 truncate">
-                      {session.title}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {session.course} • {session.instructor}
-                    </p>
-                  </div>
-
-                  <div className="ml-2 flex-shrink-0 flex">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {session.date} • {session.time}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-2 flex justify-end">
-                  <Link
-                    to={`/dashboard/sessions/${session.id}`}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Join Session
-                  </Link>
-                </div>
+          {upcomingSessions.map((session) => (
+            <div key={session.id} className="px-4 py-4 border-t">
+              <p className="text-sm font-medium text-indigo-600">{session.title}</p>
+              <p className="text-xs text-gray-500">
+                {session.course} • {session.instructor}
+              </p>
+              <div className="mt-2 flex justify-end">
+                <Link
+                  to={`/dashboard/sessions/${session.id}`}
+                  className="text-sm font-medium text-indigo-600"
+                >
+                  Join Session
+                </Link>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
-        {/* Column 2 */}
+        {/* Recent Activity */}
         <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Recent Activity
-            </h3>
+          <div className="px-4 py-5">
+            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
           </div>
 
-          <div className="divide-y divide-gray-200">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="px-4 py-4 sm:px-6">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-indigo-600 truncate">
-                      {activity.title}
-                    </p>
-                    <p className="ml-2 text-xs text-gray-500">
-                      {activity.date}
-                    </p>
-                  </div>
+          {recentActivities.map((activity) => (
+            <div key={activity.id} className="px-4 py-4 border-t">
+              <p className="text-sm font-medium text-indigo-600">{activity.title}</p>
+              <p className="text-xs text-gray-500">{activity.course}</p>
+              <p className="text-xs mt-1 text-gray-500">{activity.date}</p>
 
-                  <p className="mt-1 text-xs text-gray-500">
-                    {activity.course}
-                  </p>
-                </div>
+              {activity.type === 'session' && (
+                <p className="text-xs mt-1 text-green-600 font-medium">
+                  Engagement: {activity.engagement}
+                </p>
+              )}
 
-                <div className="mt-2">
-                  {activity.type === 'session' && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Engagement: </span>
-                      <span className="font-medium text-green-600">
-                        {activity.engagement}
-                      </span>
-                    </div>
-                  )}
-
-                  {activity.type === 'quiz' && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Score: </span>
-                      <span className="font-medium text-blue-600">
-                        {activity.score}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              {activity.type === 'quiz' && (
+                <p className="text-xs mt-1 text-blue-600 font-medium">
+                  Score: {activity.score}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
-
       </div>
     </div>
   );
