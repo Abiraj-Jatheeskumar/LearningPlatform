@@ -64,7 +64,8 @@ async def security_headers_middleware(request: Request, call_next):
             "Content-Security-Policy"
         ]
         for h in remove_headers:
-            response.headers.pop(h, None)
+            if h in response.headers:
+                del response.headers[h]
         return response
 
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

@@ -23,7 +23,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 export const sessionService = {
   async getAllSessions(): Promise<Session[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/sessions`, {
+      const res = await fetch(`${API_BASE_URL}/api/sessions`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
         },
@@ -42,7 +42,7 @@ export const sessionService = {
   },
 
   async getSession(id: string): Promise<Session | null> {
-    const res = await fetch(`${API_BASE_URL}/sessions/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/sessions/${id}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
@@ -62,7 +62,7 @@ export const sessionService = {
     durationMinutes: number;
     timezone?: string;
   }): Promise<Session> {
-    const res = await fetch(`${API_BASE_URL}/sessions`, {
+    const res = await fetch(`${API_BASE_URL}/api/sessions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
