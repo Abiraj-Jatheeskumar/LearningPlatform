@@ -38,44 +38,42 @@ export const SessionCreate = () => {
 
   const handleSubmit = async (data: SessionFormData) => {
     setIsLoading(true);
-
+  
     try {
       const payload = {
         title: data.title,
         course: data.course,
         courseCode: data.courseCode,
-        date: data.date,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        duration: data.duration,
-        description: data.description,
-        instructorId: user?.id,
-        instructorName: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || user?.email,
+        date: data.date,                    // "2025-11-25"
+        time: data.startTime,               // use startTime ONLY (backend expects 1 time)
+        durationMinutes: Number(data.duration),
+        timezone: "Asia/Colombo"
       };
-
+  
       console.log("📤 Sending session create payload:", payload);
-
-      const token = localStorage.getItem("access_token") || "";
-
-      const res = await fetch(`${API_BASE}/api/session/create`, {
+  
+      const res = await fetch(`${API_BASE}/api/sessions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
-
-      const result = await res.json().catch(() => ({} as any));
-      console.log("🔄 Session create response:", res.status, result);
-
+  
+      const result = await res.json();
+  
       if (!res.ok) {
+        console.error("❌ Backend error:", result);
         toast.error(result.detail || "Failed to create session");
         return;
       }
-
+  
+      console.log("✅ Backend created session:", result);
       toast.success("Session created successfully!");
       navigate("/dashboard/sessions");
+  
     } catch (err) {
       console.error("❌ Error creating session:", err);
       toast.error("Failed to create session");
@@ -83,6 +81,7 @@ export const SessionCreate = () => {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="py-6">
