@@ -84,6 +84,7 @@ export const SessionCreate = () => {
     } finally {
       setIsLoading(false);
     }
+    
   };
   
 
@@ -95,7 +96,7 @@ export const SessionCreate = () => {
           leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
           onClick={() => navigate("/dashboard/sessions")}
           className="mb-4"
-          
+
         >
           Back to Sessions
         </Button>
