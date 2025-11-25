@@ -62,51 +62,40 @@ export const StudentDashboard = () => {
   // ===========================================================
   useEffect(() => {
     if (!user) return;
-
-    // SAFE — no error even if user._id doesn't exist
-    // SAFE — works for user.id or user._id or fallback
-    const studentId =
-    user?.id ?? user?.id ?? `STUDENT_${Date.now()}`;
-
-
-    console.log("👤 Student ID:", studentId);
-
+  
+    // student id safely handled
+    const studentId = user?.id || user?.id || `STUDENT_${Date.now()}`;
+  
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-    // Convert http → ws OR https → wss
     const wsBase = import.meta.env.VITE_WS_URL || apiUrl.replace(/^http/, "ws");
-
-    // Backend expects: /ws/global/{studentId}
-    const socketUrl = `${wsBase}/ws/global/${studentId}`;
-
+  
+    // 🔥 CORRECT WebSocket URL — Backend requires query params!
+    const socketUrl = `${wsBase}/ws/global?meeting_id=GLOBAL&student_id=${studentId}`;
+  
     console.log("🔌 Connecting WS:", socketUrl);
-
+  
     const ws = new WebSocket(socketUrl);
-
+  
     ws.onopen = () => console.log("🌍 GLOBAL WS CONNECTED");
     ws.onclose = () => console.log("❌ WS CLOSED");
     ws.onerror = (err) => console.error("⚠️ WS ERROR:", err);
-
+  
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log("📩 WS MESSAGE:", data);
-
+  
         if (data.type === "quiz") {
           alert("📝 New Quiz:\n" + data.question);
         }
-
-        if (data.type === "test_message") {
-          console.log("🔥 Test Broadcast:", data);
-        }
-
       } catch (e) {
-        console.error("WS JSON PARSE ERROR:", e);
+        console.error("WS JSON ERROR:", e);
       }
     };
-
+  
     return () => ws.close();
   }, [user]);
+  
 
   // ===========================================================
 
