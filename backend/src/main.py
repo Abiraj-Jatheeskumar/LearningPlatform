@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 
 from src.middleware.auth import AuthMiddleware
 from src.database.connection import connect_to_mongo, close_mongo_connection
+
+# ✅ Use ONLY this manager — the correct one
 from src.services.ws_manager import ws_manager
 
 
@@ -43,7 +45,7 @@ auth_middleware = AuthMiddleware()
 @app.middleware("http")
 async def auth_middleware_wrapper(request: Request, call_next):
 
-    # Allow Zoom webhooks
+    # Allow Zoom webhooks without authentication
     if request.url.path.startswith("/api/zoom/events"):
         return await call_next(request)
 
@@ -58,7 +60,6 @@ async def security_headers_middleware(request: Request, call_next):
 
     response = await call_next(request)
 
-    # Disable security headers for Zoom webhook
     if request.url.path.startswith("/api/zoom/events"):
         remove_headers = [
             "Strict-Transport-Security",
@@ -69,11 +70,10 @@ async def security_headers_middleware(request: Request, call_next):
             "Content-Security-Policy"
         ]
         for h in remove_headers:
-            if h in response.headers:
-                del response.headers[h]
+            response.headers.pop(h, None)
         return response
 
-    # Security headers for everything else
+    # Default security headers
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -88,7 +88,7 @@ async def security_headers_middleware(request: Request, call_next):
 
 
 # --------------------------------------------------------
-# ROUTERS
+# ROUTERS  (NO websocket_notifications ANYWHERE!!)
 # --------------------------------------------------------
 from src.routers import (
     auth,
@@ -99,7 +99,6 @@ from src.routers import (
     zoom_chatbot,
     course,
     live_question,
-    websocket_notifications,
     live,
 )
 
@@ -111,7 +110,6 @@ app.include_router(zoom_webhook.router)
 app.include_router(zoom_chatbot.router)
 app.include_router(course.router)
 app.include_router(live_question.router)
-app.include_router(websocket_notifications.router)
 app.include_router(live.router)
 
 
@@ -122,36 +120,36 @@ app.include_router(live.router)
 async def health_check():
     return {"status": "ok", "time": datetime.now().isoformat()}
 
+
 # --------------------------------------------------------
-# TEST – BROADCAST TO ALL WEBSOCKET CLIENTS
+# TEST – BROADCAST TO ALL STUDENTS
 # --------------------------------------------------------
 @app.get("/test-ws")
 async def test_ws():
     message = {
         "type": "test_message",
         "title": "Hello from Backend 👋",
-        "body": "If you see this in browser console, WebSocket broadcast works.",
+        "body": "If you see this message in the browser, WebSocket works!",
         "timestamp": datetime.now().isoformat()
     }
-
     sent = await ws_manager.broadcast_to_all(message)
     return {"success": True, "sent": sent}
 
 
-
 # --------------------------------------------------------
-# WEBSOCKET ENDPOINT
+# WEBSOCKET ENDPOINT (ONLY ONE CORRECT ENDPOINT)
 # --------------------------------------------------------
 @app.websocket("/ws/{meeting_id}/{student_id}")
 async def websocket_endpoint(websocket: WebSocket, meeting_id: str, student_id: str):
     """
-    WebSocket endpoint for real-time student notifications
-    Students connect here to receive question triggers and updates
+    Real-time WebSocket notifications for students
     """
     try:
         await ws_manager.connect(websocket, meeting_id, student_id)
+
+        # Keep alive forever
         while True:
-            # Keep connection alive, receive heartbeat or other messages
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         ws_manager.disconnect(meeting_id, student_id)
