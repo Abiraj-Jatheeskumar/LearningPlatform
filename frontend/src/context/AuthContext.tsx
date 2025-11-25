@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { authService } from "../services/authService";
+import { initPushNotifications } from "../services/pushNotificationService";
 
 // ---------------------------
 // TYPES
@@ -89,6 +90,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         toast.success("Login successful");
+        
+        // Initialize push notifications for students
+        if (response.user.role === "student") {
+          // Run in background, don't block login
+          setTimeout(() => {
+            initPushNotifications().then((success) => {
+              if (success) {
+                console.log("✅ Push notifications enabled");
+              } else {
+                console.log("ℹ️ Push notifications not available");
+              }
+            });
+          }, 1000); // Wait 1 second after login
+        }
+        
         return true;
       }
 

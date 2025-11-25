@@ -93,7 +93,8 @@ from src.routers import (
     course,
     live_question,
     live,
-    session      # ⭐ NEW FILE
+    session,
+    push_notification  # ⭐ NEW ROUTER
 )
 
 app.include_router(auth.router)
@@ -105,7 +106,8 @@ app.include_router(zoom_chatbot.router)
 app.include_router(course.router)
 app.include_router(live_question.router)
 app.include_router(live.router)
-app.include_router(session.router)   # ⭐ ADD THIS
+app.include_router(session.router)
+app.include_router(push_notification.router)  # ⭐ ADD THIS
 
 
 # --------------------------------------------------------
