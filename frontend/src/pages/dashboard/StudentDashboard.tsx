@@ -62,6 +62,7 @@ export const StudentDashboard = () => {
     const studentId = "TEST_STUDENT";
 
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    //add
 
     // Convert http → ws  AND  https → wss
     const wsBase = import.meta.env.VITE_WS_URL || apiUrl.replace(/^http/, "ws");
