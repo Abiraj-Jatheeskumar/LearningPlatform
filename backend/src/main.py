@@ -6,12 +6,12 @@ from contextlib import asynccontextmanager
 from src.middleware.auth import AuthMiddleware
 from src.database.connection import connect_to_mongo, close_mongo_connection
 
-# ✅ Only the correct WebSocket manager
+# Correct WS manager
 from src.services.ws_manager import ws_manager
 
 
 # --------------------------------------------------------
-# LIFESPAN (DB connect/disconnect)
+# LIFESPAN
 # --------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +24,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 # --------------------------------------------------------
-# CORS (Open for Zoom + Vercel Frontend)
+# CORS (Frontend + Zoom)
 # --------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +36,7 @@ app.add_middleware(
 
 
 # --------------------------------------------------------
-# AUTH MIDDLEWARE (Skip Zoom webhook path)
+# AUTH MIDDLEWARE (skip Zoom webhook)
 # --------------------------------------------------------
 auth_middleware = AuthMiddleware()
 
@@ -48,7 +48,7 @@ async def auth_middleware_wrapper(request: Request, call_next):
 
 
 # --------------------------------------------------------
-# SECURITY HEADERS (Disable for Zoom webhook)
+# SECURITY HEADERS
 # --------------------------------------------------------
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
@@ -80,7 +80,7 @@ async def security_headers_middleware(request: Request, call_next):
 
 
 # --------------------------------------------------------
-# IMPORT ROUTERS (NO websocket_notifications!)
+# IMPORT ROUTERS
 # --------------------------------------------------------
 from src.routers import (
     auth,
@@ -92,6 +92,7 @@ from src.routers import (
     course,
     live_question,
     live,
+    session      # ⭐ NEW FILE
 )
 
 app.include_router(auth.router)
@@ -103,6 +104,7 @@ app.include_router(zoom_chatbot.router)
 app.include_router(course.router)
 app.include_router(live_question.router)
 app.include_router(live.router)
+app.include_router(session.router)   # ⭐ ADD THIS
 
 
 # --------------------------------------------------------
@@ -114,7 +116,7 @@ async def health_check():
 
 
 # --------------------------------------------------------
-# TEST GLOBAL BROADCAST (Use for debugging)
+# TEST GLOBAL WS
 # --------------------------------------------------------
 @app.get("/test-ws")
 async def test_ws():
@@ -129,18 +131,13 @@ async def test_ws():
 
 
 # --------------------------------------------------------
-# GLOBAL STUDENT WEBSOCKET ENDPOINT
+# STUDENT GLOBAL WEBSOCKET
 # --------------------------------------------------------
 @app.websocket("/ws/global/{student_id}")
 async def websocket_global(websocket: WebSocket, student_id: str):
-    """
-    Every student connects here.
-    Instructor sends broadcast (global).
-    """
     try:
         await ws_manager.connect_global(websocket)
 
-        # keep websocket alive
         while True:
             await websocket.receive_text()
 
