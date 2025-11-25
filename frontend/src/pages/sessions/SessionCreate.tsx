@@ -102,6 +102,7 @@ export const SessionCreate = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Create New Session</h1>
         <p className="mt-1 text-sm text-gray-500">
           Fill in the details below to create a new learning session
+          
         </p>
       </div>
 
