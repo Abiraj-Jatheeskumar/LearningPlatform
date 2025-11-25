@@ -1,10 +1,11 @@
-import React, { useEffect, useState, createContext, useContext } from "react";
+// src/context/AuthContext.tsx
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { authService } from "../services/authService";
 
-// ------------------------------
+// ---------------------------
 // TYPES
-// ------------------------------
+// ---------------------------
 interface User {
   id: string;
   firstName: string;
@@ -12,8 +13,6 @@ interface User {
   email: string;
   role: "student" | "instructor" | "admin";
   status: number;
-  token?: string;       // ⭐ ADDED
-  tokenType?: string;   // ⭐ ADDED
 }
 
 interface RegisterData {
@@ -28,70 +27,66 @@ interface RegisterData {
 
 interface AuthContextType {
   user: User | null;
-  token: string;
-  tokenType: string;
+  token: string | null;
+  tokenType: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
+  register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
-  forgotPassword: (email: string) => Promise<boolean>;
-  resetPassword: (token: string, password: string) => Promise<boolean>;
-  activateAccount: (token: string) => Promise<boolean>;
 }
 
-// ------------------------------
+// ---------------------------
 // CONTEXT
-// ------------------------------
+// ---------------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ------------------------------
+// ---------------------------
 // PROVIDER
-// ------------------------------
+// ---------------------------
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenType, setTokenType] = useState<string | null>("Bearer");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load token from storage
-  const token = localStorage.getItem("access_token") || "";
-  const tokenType = localStorage.getItem("token_type") || "Bearer";
-
-  // Load user on page refresh
+  // Load stored login
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-      } catch {
-        localStorage.removeItem("user");
-      }
-    }
+    const storedToken = localStorage.getItem("access_token");
+    const storedTokenType = localStorage.getItem("token_type");
+
+    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedToken) setToken(storedToken);
+    if (storedTokenType) setTokenType(storedTokenType);
+
     setIsLoading(false);
   }, []);
 
-  // ------------------------------
+  // ---------------------------
   // LOGIN
-  // ------------------------------
+  // ---------------------------
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
+
     try {
       const response = await authService.login(email, password);
 
-      if (response.success && response.user && response.access_token) {
-        const userWithToken: User = {
-          ...response.user,
-          token: response.access_token,                   // ⭐ FIX
-          tokenType: response.token_type || "Bearer",     // ⭐ FIX
-        };
+      if (response.success && response.user) {
+        // Save user
+        setUser(response.user);
+        localStorage.setItem("user", JSON.stringify(response.user));
 
-        // Save user + token
-        setUser(userWithToken);
-        localStorage.setItem("user", JSON.stringify(userWithToken));
-        localStorage.setItem("access_token", response.access_token);
-        localStorage.setItem("token_type", response.token_type || "Bearer");
+        // Save JWT token
+        if (response.access_token) {
+          setToken(response.access_token);
+          localStorage.setItem("access_token", response.access_token);
+
+          setTokenType(response.token_type || "Bearer");
+          localStorage.setItem("token_type", response.token_type || "Bearer");
+        }
 
         toast.success("Login successful");
         return true;
@@ -100,98 +95,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       toast.error("Invalid credentials");
       return false;
     } catch (err: any) {
-      toast.error(err.message || "Login failed");
+      console.error("Login failed:", err);
+      toast.error("Login failed");
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ------------------------------
+  // ---------------------------
   // REGISTER
-  // ------------------------------
-  const register = async (data: RegisterData): Promise<boolean> => {
+  // ---------------------------
+  const register = async (userData: RegisterData): Promise<boolean> => {
     setIsLoading(true);
-    try {
-      const response = await authService.register({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-      });
 
-      if (!response.success) {
-        toast.error("Registration failed");
-        return false;
+    try {
+      const response = await authService.register(userData);
+
+      if (response.success) {
+        toast.success("Registration successful!");
+        return true;
       }
 
-      toast.success("Registration successful! Please login.");
-      return true;
+      toast.error("Registration failed");
+      return false;
     } catch (err: any) {
-      toast.error(err.message || "Registration failed");
+      toast.error("Registration failed");
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ------------------------------
+  // ---------------------------
   // LOGOUT
-  // ------------------------------
+  // ---------------------------
   const logout = () => {
+    setUser(null);
+    setToken(null);
+    setTokenType("Bearer");
+
     localStorage.removeItem("user");
     localStorage.removeItem("access_token");
     localStorage.removeItem("token_type");
-    setUser(null);
-    toast.success("Logged out");
-  };
 
-  // ------------------------------
-  // OTHERS
-  // ------------------------------
-  const forgotPassword = async (email: string) => {
-    toast.success("If registered, you will receive a reset email.");
-    return true;
-  };
-
-  const resetPassword = async () => {
-    toast.success("Password reset successful.");
-    return true;
-  };
-
-  const activateAccount = async () => {
-    toast.success("Account activated!");
-    return true;
-  };
-
-  // ------------------------------
-  // CONTEXT VALUE
-  // ------------------------------
-  const value: AuthContextType = {
-    user,
-    token,
-    tokenType,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    register,
-    logout,
-    forgotPassword,
-    resetPassword,
-    activateAccount,
+    toast.success("Logged out successfully");
   };
 
   return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        tokenType,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 };
 
-// ------------------------------
+// ---------------------------
 // HOOK
-// ------------------------------
+// ---------------------------
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be inside AuthProvider");
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 };
