@@ -64,7 +64,7 @@ export const StudentDashboard = () => {
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
     // Convert http → ws  AND  https → wss
-    const wsBase = apiUrl.replace(/^http/, "ws");
+    const wsBase = import.meta.env.VITE_WS_URL || apiUrl.replace(/^http/, "ws");
 
     const ws = new WebSocket(
       `${wsBase}/ws/${meetingId}/${studentId}`
