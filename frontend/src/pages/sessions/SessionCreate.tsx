@@ -40,13 +40,17 @@ export const SessionCreate = () => {
     setIsLoading(true);
   
     try {
+      // Parse duration from "120 min" to 120
+      const durationMatch = data.duration.match(/\d+/);
+      const durationMinutes = durationMatch ? parseInt(durationMatch[0]) : 60;
+      
       const payload = {
         title: data.title,
         course: data.course,
         courseCode: data.courseCode,
         date: data.date,                    // "2025-11-25"
         time: data.startTime,               // use startTime ONLY (backend expects 1 time)
-        durationMinutes: Number(data.duration),
+        durationMinutes: durationMinutes,
         timezone: "Asia/Colombo"
       };
   
@@ -61,21 +65,22 @@ export const SessionCreate = () => {
         body: JSON.stringify(payload)
       });
   
-      const result = await res.json();
-  
       if (!res.ok) {
+        const result = await res.json().catch(() => ({ detail: "Unknown error" }));
         console.error("❌ Backend error:", result);
-        toast.error(result.detail || "Failed to create session");
+        const errorMsg = result.detail || `Failed to create session (${res.status})`;
+        toast.error(errorMsg);
         return;
       }
   
+      const result = await res.json();
       console.log("✅ Backend created session:", result);
       toast.success("Session created successfully!");
       navigate("/dashboard/sessions");
   
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error creating session:", err);
-      toast.error("Failed to create session");
+      toast.error(err.message || "Failed to create session");
     } finally {
       setIsLoading(false);
     }
