@@ -61,8 +61,13 @@ export const StudentDashboard = () => {
     const meetingId = "TEST_MEETING";
     const studentId = "TEST_STUDENT";
 
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+    // Convert http → ws  AND  https → wss
+    const wsBase = apiUrl.replace(/^http/, "ws");
+
     const ws = new WebSocket(
-      `ws://127.0.0.1:8000/ws/${meetingId}/${studentId}`
+      `${wsBase}/ws/${meetingId}/${studentId}`
     );
 
     ws.onopen = () => console.log("WS CONNECTED ✔");
