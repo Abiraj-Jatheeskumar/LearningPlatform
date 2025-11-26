@@ -6,10 +6,20 @@
 
 // Listen for push events
 self.addEventListener('push', function(event) {
+  console.log('🔔🔔🔔 PUSH EVENT RECEIVED! 🔔🔔🔔');
   console.log('📨 Push notification received:', event);
+  console.log('📨 Has data:', !!event.data);
   
   if (!event.data) {
-    console.log('❌ Push event has no data');
+    console.log('❌ Push event has no data - showing fallback notification');
+    event.waitUntil(
+      self.registration.showNotification('📝 New Quiz Question!', {
+        body: 'A new quiz question is available',
+        icon: '/favicon.ico',
+        requireInteraction: true,
+        tag: 'quiz-notification'
+      })
+    );
     return;
   }
 
@@ -43,8 +53,16 @@ self.addEventListener('push', function(event) {
       ]
     };
 
+    console.log('🔔 SHOWING NOTIFICATION NOW!');
+    console.log('Title:', title);
+    console.log('Options:', options);
+    
     event.waitUntil(
-      self.registration.showNotification(title, options)
+      self.registration.showNotification(title, options).then(() => {
+        console.log('✅ Notification shown successfully!');
+      }).catch(error => {
+        console.error('❌ Error showing notification:', error);
+      })
     );
     
   } catch (error) {
