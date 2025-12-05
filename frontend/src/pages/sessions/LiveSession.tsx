@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { MessageSquareIcon, UsersIcon, MicIcon, VideoIcon, ShareIcon, HandIcon, BarChart2Icon, ZapIcon, ThumbsUpIcon, SmileIcon, BrainIcon, Settings2Icon, TargetIcon } from 'lucide-react';
@@ -14,6 +14,7 @@ import { clusteringService, StudentCluster } from '../../services/clusteringServ
 import { toast } from 'sonner';
 import { useNotifications } from '../../hooks/useNotifications';
 import { QuestionNotificationPopup } from '../../components/notifications/QuestionNotificationPopup';
+import { useSessionSocket, QuizNotification } from '../../hooks/useSessionSocket';
 
 const DEFAULT_SESSION_QUESTIONS: Question[] = [
   {
@@ -104,7 +105,51 @@ export const LiveSession = () => {
   // Determine if user is instructor (must be before useEffect hooks that use it)
   const isInstructor = user?.role === 'instructor' || user?.role === 'admin';
 
-  // 🔔 Real-time Notifications for Students
+  // 🎯 Handle quiz received from Socket.IO session room
+  const handleQuizReceived = useCallback((quiz: QuizNotification) => {
+    console.log('🎯 Quiz received via session socket:', quiz);
+    
+    // Convert socket quiz to Question format
+    const question: Question = {
+      id: quiz.questionId || quiz.question_id || `quiz-${Date.now()}`,
+      question: quiz.question,
+      options: quiz.options,
+      correctAnswer: -1, // Will be revealed after answer
+      difficulty: 'medium',
+      category: 'Live Quiz',
+      tags: [],
+      timeLimit: quiz.timeLimit || quiz.time_limit || 30,
+      createdAt: quiz.triggeredAt || quiz.triggered_at || new Date().toISOString()
+    };
+    
+    setActiveQuestion(question);
+    setShowQuestions(false);
+    setAnswerSubmitted(false);
+    setShowPerformance(false);
+    setQuizPerformance(null);
+    questionStartTime.current = Date.now();
+    
+    toast.success('📝 New quiz question received!');
+  }, []);
+
+  // 🎯 Session Socket for real-time quiz delivery (students only)
+  const {
+    isConnected: isSessionConnected,
+    isJoined: hasJoinedSessionRoom,
+    participantCount,
+    currentQuiz,
+    error: sessionSocketError,
+    clearQuiz
+  } = useSessionSocket({
+    sessionId: sessionId || null,
+    studentId: user?.id,
+    studentName: `${user?.firstName} ${user?.lastName}`,
+    studentEmail: user?.email,
+    autoConnect: !isInstructor && !!sessionId && !!user?.id,
+    onQuizReceived: handleQuizReceived
+  });
+
+  // 🔔 Real-time Notifications for Students (fallback/legacy)
   const {
     isConnected: isNotificationConnected,
     currentNotification,
@@ -296,7 +341,8 @@ export const LiveSession = () => {
   }, [sessionId]);
 
   // 🎯 Auto-join session for students when they enter the page
-  // This is REQUIRED to receive quiz questions when instructor triggers
+  // This records participation in the database (for fallback/tracking)
+  // The Socket.IO connection (useSessionSocket) handles real-time quiz delivery
   useEffect(() => {
     if (isInstructor || !sessionId || !user?.id) {
       return;
@@ -309,16 +355,14 @@ export const LiveSession = () => {
         const result = await quizService.joinSession(sessionId, studentName, user?.email);
         
         if (result.success) {
-          console.log('✅ Successfully joined session:', result);
+          console.log('✅ Successfully joined session (HTTP):', result);
           setHasJoinedSession(true);
-          toast.success('Joined session! You will receive quizzes when the instructor triggers them.');
+          // Don't show toast here - Socket.IO will show when fully connected
         } else {
-          console.error('Failed to join session:', result.message);
-          toast.error('Failed to join session. You may not receive quiz questions.');
+          console.error('Failed to join session (HTTP):', result.message);
         }
       } catch (error) {
-        console.error('Error joining session:', error);
-        toast.error('Failed to join session. Please refresh the page.');
+        console.error('Error joining session (HTTP):', error);
       } finally {
         setIsJoiningSession(false);
       }
@@ -333,6 +377,17 @@ export const LiveSession = () => {
       }
     };
   }, [sessionId, user?.id, isInstructor, user?.firstName, user?.lastName, user?.email]);
+
+  // 🎯 Show connection status for students
+  useEffect(() => {
+    if (!isInstructor && sessionId && user?.id) {
+      if (hasJoinedSessionRoom && isSessionConnected) {
+        toast.success(`✅ Connected to session! ${participantCount} students online.`);
+      } else if (sessionSocketError) {
+        toast.error('⚠️ Session connection error. Quiz delivery may be delayed.');
+      }
+    }
+  }, [hasJoinedSessionRoom, isSessionConnected, participantCount, sessionSocketError, isInstructor, sessionId, user?.id]);
 
   // Personalized question polling for students
   useEffect(() => {

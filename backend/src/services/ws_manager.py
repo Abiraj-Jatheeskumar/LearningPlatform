@@ -1,17 +1,19 @@
 """
 WebSocket Connection Manager Service
-Manages real-time WebSocket connections for ALL students + meeting-based groups
+Manages real-time WebSocket connections with SESSION-BASED ROOMS
+Only students who join a session will receive quiz questions for that session
 """
 from fastapi import WebSocket
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 from datetime import datetime
 
 
 class WebSocketManager:
     """
-    Centralized WebSocket connection manager
+    Centralized WebSocket connection manager with SESSION ROOMS
     Supports:
-      ✅ Global WebSocket (all students)
+      ✅ Session-based rooms (only joined students receive quizzes)
+      ✅ Global WebSocket (all students - for announcements)
       ✅ Meeting-based connections (Zoom session)
     """
 
@@ -22,6 +24,140 @@ class WebSocketManager:
 
         # ⭐ GLOBAL CONNECTIONS — all students
         self.global_connections: Set[WebSocket] = set()
+
+        # 🎯 SESSION ROOMS - Only joined students receive quizzes
+        # Structure: {sessionId: {studentId: {"websocket": ws, "status": "joined", "name": str, "email": str}}}
+        self.session_rooms: Dict[str, Dict[str, dict]] = {}
+
+    # =========================================================
+    # 🎯 SESSION ROOM HANDLERS (NEW - For Quiz Delivery)
+    # =========================================================
+
+    async def join_session_room(
+        self, 
+        websocket: WebSocket, 
+        session_id: str, 
+        student_id: str,
+        student_name: str = None,
+        student_email: str = None
+    ) -> dict:
+        """
+        Student joins a session room - REQUIRED to receive quiz questions
+        Returns participant info
+        """
+        if session_id not in self.session_rooms:
+            self.session_rooms[session_id] = {}
+
+        participant = {
+            "websocket": websocket,
+            "studentId": student_id,
+            "studentName": student_name or f"Student {student_id[:8]}",
+            "studentEmail": student_email,
+            "status": "joined",
+            "joinedAt": datetime.now().isoformat()
+        }
+
+        self.session_rooms[session_id][student_id] = participant
+
+        print(f"✅ Student joined session room: session={session_id}, student={student_id}")
+        print(f"   Session room now has {len(self.session_rooms[session_id])} participants")
+
+        return {
+            "sessionId": session_id,
+            "studentId": student_id,
+            "studentName": participant["studentName"],
+            "status": "joined",
+            "participantCount": len(self.session_rooms[session_id])
+        }
+
+    def leave_session_room(self, session_id: str, student_id: str) -> bool:
+        """Student leaves session room - will no longer receive quizzes"""
+        if session_id in self.session_rooms and student_id in self.session_rooms[session_id]:
+            # Mark as left instead of removing (for tracking)
+            self.session_rooms[session_id][student_id]["status"] = "left"
+            self.session_rooms[session_id][student_id]["leftAt"] = datetime.now().isoformat()
+            
+            print(f"👋 Student left session room: session={session_id}, student={student_id}")
+            return True
+        return False
+
+    def remove_from_session_room(self, session_id: str, student_id: str) -> bool:
+        """Completely remove student from session room"""
+        if session_id in self.session_rooms and student_id in self.session_rooms[session_id]:
+            del self.session_rooms[session_id][student_id]
+            
+            # Clean up empty rooms
+            if len(self.session_rooms[session_id]) == 0:
+                del self.session_rooms[session_id]
+                print(f"🧹 Cleaned empty session room: {session_id}")
+            
+            return True
+        return False
+
+    def is_in_session_room(self, session_id: str, student_id: str) -> bool:
+        """Check if student is an active participant in session room"""
+        if session_id not in self.session_rooms:
+            return False
+        if student_id not in self.session_rooms[session_id]:
+            return False
+        return self.session_rooms[session_id][student_id].get("status") == "joined"
+
+    def get_session_participants(self, session_id: str) -> List[dict]:
+        """Get all ACTIVE participants in a session room"""
+        if session_id not in self.session_rooms:
+            return []
+        
+        participants = []
+        for student_id, data in self.session_rooms[session_id].items():
+            if data.get("status") == "joined":
+                participants.append({
+                    "studentId": student_id,
+                    "studentName": data.get("studentName"),
+                    "studentEmail": data.get("studentEmail"),
+                    "joinedAt": data.get("joinedAt"),
+                    "status": data.get("status")
+                })
+        return participants
+
+    def get_session_participant_count(self, session_id: str) -> int:
+        """Get count of active participants in session"""
+        return len(self.get_session_participants(session_id))
+
+    async def broadcast_to_session(self, session_id: str, message: dict) -> int:
+        """
+        🎯 BROADCAST QUIZ TO SESSION ROOM ONLY
+        Only students who have joined this session will receive the message
+        """
+        if session_id not in self.session_rooms:
+            print(f"⚠️ No participants in session {session_id}")
+            return 0
+
+        sent = 0
+        dead_connections = []
+
+        for student_id, data in self.session_rooms[session_id].items():
+            # Only send to JOINED students (not "left")
+            if data.get("status") != "joined":
+                continue
+
+            websocket = data.get("websocket")
+            if not websocket:
+                continue
+
+            try:
+                await websocket.send_json(message)
+                sent += 1
+                print(f"   ✅ Sent to {data.get('studentName', student_id)}")
+            except Exception as e:
+                print(f"   ❌ Failed to send to {student_id}: {e}")
+                dead_connections.append(student_id)
+
+        # Clean up dead connections
+        for student_id in dead_connections:
+            self.leave_session_room(session_id, student_id)
+
+        print(f"📢 SESSION BROADCAST [{session_id}] → Sent to {sent} students")
+        return sent
 
     # =========================================================
     # ⭐ GLOBAL CONNECTION HANDLERS
@@ -59,7 +195,7 @@ class WebSocketManager:
         return sent
 
     # =========================================================
-    # 🎯 MEETING BASED HANDLERS (kept for future use)
+    # 🎯 MEETING BASED HANDLERS (kept for compatibility)
     # =========================================================
 
     async def connect(self, websocket: WebSocket, meeting_id: str, student_id: str):
@@ -132,9 +268,15 @@ class WebSocketManager:
     # =========================================================
 
     def get_all_stats(self):
+        session_stats = {}
+        for session_id in self.session_rooms:
+            session_stats[session_id] = self.get_session_participant_count(session_id)
+
         return {
             "global_connections": len(self.global_connections),
             "meeting_rooms": list(self.active_connections.keys()),
+            "session_rooms": session_stats,
+            "total_session_participants": sum(session_stats.values()),
             "timestamp": datetime.now().isoformat()
         }
 

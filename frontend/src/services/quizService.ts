@@ -185,6 +185,7 @@ export const quizService = {
   },
 
   // Trigger question (instructor only)
+  // This triggers via HTTP API - the backend will then broadcast via WebSocket to session room
   async triggerQuestion(questionId: string, sessionId: string): Promise<{ success: boolean }> {
     try {
       const response = await fetch(`${API_BASE_URL}/quiz/trigger`, {
@@ -204,6 +205,29 @@ export const quizService = {
       console.error('Error triggering question:', error);
       console.warn('Using fallback - backend may not be running');
       return { success: true };
+    }
+  },
+
+  // 🎯 Trigger question to session room via WebSocket endpoint
+  // Only students who joined the session will receive this
+  async triggerQuestionToSession(sessionId: string, question: any): Promise<{ success: boolean; sentTo?: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/ws/trigger-session/${sessionId}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ question }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to trigger question to session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error triggering question to session:', error);
+      return { success: false };
     }
   },
 

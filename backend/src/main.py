@@ -146,3 +146,104 @@ async def websocket_global(websocket: WebSocket, student_id: str):
 
     except WebSocketDisconnect:
         ws_manager.disconnect_global(websocket)
+
+
+# --------------------------------------------------------
+# 🎯 SESSION-BASED WEBSOCKET (Students join to receive quizzes)
+# --------------------------------------------------------
+@app.websocket("/ws/session/{session_id}/{student_id}")
+async def websocket_session(
+    websocket: WebSocket, 
+    session_id: str, 
+    student_id: str,
+    student_name: str = None,
+    student_email: str = None
+):
+    """
+    WebSocket endpoint for students to join a session room.
+    Only students connected to this room will receive quiz questions
+    when the instructor triggers for this session.
+    """
+    try:
+        await websocket.accept()
+        
+        # Join the session room
+        result = await ws_manager.join_session_room(
+            websocket=websocket,
+            session_id=session_id,
+            student_id=student_id,
+            student_name=student_name,
+            student_email=student_email
+        )
+        
+        # Send confirmation to student
+        await websocket.send_json({
+            "type": "session_joined",
+            "sessionId": session_id,
+            "studentId": student_id,
+            "message": "Successfully joined session. You will receive quiz questions.",
+            "participantCount": result.get("participantCount", 0),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Keep connection alive
+        while True:
+            data = await websocket.receive_text()
+            # Handle ping/pong for keepalive
+            if data == "ping":
+                await websocket.send_text("pong")
+
+    except WebSocketDisconnect:
+        # Mark student as left when they disconnect
+        ws_manager.leave_session_room(session_id, student_id)
+        print(f"👋 Student {student_id} disconnected from session {session_id}")
+
+
+# --------------------------------------------------------
+# 🎯 GET SESSION STATS (For debugging)
+# --------------------------------------------------------
+@app.get("/ws/stats")
+async def get_ws_stats():
+    """Get WebSocket connection statistics"""
+    return ws_manager.get_all_stats()
+
+
+# --------------------------------------------------------
+# 🎯 TRIGGER QUIZ TO SESSION (API endpoint)
+# --------------------------------------------------------
+@app.post("/ws/trigger-session/{session_id}")
+async def trigger_quiz_to_session(session_id: str, request: Request):
+    """
+    Trigger quiz to ONLY students who have joined the session room.
+    This is called when instructor clicks 'Trigger Question'.
+    """
+    try:
+        body = await request.json()
+        question_data = body.get("question", {})
+        
+        message = {
+            "type": "quiz",
+            "sessionId": session_id,
+            "question": question_data.get("question", ""),
+            "questionId": question_data.get("id", ""),
+            "options": question_data.get("options", []),
+            "timeLimit": question_data.get("timeLimit", 30),
+            "triggeredAt": datetime.now().isoformat()
+        }
+        
+        # 🎯 Broadcast ONLY to session room participants
+        sent_count = await ws_manager.broadcast_to_session(session_id, message)
+        
+        participants = ws_manager.get_session_participants(session_id)
+        
+        return {
+            "success": True,
+            "sessionId": session_id,
+            "sentTo": sent_count,
+            "participants": participants,
+            "message": f"Quiz sent to {sent_count} students in session"
+        }
+        
+    except Exception as e:
+        print(f"❌ Error triggering quiz to session: {e}")
+        return {"success": False, "error": str(e)}
