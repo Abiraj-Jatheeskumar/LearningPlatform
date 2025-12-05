@@ -5,6 +5,7 @@ interface LiveSessionProps {
   studentName: string;
   onLeave: () => void;
 }
+
 export const LiveSession: React.FC<LiveSessionProps> = ({
   course,
   studentName,
