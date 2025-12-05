@@ -148,6 +148,10 @@ export const StudentDashboard = () => {
   const { user } = useAuth();
   const [incomingQuiz, setIncomingQuiz] = useState<any | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  
+  // 🎯 Session WebSocket state - only joined sessions receive quizzes
+  const [sessionWs, setSessionWs] = useState<WebSocket | null>(null);
+  const [connectedSessionId, setConnectedSessionId] = useState<string | null>(null);
 
   // ===========================================================
   // ⭐ LOAD REAL SESSIONS FROM BACKEND
@@ -166,18 +170,83 @@ export const StudentDashboard = () => {
   }, []);
 
   // ===========================================================
-  // ⭐ JOIN ZOOM MEETING (STUDENT)
+  // 🎯 JOIN ZOOM MEETING + CONNECT TO SESSION WEBSOCKET
+  // Only students who click Join will receive quiz questions
   // ===========================================================
   const handleJoinSession = (session: Session) => {
     if (!session.join_url) {
       alert("❌ Zoom join URL missing");
       return;
     }
+    
+    // Open Zoom meeting
     window.open(session.join_url, '_blank');
+    
+    // 🎯 Connect to session-specific WebSocket
+    const studentId = user?.id || `STUDENT_${Date.now()}`;
+    const sessionKey = session.zoomMeetingId || session.id;
+    const wsBase = import.meta.env.VITE_WS_URL;
+    const sessionWsUrl = `${wsBase}/ws/session/${sessionKey}/${studentId}`;
+    
+    console.log(`🔗 Connecting to session WebSocket: ${sessionWsUrl}`);
+    
+    // Close any previous session WebSocket
+    if (sessionWs) {
+      console.log("🔌 Closing previous session WebSocket");
+      sessionWs.close();
+    }
+    
+    // Create new session WebSocket
+    const ws = new WebSocket(sessionWsUrl);
+    
+    ws.onopen = () => {
+      console.log(`✅ Connected to session ${sessionKey} WebSocket`);
+      setConnectedSessionId(sessionKey);
+      alert(`✅ Joined session! You will receive quiz questions.`);
+    };
+    
+    ws.onclose = () => {
+      console.log(`🔌 Session ${sessionKey} WebSocket closed`);
+      if (connectedSessionId === sessionKey) {
+        setConnectedSessionId(null);
+      }
+    };
+    
+    ws.onerror = (err) => {
+      console.error("Session WS ERROR:", err);
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📬 Session WS message:", data);
+        
+        // Handle quiz questions from session room
+        if (data.type === "quiz") {
+          console.log("🎯 Quiz received from session room!");
+          setIncomingQuiz(data);
+        } else if (data.type === "session_joined") {
+          console.log("✅ Session join confirmed:", data);
+        }
+      } catch (e) {
+        console.error("Session WS JSON ERROR:", e);
+      }
+    };
+    
+    setSessionWs(ws);
   };
 
+  // Cleanup session WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (sessionWs) {
+        sessionWs.close();
+      }
+    };
+  }, [sessionWs]);
+
   // ===========================================================
-  // ⭐ GLOBAL WebSocket — Receive Notifications
+  // ⭐ GLOBAL WebSocket — Receive Notifications (fallback)
   // ===========================================================
   useEffect(() => {
     if (!user) return;
@@ -186,30 +255,33 @@ export const StudentDashboard = () => {
     const wsBase = import.meta.env.VITE_WS_URL;
     const socketUrl = `${wsBase}/ws/global/${studentId}`;
 
-    console.log("Connecting WS:", socketUrl);
+    console.log("Connecting Global WS:", socketUrl);
 
     const ws = new WebSocket(socketUrl);
 
-    ws.onopen = () => console.log("🌍 WS CONNECTED");
-    ws.onclose = () => console.log("❌ WS CLOSED");
-    ws.onerror = (err) => console.error("WS ERROR:", err);
+    ws.onopen = () => console.log("🌍 Global WS CONNECTED");
+    ws.onclose = () => console.log("❌ Global WS CLOSED");
+    ws.onerror = (err) => console.error("Global WS ERROR:", err);
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("Incoming WS:", data);
+        console.log("Global WS message:", data);
 
-        if (data.type === "quiz") {
-          // expects: questionId, question, options[], timeLimit, sessionId
-          setIncomingQuiz(data);
+        // Note: Session-specific quizzes now come via session WebSocket
+        // This global WS is kept for announcements and fallback
+        if (data.type === "quiz" && !connectedSessionId) {
+          // Only show global quizzes if not connected to a session
+          console.log("⚠️ Received global quiz (no session connected)");
+          // Optionally show: setIncomingQuiz(data);
         }
       } catch (e) {
-        console.error("WS JSON ERROR:", e);
+        console.error("Global WS JSON ERROR:", e);
       }
     };
 
     return () => ws.close();
-  }, [user]);
+  }, [user, connectedSessionId]);
 
   // ===========================================================
   // UI RENDER

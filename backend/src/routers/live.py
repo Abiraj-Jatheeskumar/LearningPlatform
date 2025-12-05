@@ -1,6 +1,7 @@
 """
 Live Learning Router
-Trigger questions → Sent to ALL students via GLOBAL WebSocket + Push Notifications
+Trigger questions → Sent ONLY to students who JOINED the session via WebSocket
+🎯 Session-based delivery: Only students connected to /ws/session/<meetingId>/<studentId> receive quizzes
 """
 from fastapi import APIRouter
 from bson import ObjectId
@@ -14,13 +15,16 @@ router = APIRouter(prefix="/api/live", tags=["Live Learning"])
 
 
 # ================================================================
-# ⭐ TRIGGER QUESTION (Instructor clicks → ALL students get quiz)
+# 🎯 TRIGGER QUESTION (Only students who JOINED session receive quiz)
 # ================================================================
 @router.post("/trigger/{meeting_id}")
 async def trigger_question(meeting_id: str):
     """
     Instructor triggers a question.
-    A random question is selected from MongoDB and sent to ALL students.
+    A random question is selected from MongoDB and sent ONLY to students
+    who have joined this specific session via WebSocket.
+    
+    🎯 Students must be connected to /ws/session/<meeting_id>/<student_id>
     """
 
     try:
@@ -46,26 +50,40 @@ async def trigger_question(meeting_id: str):
             "timestamp": datetime.now().isoformat()
         }
 
-        # 4) Send to ALL connected students (GLOBAL WS)
-        ws_sent_count = await ws_manager.broadcast_global(message)
-
-        print(f"✅ Question broadcast via WebSocket to {ws_sent_count} students")
-
-        # 5) Send Web Push Notifications to all subscribed students
-        push_sent_count = await push_service.send_quiz_notification(message)
+        # 🎯 4) Send ONLY to students in this session room (not global broadcast!)
+        # Only students who clicked "Join" and connected to /ws/session/<meetingId>/<studentId> will receive
+        ws_sent_count = await ws_manager.broadcast_to_session(meeting_id, message)
         
-        print(f"✅ Push notifications sent to {push_sent_count} students")
+        # Get participant list for response
+        participants = ws_manager.get_session_participants(meeting_id)
+
+        print(f"✅ Question sent to SESSION {meeting_id}: {ws_sent_count} students")
+        print(f"   Participants: {[p.get('studentId', 'unknown') for p in participants]}")
+
+        # 5) Optionally send Web Push Notifications to subscribed students in this session
+        # (For now, push is still global - can be made session-specific later)
+        push_sent_count = 0
+        try:
+            push_sent_count = await push_service.send_quiz_notification(message)
+            print(f"✅ Push notifications sent to {push_sent_count} students")
+        except Exception as push_error:
+            print(f"⚠️ Push notification error (non-fatal): {push_error}")
 
         return {
             "success": True,
+            "sessionId": meeting_id,
             "websocketSent": ws_sent_count,
             "pushSent": push_sent_count,
             "totalReached": ws_sent_count + push_sent_count,
-            "sentQuestion": message
+            "participants": participants,
+            "sentQuestion": message,
+            "message": f"Quiz sent to {ws_sent_count} students in session {meeting_id}"
         }
 
     except Exception as e:
         print(f"❌ Error triggering question: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "message": f"Error: {str(e)}"

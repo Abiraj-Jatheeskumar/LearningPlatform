@@ -11,6 +11,7 @@ import { Badge } from "../../components/ui/Badge";
 export const InstructorDashboard = () => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
   // ================================
   // ⭐ LOAD REAL SESSIONS FROM BACKEND
@@ -21,6 +22,12 @@ export const InstructorDashboard = () => {
       // Show only upcoming and live sessions
       const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
       setSessions(filtered.slice(0, 5)); // Show max 5
+      
+      // Auto-select first live session for quick trigger
+      const liveSession = filtered.find(s => s.status === 'live');
+      if (liveSession && !selectedSession) {
+        setSelectedSession(liveSession);
+      }
     };
     loadSessions();
     
@@ -37,24 +44,49 @@ export const InstructorDashboard = () => {
       return;
     }
     window.open(session.start_url, '_blank');
+    // Auto-select this session for triggering questions
+    setSelectedSession(session);
   };
 
   // ================================
-  // ⭐ TRIGGER QUESTION FUNCTION
+  // 🎯 TRIGGER QUESTION TO SPECIFIC SESSION
+  // Only students who clicked "Join" on this session will receive the quiz
   // ================================
-  const handleTriggerQuestion = async () => {
+  const handleTriggerQuestion = async (session?: Session) => {
+    // Use provided session or the currently selected one
+    const targetSession = session || selectedSession;
+    
+    if (!targetSession) {
+      alert("❌ Please select a session first or click 'Trigger' on a specific session");
+      return;
+    }
+    
+    // 🎯 Use the real Zoom meeting ID as the session room key
+    const meetingId = targetSession.zoomMeetingId || targetSession.id;
+    
+    if (!meetingId) {
+      alert("❌ Session has no meeting ID");
+      return;
+    }
+    
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
 
-      // TEMP MEETING ID (replace with real meeting later)
-      const meetingId = "123456789";
-
+      console.log(`🎯 Triggering question to session: ${meetingId} (${targetSession.title})`);
+      
       const res = await axios.post(
         `${apiUrl}/api/live/trigger/${meetingId}`
       );
 
       console.log("Trigger Response:", res.data);
-      alert("🎯 Question sent to all students!");
+      
+      if (res.data.success) {
+        const sentCount = res.data.websocketSent || 0;
+        const participants = res.data.participants || [];
+        alert(`🎯 Question sent to ${sentCount} students in "${targetSession.title}"!\n\nParticipants: ${participants.map((p: any) => p.studentId || p.studentName).join(', ') || 'None connected yet'}`);
+      } else {
+        alert(`⚠️ ${res.data.message || 'Failed to send question'}`);
+      }
     } catch (error) {
       console.error("Trigger Error:", error);
       alert("❌ Failed to send question");
@@ -74,15 +106,23 @@ export const InstructorDashboard = () => {
         </div>
 
         {/* BUTTON GROUP */}
-        <div className="flex gap-3">
-          {/* ⭐ Trigger Question Button */}
-          <Button
-            variant="secondary"
-            leftIcon={<TargetIcon className="h-4 w-4" />}
-            onClick={handleTriggerQuestion}
-          >
-            Trigger Question
-          </Button>
+        <div className="flex gap-3 items-center">
+          {/* 🎯 Trigger Question Button (uses selected session) */}
+          <div className="flex items-center gap-2">
+            {selectedSession && (
+              <span className="text-sm text-gray-500">
+                Session: <span className="font-medium text-indigo-600">{selectedSession.title}</span>
+              </span>
+            )}
+            <Button
+              variant="secondary"
+              leftIcon={<TargetIcon className="h-4 w-4" />}
+              onClick={() => handleTriggerQuestion()}
+              disabled={!selectedSession}
+            >
+              {selectedSession ? 'Trigger Quiz' : 'Select Session'}
+            </Button>
+          </div>
 
           <Link to="/dashboard/instructor/analytics">
             <Button variant="primary" leftIcon={<BarChart3Icon className="h-4 w-4" />}>
@@ -208,14 +248,25 @@ export const InstructorDashboard = () => {
                       </p>
                     </div>
                     
-                    <div className="ml-4">
+                    <div className="ml-4 flex gap-2">
+                      {/* 🎯 Trigger Quiz Button - Only joined students receive */}
+                      {session.status === 'live' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          leftIcon={<TargetIcon className="h-4 w-4" />}
+                          onClick={() => handleTriggerQuestion(session)}
+                        >
+                          Trigger Quiz
+                        </Button>
+                      )}
                       <Button
                         variant={session.status === 'live' ? 'primary' : 'outline'}
                         size="sm"
                         leftIcon={<PlayIcon className="h-4 w-4" />}
                         onClick={() => handleJoinSession(session)}
                       >
-                        {session.status === 'live' ? 'Join Now' : 'Start Meeting'}
+                        {session.status === 'live' ? 'Join' : 'Start'}
                       </Button>
                     </div>
                   </div>
