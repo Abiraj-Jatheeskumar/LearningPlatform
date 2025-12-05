@@ -13,6 +13,68 @@ import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
 import { sessionService, Session } from "../../services/sessionService";
 
+// =====================================================
+// 🔔 NOTIFICATION HELPERS
+// =====================================================
+
+// Play notification sound when quiz arrives
+const playNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // Create a more noticeable notification sound
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Play a pleasant two-tone notification
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+    oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.15); // C#6
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.4);
+    
+    console.log("🔊 Notification sound played");
+  } catch (error) {
+    console.log("Could not play notification sound:", error);
+  }
+};
+
+// Show browser notification
+const showBrowserNotification = (title: string, body: string) => {
+  // Check if browser notifications are supported
+  if (!("Notification" in window)) {
+    console.log("Browser doesn't support notifications");
+    return;
+  }
+  
+  // Request permission if not granted
+  if (Notification.permission === "granted") {
+    new Notification(title, {
+      body,
+      icon: "📝",
+      tag: "quiz-notification",
+      requireInteraction: true, // Keep notification until user interacts
+    });
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        new Notification(title, {
+          body,
+          icon: "📝",
+          tag: "quiz-notification",
+        });
+      }
+    });
+  }
+};
+
 // --------------------------------------
 // QUIZ POPUP COMPONENT
 // --------------------------------------
@@ -235,7 +297,16 @@ export const StudentDashboard = () => {
     ws.onopen = () => {
       console.log(`✅ Connected to session ${sessionKey} WebSocket`);
       setConnectedSessionId(sessionKey);
-      alert(`✅ Joined session! You will receive quiz questions.`);
+      
+      // 🔔 Request notification permission
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      
+      // Play a subtle sound to confirm connection
+      playNotificationSound();
+      
+      alert(`✅ Joined session "${session.title}"! You will receive quiz notifications.`);
     };
     
     ws.onclose = () => {
@@ -257,6 +328,14 @@ export const StudentDashboard = () => {
         // Handle quiz questions from session room
         if (data.type === "quiz") {
           console.log("🎯 Quiz received from session room!");
+          
+          // 🔔 Play notification sound
+          playNotificationSound();
+          
+          // 🔔 Show browser notification (if permitted)
+          showBrowserNotification("📝 New Quiz!", data.question || "You have a new quiz question");
+          
+          // Show quiz popup
           setIncomingQuiz(data);
         } else if (data.type === "session_joined") {
           console.log("✅ Session join confirmed:", data);
