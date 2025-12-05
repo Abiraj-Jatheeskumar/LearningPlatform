@@ -33,6 +33,27 @@ export interface AssignedQuestionResponse {
   assignmentId?: string;
   question?: Question;
   completed?: boolean;
+  notParticipant?: boolean;  // True if student hasn't joined session before trigger
+  message?: string;
+}
+
+export interface JoinSessionResponse {
+  success: boolean;
+  message: string;
+  participant?: {
+    id: string;
+    sessionId: string;
+    studentId: string;
+    studentName: string;
+    joinedAt: string;
+    status: string;
+  };
+}
+
+export interface ParticipantStatusResponse {
+  isParticipant: boolean;
+  sessionId: string;
+  studentId: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -235,6 +256,96 @@ export const quizService = {
     } catch (error) {
       console.error('Error getting personalized assignment:', error);
       return { active: false };
+    }
+  },
+
+  // ============ Session Participant Methods ============
+
+  // Join a session - must be called before quiz is triggered to receive questions
+  async joinSession(sessionId: string, studentName?: string, studentEmail?: string): Promise<JoinSessionResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/quiz/session/join`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ sessionId, studentName, studentEmail }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to join session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error joining session:', error);
+      return { success: false, message: 'Failed to join session' };
+    }
+  },
+
+  // Leave a session
+  async leaveSession(sessionId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/quiz/session/leave`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to leave session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error leaving session:', error);
+      return { success: false, message: 'Failed to leave session' };
+    }
+  },
+
+  // Check if current user is a participant in the session
+  async checkParticipantStatus(sessionId: string): Promise<ParticipantStatusResponse> {
+    try {
+      const encodedSessionId = encodeURIComponent(sessionId);
+      const response = await fetch(`${API_BASE_URL}/quiz/session/participant-status?sessionId=${encodedSessionId}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to check participant status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error checking participant status:', error);
+      return { isParticipant: false, sessionId, studentId: '' };
+    }
+  },
+
+  // Get all participants in a session (instructor only)
+  async getSessionParticipants(sessionId: string): Promise<{ success: boolean; count: number; participants: any[] }> {
+    try {
+      const encodedSessionId = encodeURIComponent(sessionId);
+      const response = await fetch(`${API_BASE_URL}/quiz/session/participants?sessionId=${encodedSessionId}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to get participants: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting participants:', error);
+      return { success: false, count: 0, participants: [] };
     }
   },
 };

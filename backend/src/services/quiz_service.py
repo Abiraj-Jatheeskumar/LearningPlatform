@@ -7,6 +7,7 @@ from ..models.quiz_answer_model import QuizAnswerModel
 from ..models.quiz_performance import QuizPerformance, PerformanceByCluster, TopPerformer
 from ..models.question_assignment_model import QuestionAssignmentModel
 from ..models.question_session_model import QuestionSessionModel
+from ..models.session_participant_model import SessionParticipantModel
 
 
 class QuizService:
@@ -202,13 +203,19 @@ class QuizService:
         return {"success": True, "mode": "individual", "version": activation_state.get("version")}
 
     async def get_assignment_for_student(self, session_id: str, student_id: str) -> Dict:
-        """Fetch or create a personalized question assignment for a student"""
+        """Fetch or create a personalized question assignment for a student.
+        
+        IMPORTANT: Only students who have joined the session (are participants) 
+        will receive question assignments. Students who haven't joined will get
+        notParticipant: True response.
+        """
         session_state = await QuestionSessionModel.get_state(session_id)
         if not session_state or not session_state.get("active"):
             return {"active": False}
 
         activation_version = session_state.get("version", 1)
 
+        # Check if student has an existing assignment first
         assignment = await QuestionAssignmentModel.find_for_student(session_id, student_id, activation_version)
 
         if assignment:
@@ -228,7 +235,19 @@ class QuizService:
                     "completed": False
                 }
 
-        # Need to create a new assignment
+        # ============ PARTICIPANT CHECK ============
+        # Only create new assignment if student is a participant (joined session before trigger)
+        is_participant = await SessionParticipantModel.is_participant(session_id, student_id)
+        
+        if not is_participant:
+            # Student hasn't joined the session - don't give them a question
+            return {
+                "active": True,
+                "notParticipant": True,
+                "message": "You must join the session before the quiz is triggered to participate"
+            }
+
+        # Need to create a new assignment for participant
         questions = await Question.find_all()
         if not questions:
             await self._initialize_mock_data()

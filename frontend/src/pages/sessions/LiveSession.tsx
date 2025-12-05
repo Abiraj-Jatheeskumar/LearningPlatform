@@ -98,6 +98,8 @@ export const LiveSession = () => {
   const [isQuestionBankLoading, setIsQuestionBankLoading] = useState(false);
   const questionStartTime = React.useRef<number>(0);
   const assignmentIdRef = React.useRef<string | null>(null);
+  const [hasJoinedSession, setHasJoinedSession] = useState(false);
+  const [isJoiningSession, setIsJoiningSession] = useState(false);
 
   // Determine if user is instructor (must be before useEffect hooks that use it)
   const isInstructor = user?.role === 'instructor' || user?.role === 'admin';
@@ -293,6 +295,45 @@ export const LiveSession = () => {
     }
   }, [sessionId]);
 
+  // 🎯 Auto-join session for students when they enter the page
+  // This is REQUIRED to receive quiz questions when instructor triggers
+  useEffect(() => {
+    if (isInstructor || !sessionId || !user?.id) {
+      return;
+    }
+
+    const joinSessionOnEntry = async () => {
+      setIsJoiningSession(true);
+      try {
+        const studentName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Unknown Student';
+        const result = await quizService.joinSession(sessionId, studentName, user?.email);
+        
+        if (result.success) {
+          console.log('✅ Successfully joined session:', result);
+          setHasJoinedSession(true);
+          toast.success('Joined session! You will receive quizzes when the instructor triggers them.');
+        } else {
+          console.error('Failed to join session:', result.message);
+          toast.error('Failed to join session. You may not receive quiz questions.');
+        }
+      } catch (error) {
+        console.error('Error joining session:', error);
+        toast.error('Failed to join session. Please refresh the page.');
+      } finally {
+        setIsJoiningSession(false);
+      }
+    };
+
+    joinSessionOnEntry();
+
+    // Cleanup: leave session when student navigates away
+    return () => {
+      if (sessionId && user?.id) {
+        quizService.leaveSession(sessionId).catch(console.error);
+      }
+    };
+  }, [sessionId, user?.id, isInstructor, user?.firstName, user?.lastName, user?.email]);
+
   // Personalized question polling for students
   useEffect(() => {
     if (isInstructor || !sessionId || !user?.id) {
@@ -307,6 +348,13 @@ export const LiveSession = () => {
 
       try {
         const assignment = await quizService.getAssignedQuestion(sessionId, user.id);
+        
+        // Handle case where student hasn't joined session
+        if (assignment.notParticipant) {
+          console.warn('Student not a participant - cannot receive questions');
+          // Don't stop polling - student might have rejoined
+          return;
+        }
         
         if (assignment.active && assignment.question && !assignment.completed) {
           // Student has been assigned a question
