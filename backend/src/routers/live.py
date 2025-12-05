@@ -50,6 +50,12 @@ async def trigger_question(meeting_id: str):
             "timestamp": datetime.now().isoformat()
         }
 
+        # Debug: Show session room stats before sending
+        all_stats = ws_manager.get_all_stats()
+        print(f"📊 WebSocket Stats BEFORE broadcast:")
+        print(f"   Session rooms: {all_stats.get('session_rooms', {})}")
+        print(f"   Target session: {meeting_id}")
+        
         # 🎯 4) Send ONLY to students in this session room (not global broadcast!)
         # Only students who clicked "Join" and connected to /ws/session/<meetingId>/<studentId> will receive
         ws_sent_count = await ws_manager.broadcast_to_session(meeting_id, message)
@@ -59,6 +65,7 @@ async def trigger_question(meeting_id: str):
 
         print(f"✅ Question sent to SESSION {meeting_id}: {ws_sent_count} students")
         print(f"   Participants: {[p.get('studentId', 'unknown') for p in participants]}")
+        print(f"   Message sent: {message}")
 
         # 5) Optionally send Web Push Notifications to subscribed students in this session
         # (For now, push is still global - can be made session-specific later)

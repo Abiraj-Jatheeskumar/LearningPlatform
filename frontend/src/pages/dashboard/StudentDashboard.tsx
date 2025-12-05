@@ -18,16 +18,23 @@ import { sessionService, Session } from "../../services/sessionService";
 // --------------------------------------
 const QuizPopup = ({ quiz, onClose }: any) => {
   const { user } = useAuth();
-  const [timeLeft, setTimeLeft] = useState<number>(quiz.timeLimit || 20);
+  const [timeLeft, setTimeLeft] = useState<number>(quiz?.timeLimit || 30);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+  // Debug: Log the quiz data received
+  useEffect(() => {
+    console.log("📝 QuizPopup received data:", quiz);
+    console.log("   - question:", quiz?.question);
+    console.log("   - options:", quiz?.options);
+    console.log("   - questionId:", quiz?.questionId);
+  }, [quiz]);
+
   // countdown timer
   useEffect(() => {
     if (timeLeft <= 0) {
-      // time over – just close for now
       onClose();
       return;
     }
@@ -44,14 +51,15 @@ const QuizPopup = ({ quiz, onClose }: any) => {
     setIsSubmitting(true);
 
     try {
-      // build payload expected by /api/quiz/submit
       const payload = {
-        questionId: quiz.questionId,
+        questionId: quiz?.questionId || quiz?.question_id || "UNKNOWN",
         answerIndex,
-        timeTaken: (quiz.timeLimit || 20) - timeLeft,
-        studentId: user?.id || quiz.studentId || "UNKNOWN",
-        sessionId: quiz.sessionId || "GLOBAL",
+        timeTaken: (quiz?.timeLimit || 30) - timeLeft,
+        studentId: user?.id || quiz?.studentId || "UNKNOWN",
+        sessionId: quiz?.sessionId || quiz?.session_id || "GLOBAL",
       };
+
+      console.log("📤 Submitting answer:", payload);
 
       const res = await fetch(`${API_BASE_URL}/api/quiz/submit`, {
         method: "POST",
@@ -68,8 +76,7 @@ const QuizPopup = ({ quiz, onClose }: any) => {
       } else {
         const data = await res.json();
         console.log("✅ Answer stored:", data);
-        // you can later show "Correct/Incorrect" from data.isCorrect if your backend returns it
-        alert("✅ Answer submitted!");
+        alert(data.isCorrect ? "✅ Correct!" : "❌ Incorrect");
       }
 
       setHasSubmitted(true);
@@ -82,31 +89,57 @@ const QuizPopup = ({ quiz, onClose }: any) => {
     }
   };
 
+  // Safety check - ensure quiz data exists
+  if (!quiz) {
+    return null;
+  }
+
+  // Get options array safely
+  const options = quiz.options || quiz.answers || [];
+  const questionText = quiz.question || quiz.text || "No question text";
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-96 shadow-lg">
+      <div className="bg-white p-6 rounded-lg w-96 max-w-[90vw] shadow-lg">
         <h2 className="text-lg font-bold mb-3">📝 New Quiz</h2>
 
-        <p className="font-medium mb-4">{quiz.question}</p>
+        {/* Question Text */}
+        <p className="font-medium mb-4 text-gray-800">{questionText}</p>
 
         {/* Options */}
         <div className="space-y-2">
-          {quiz.options.map((op: string, i: number) => (
-            <button
-              key={i}
-              className="w-full p-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || hasSubmitted}
-              onClick={() => handleAnswerClick(i)}
-            >
-              {op}
-            </button>
-          ))}
+          {options.length > 0 ? (
+            options.map((op: string, i: number) => (
+              <button
+                key={i}
+                className="w-full p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left"
+                disabled={isSubmitting || hasSubmitted}
+                onClick={() => handleAnswerClick(i)}
+              >
+                <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
+                {op}
+              </button>
+            ))
+          ) : (
+            <p className="text-red-500 text-sm">⚠️ No options available</p>
+          )}
         </div>
 
+        {/* Timer and Status */}
         <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
-          <span>Time Left: <span className="font-bold">{timeLeft}s</span></span>
-          {isSubmitting && <span>Sending...</span>}
+          <span>
+            Time Left: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-500' : ''}`}>{timeLeft}s</span>
+          </span>
+          {isSubmitting && <span className="text-indigo-600">Sending...</span>}
         </div>
+
+        {/* Close button */}
+        <button
+          className="mt-4 w-full p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+          onClick={onClose}
+        >
+          Close
+        </button>
       </div>
     </div>
   );
