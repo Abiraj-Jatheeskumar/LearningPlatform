@@ -12,6 +12,7 @@ import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
 import { sessionService, Session } from "../../services/sessionService";
+import { toast } from "sonner";
 
 // =====================================================
 // 🔔 NOTIFICATION HELPERS
@@ -329,13 +330,20 @@ export const StudentDashboard = () => {
         if (data.type === "quiz") {
           console.log("🎯 Quiz received from session room!");
           
-          // 🔔 Play notification sound
+          // 🔔 1) Play notification sound
           playNotificationSound();
           
-          // 🔔 Show browser notification (if permitted)
+          // 🔔 2) Show toast notification (visible in-app message)
+          toast.success("📝 New Quiz Question!", {
+            description: data.question || "Answer the quiz now!",
+            duration: 10000, // Show for 10 seconds
+            position: "top-center",
+          });
+          
+          // 🔔 3) Show browser/system notification (if permitted)
           showBrowserNotification("📝 New Quiz!", data.question || "You have a new quiz question");
           
-          // Show quiz popup
+          // 4) Show quiz popup
           setIncomingQuiz(data);
         } else if (data.type === "session_joined") {
           console.log("✅ Session join confirmed:", data);
