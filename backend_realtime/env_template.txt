@@ -1,4 +1,0 @@
-MONGO_URI=mongodb://localhost:27017/live_learning
-PORT=5000
-SECRET_KEY=your_secret_key_here_change_in_production
-
