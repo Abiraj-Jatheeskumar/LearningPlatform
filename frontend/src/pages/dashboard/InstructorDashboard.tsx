@@ -9,6 +9,7 @@ import { sessionService, Session } from "../../services/sessionService";
 import { Badge } from "../../components/ui/Badge";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
 import { ConnectionQualityIndicator } from "../../components/engagement/ConnectionQualityIndicator";
+import { StudentNetworkMonitor } from "../../components/engagement/StudentNetworkMonitor";
 
 export const InstructorDashboard = () => {
   const { user } = useAuth();
@@ -365,7 +366,7 @@ export const InstructorDashboard = () => {
       <div className="mt-8">
         <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <WifiIcon className="h-5 w-5 mr-2 text-indigo-600" />
-          WebRTC Connection Monitoring
+          Your Connection Status
         </h2>
         <ConnectionQualityIndicator
           quality={connectionQuality}
@@ -393,6 +394,30 @@ export const InstructorDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* ================= STUDENT NETWORK MONITOR (Live Session) ================= */}
+      {selectedSession && selectedSession.status === 'live' && (
+        <div className="mt-8">
+          <StudentNetworkMonitor
+            sessionId={selectedSession.zoomMeetingId || selectedSession.id}
+            autoRefresh={true}
+            refreshInterval={5000}
+            className=""
+          />
+        </div>
+      )}
+
+      {/* ================= STUDENT NETWORK MONITOR (No Live Session) ================= */}
+      {(!selectedSession || selectedSession.status !== 'live') && sessions.some(s => s.status === 'live') && (
+        <div className="mt-8">
+          <StudentNetworkMonitor
+            sessionId={sessions.find(s => s.status === 'live')?.zoomMeetingId || sessions.find(s => s.status === 'live')?.id || ''}
+            autoRefresh={true}
+            refreshInterval={5000}
+            className=""
+          />
+        </div>
+      )}
     </div>
   );
 };

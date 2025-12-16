@@ -1,0 +1,462 @@
+/**
+ * StudentNetworkMonitor Component
+ * ================================
+ * 
+ * Displays network quality status for all students in a session.
+ * Designed for instructors to monitor student connectivity in real-time.
+ * 
+ * Features:
+ * - Real-time network quality monitoring for all students
+ * - Visual indicators (color-coded) for connection quality
+ * - Sorting by worst connection first
+ * - Alerts for students needing attention
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Wifi, 
+  WifiOff, 
+  AlertTriangle, 
+  RefreshCw,
+  Users,
+  Signal,
+  SignalLow,
+  SignalMedium,
+  SignalHigh,
+  Activity
+} from 'lucide-react';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+interface StudentLatency {
+  student_id: string;
+  session_id: string;
+  avg_rtt_ms: number;
+  min_rtt_ms: number;
+  max_rtt_ms: number;
+  jitter_ms: number;
+  quality: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  stability_score: number;
+  samples_count: number;
+  last_updated: string | null;
+  needs_attention: boolean;
+}
+
+interface SessionLatencySummary {
+  total: number;
+  excellent: number;
+  good: number;
+  fair: number;
+  poor: number;
+  critical: number;
+}
+
+interface SessionStudentsLatency {
+  session_id: string;
+  students: StudentLatency[];
+  summary: SessionLatencySummary;
+  timestamp: string;
+}
+
+interface StudentNetworkMonitorProps {
+  sessionId: string;
+  autoRefresh?: boolean;
+  refreshInterval?: number; // in milliseconds
+  className?: string;
+  compact?: boolean;
+}
+
+export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
+  sessionId,
+  autoRefresh = true,
+  refreshInterval = 5000,
+  className = '',
+  compact = false
+}) => {
+  const [data, setData] = useState<SessionStudentsLatency | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+
+  const fetchStudentLatency = useCallback(async () => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/latency/session/${sessionId}/students`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setData(result);
+      setLastRefresh(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching student latency:', err);
+      setError('Failed to load student network data');
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
+
+  // Initial fetch and auto-refresh
+  useEffect(() => {
+    fetchStudentLatency();
+
+    if (autoRefresh) {
+      const interval = setInterval(fetchStudentLatency, refreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [fetchStudentLatency, autoRefresh, refreshInterval]);
+
+  const getQualityIcon = (quality: string) => {
+    switch (quality) {
+      case 'excellent': return <SignalHigh className="h-4 w-4 text-green-500" />;
+      case 'good': return <Signal className="h-4 w-4 text-green-400" />;
+      case 'fair': return <SignalMedium className="h-4 w-4 text-yellow-500" />;
+      case 'poor': return <SignalLow className="h-4 w-4 text-orange-500" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      default: return <Wifi className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getQualityBadgeVariant = (quality: string): 'success' | 'warning' | 'danger' | 'default' => {
+    switch (quality) {
+      case 'excellent':
+      case 'good':
+        return 'success';
+      case 'fair':
+        return 'warning';
+      case 'poor':
+      case 'critical':
+        return 'danger';
+      default:
+        return 'default';
+    }
+  };
+
+  const getQualityRowColor = (quality: string): string => {
+    switch (quality) {
+      case 'critical': return 'bg-red-50 dark:bg-red-900/20';
+      case 'poor': return 'bg-orange-50 dark:bg-orange-900/20';
+      case 'fair': return 'bg-yellow-50 dark:bg-yellow-900/20';
+      default: return '';
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${className}`}>
+        <div className="flex items-center justify-center">
+          <RefreshCw className="h-5 w-5 animate-spin text-indigo-500" />
+          <span className="ml-2 text-gray-500">Loading student network data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${className}`}>
+        <div className="text-center text-red-500">
+          <WifiOff className="h-8 w-8 mx-auto mb-2" />
+          <p>{error}</p>
+          <Button variant="outline" size="sm" onClick={fetchStudentLatency} className="mt-3">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const summary = data?.summary || { total: 0, excellent: 0, good: 0, fair: 0, poor: 0, critical: 0 };
+  const students = data?.students || [];
+  const studentsNeedingAttention = students.filter(s => s.needs_attention);
+
+  // Compact view for sidebar
+  if (compact) {
+    return (
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${className}`}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
+              <Wifi className="h-4 w-4 mr-2 text-indigo-500" />
+              Student Network Status
+            </h3>
+            <Badge variant="default" size="sm">{summary.total} online</Badge>
+          </div>
+        </div>
+        
+        {/* Quick Summary */}
+        <div className="p-4 grid grid-cols-5 gap-1 text-center text-xs">
+          <div className="text-green-600 dark:text-green-400">
+            <div className="font-bold">{summary.excellent}</div>
+            <div className="opacity-75">Excel</div>
+          </div>
+          <div className="text-green-500 dark:text-green-400">
+            <div className="font-bold">{summary.good}</div>
+            <div className="opacity-75">Good</div>
+          </div>
+          <div className="text-yellow-500 dark:text-yellow-400">
+            <div className="font-bold">{summary.fair}</div>
+            <div className="opacity-75">Fair</div>
+          </div>
+          <div className="text-orange-500 dark:text-orange-400">
+            <div className="font-bold">{summary.poor}</div>
+            <div className="opacity-75">Poor</div>
+          </div>
+          <div className="text-red-500 dark:text-red-400">
+            <div className="font-bold">{summary.critical}</div>
+            <div className="opacity-75">Crit</div>
+          </div>
+        </div>
+
+        {/* Students needing attention */}
+        {studentsNeedingAttention.length > 0 && (
+          <div className="px-4 pb-4">
+            <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-2 flex items-center">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Needs Attention ({studentsNeedingAttention.length})
+            </div>
+            <div className="space-y-1">
+              {studentsNeedingAttention.slice(0, 3).map(student => (
+                <div 
+                  key={student.student_id} 
+                  className="flex items-center justify-between text-xs p-2 bg-red-50 dark:bg-red-900/20 rounded"
+                >
+                  <span className="truncate max-w-[100px]">{student.student_id.slice(0, 8)}...</span>
+                  <span className="text-red-600 dark:text-red-400">{Math.round(student.avg_rtt_ms)}ms</span>
+                </div>
+              ))}
+              {studentsNeedingAttention.length > 3 && (
+                <div className="text-xs text-gray-500 text-center">
+                  +{studentsNeedingAttention.length - 3} more
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Full view
+  return (
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${className}`}>
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
+            <Users className="h-5 w-5 mr-2 text-indigo-500" />
+            Student Network Monitor
+          </h3>
+          <div className="flex items-center space-x-2">
+            {lastRefresh && (
+              <span className="text-xs text-gray-500">
+                Updated: {lastRefresh.toLocaleTimeString()}
+              </span>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchStudentLatency}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Bar */}
+      <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Connection Quality Distribution
+          </span>
+          <span className="text-sm text-gray-500">
+            {summary.total} student{summary.total !== 1 ? 's' : ''} connected
+          </span>
+        </div>
+        <div className="flex h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+          {summary.excellent > 0 && (
+            <div 
+              className="bg-green-500 transition-all" 
+              style={{ width: `${(summary.excellent / summary.total) * 100}%` }}
+              title={`Excellent: ${summary.excellent}`}
+            />
+          )}
+          {summary.good > 0 && (
+            <div 
+              className="bg-green-400 transition-all" 
+              style={{ width: `${(summary.good / summary.total) * 100}%` }}
+              title={`Good: ${summary.good}`}
+            />
+          )}
+          {summary.fair > 0 && (
+            <div 
+              className="bg-yellow-500 transition-all" 
+              style={{ width: `${(summary.fair / summary.total) * 100}%` }}
+              title={`Fair: ${summary.fair}`}
+            />
+          )}
+          {summary.poor > 0 && (
+            <div 
+              className="bg-orange-500 transition-all" 
+              style={{ width: `${(summary.poor / summary.total) * 100}%` }}
+              title={`Poor: ${summary.poor}`}
+            />
+          )}
+          {summary.critical > 0 && (
+            <div 
+              className="bg-red-500 transition-all" 
+              style={{ width: `${(summary.critical / summary.total) * 100}%` }}
+              title={`Critical: ${summary.critical}`}
+            />
+          )}
+        </div>
+        <div className="flex justify-between mt-2 text-xs">
+          <span className="text-green-600 dark:text-green-400">● Excellent: {summary.excellent}</span>
+          <span className="text-green-500 dark:text-green-400">● Good: {summary.good}</span>
+          <span className="text-yellow-500 dark:text-yellow-400">● Fair: {summary.fair}</span>
+          <span className="text-orange-500 dark:text-orange-400">● Poor: {summary.poor}</span>
+          <span className="text-red-500 dark:text-red-400">● Critical: {summary.critical}</span>
+        </div>
+      </div>
+
+      {/* Alert for students needing attention */}
+      {studentsNeedingAttention.length > 0 && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+            <div className="ml-3">
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                {studentsNeedingAttention.length} student{studentsNeedingAttention.length !== 1 ? 's' : ''} with connectivity issues
+              </h4>
+              <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                These students may appear disengaged due to network problems. 
+                Engagement metrics will be adjusted automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student List */}
+      {students.length === 0 ? (
+        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+          <Wifi className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p>No students connected yet</p>
+          <p className="text-sm mt-1">Network data will appear when students join the session</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Student
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Quality
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  RTT
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Jitter
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Stability
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {students.map((student) => (
+                <tr 
+                  key={student.student_id} 
+                  className={`${getQualityRowColor(student.quality)} hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors`}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                          {student.student_id.slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {student.student_id.slice(0, 12)}...
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {student.samples_count} samples
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      {getQualityIcon(student.quality)}
+                      <Badge variant={getQualityBadgeVariant(student.quality)} size="sm">
+                        {student.quality.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {Math.round(student.avg_rtt_ms)}ms
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {Math.round(student.min_rtt_ms)}-{Math.round(student.max_rtt_ms)}ms
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {student.jitter_ms.toFixed(1)}ms
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                        <div 
+                          className={`h-2 rounded-full ${
+                            student.stability_score >= 70 ? 'bg-green-500' :
+                            student.stability_score >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(100, student.stability_score)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">
+                        {Math.round(student.stability_score)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {student.needs_attention ? (
+                      <span className="inline-flex items-center text-xs text-red-600 dark:text-red-400">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Needs attention
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-xs text-green-600 dark:text-green-400">
+                        <Activity className="h-3 w-3 mr-1" />
+                        Stable
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StudentNetworkMonitor;
+

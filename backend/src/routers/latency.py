@@ -377,6 +377,66 @@ async def get_session_latency_summary(session_id: str):
     }
 
 
+@router.get("/session/{session_id}/students")
+async def get_all_students_latency(session_id: str):
+    """
+    Get detailed latency stats for ALL students in a session.
+    
+    This endpoint is designed for instructors to monitor the network
+    quality of all joined students in real-time. It helps identify
+    students who may be experiencing connectivity issues.
+    """
+    if session_id not in latency_store:
+        return {
+            "session_id": session_id,
+            "students": [],
+            "summary": {
+                "total": 0,
+                "excellent": 0,
+                "good": 0,
+                "fair": 0,
+                "poor": 0,
+                "critical": 0
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    students_list = []
+    quality_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0}
+    
+    for student_id in latency_store[session_id]:
+        stats = get_student_stats(session_id, student_id)
+        if stats:
+            quality_counts[stats.quality] += 1
+            students_list.append({
+                "student_id": stats.student_id,
+                "session_id": stats.session_id,
+                "avg_rtt_ms": stats.avg_rtt_ms,
+                "min_rtt_ms": stats.min_rtt_ms,
+                "max_rtt_ms": stats.max_rtt_ms,
+                "jitter_ms": stats.jitter_ms,
+                "quality": stats.quality,
+                "stability_score": stats.stability_score,
+                "samples_count": stats.samples_count,
+                "last_updated": stats.last_updated.isoformat() if stats.last_updated else None,
+                "needs_attention": stats.quality in ["poor", "critical"]
+            })
+    
+    # Sort by quality (worst first) for instructor attention
+    quality_order = {"critical": 0, "poor": 1, "fair": 2, "good": 3, "excellent": 4}
+    students_list.sort(key=lambda x: quality_order.get(x["quality"], 5))
+    
+    return {
+        "session_id": session_id,
+        "students": students_list,
+        "summary": {
+            "total": len(students_list),
+            **quality_counts
+        },
+        "timestamp": datetime.now().isoformat()
+    }
+
+
 @router.delete("/session/{session_id}")
 async def clear_session_latency_data(session_id: str):
     """
