@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/Button";
-import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon, WifiIcon, ActivityIcon } from "lucide-react";
+import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon, WifiIcon, ActivityIcon, UsersIcon } from "lucide-react";
 import { sessionService, Session } from "../../services/sessionService";
 import { Badge } from "../../components/ui/Badge";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
@@ -395,29 +395,82 @@ export const InstructorDashboard = () => {
         )}
       </div>
 
-      {/* ================= STUDENT NETWORK MONITOR (Live Session) ================= */}
-      {selectedSession && selectedSession.status === 'live' && (
-        <div className="mt-8">
+      {/* ================= STUDENT NETWORK MONITOR ================= */}
+      <div className="mt-8">
+        <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <UsersIcon className="h-5 w-5 mr-2 text-indigo-600" />
+          Student Network Monitor
+          {sessions.some(s => s.status === 'live') && (
+            <Badge variant="danger" className="ml-2">LIVE</Badge>
+          )}
+        </h2>
+        
+        {/* Show monitor for live session */}
+        {sessions.some(s => s.status === 'live') ? (
           <StudentNetworkMonitor
-            sessionId={selectedSession.zoomMeetingId || selectedSession.id}
+            sessionId={
+              selectedSession?.status === 'live' 
+                ? (selectedSession.zoomMeetingId || selectedSession.id)
+                : (sessions.find(s => s.status === 'live')?.zoomMeetingId || sessions.find(s => s.status === 'live')?.id || '')
+            }
             autoRefresh={true}
             refreshInterval={5000}
             className=""
           />
-        </div>
-      )}
-
-      {/* ================= STUDENT NETWORK MONITOR (No Live Session) ================= */}
-      {(!selectedSession || selectedSession.status !== 'live') && sessions.some(s => s.status === 'live') && (
-        <div className="mt-8">
-          <StudentNetworkMonitor
-            sessionId={sessions.find(s => s.status === 'live')?.zoomMeetingId || sessions.find(s => s.status === 'live')?.id || ''}
-            autoRefresh={true}
-            refreshInterval={5000}
-            className=""
-          />
-        </div>
-      )}
+        ) : (
+          /* No live session - show placeholder */
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="rounded-full bg-gray-100 p-4 mb-4">
+                <WifiIcon className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Live Session Active
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md">
+                Start a live session to monitor your students' network quality in real-time. 
+                You'll be able to see connection quality, latency, and identify students 
+                who may be experiencing technical difficulties.
+              </p>
+              <div className="mt-6 grid grid-cols-5 gap-4 text-center text-xs w-full max-w-md">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1"></div>
+                  <span className="text-green-700">Excellent</span>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="w-3 h-3 rounded-full bg-green-400 mx-auto mb-1"></div>
+                  <span className="text-green-600">Good</span>
+                </div>
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500 mx-auto mb-1"></div>
+                  <span className="text-yellow-700">Fair</span>
+                </div>
+                <div className="p-3 bg-orange-50 rounded-lg">
+                  <div className="w-3 h-3 rounded-full bg-orange-500 mx-auto mb-1"></div>
+                  <span className="text-orange-700">Poor</span>
+                </div>
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="w-3 h-3 rounded-full bg-red-500 mx-auto mb-1"></div>
+                  <span className="text-red-700">Critical</span>
+                </div>
+              </div>
+              {sessions.length > 0 && (
+                <Button 
+                  variant="primary" 
+                  className="mt-6"
+                  leftIcon={<PlayIcon className="h-4 w-4" />}
+                  onClick={() => {
+                    const firstSession = sessions[0];
+                    if (firstSession) handleJoinSession(firstSession);
+                  }}
+                >
+                  Start First Session
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
