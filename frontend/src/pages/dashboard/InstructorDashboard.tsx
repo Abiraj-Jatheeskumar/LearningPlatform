@@ -397,79 +397,127 @@ export const InstructorDashboard = () => {
 
       {/* ================= STUDENT NETWORK MONITOR ================= */}
       <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-          <UsersIcon className="h-5 w-5 mr-2 text-indigo-600" />
-          Student Network Monitor
-          {sessions.some(s => s.status === 'live') && (
-            <Badge variant="danger" className="ml-2">LIVE</Badge>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-900 flex items-center">
+            <UsersIcon className="h-5 w-5 mr-2 text-indigo-600" />
+            Student Network Monitor
+            {selectedSession?.status === 'live' && (
+              <Badge variant="danger" className="ml-2">LIVE</Badge>
+            )}
+          </h2>
+          
+          {/* Session Selector Dropdown */}
+          {sessions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500">Select Session:</label>
+              <select
+                value={selectedSession?.id || ''}
+                onChange={(e) => {
+                  const session = sessions.find(s => s.id === e.target.value);
+                  setSelectedSession(session || null);
+                }}
+                className="block w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+              >
+                <option value="">-- Select a session --</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title} {session.status === 'live' ? '🔴 LIVE' : `(${session.date})`}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
-        </h2>
+        </div>
         
-        {/* Show monitor for live session */}
-        {sessions.some(s => s.status === 'live') ? (
+        {/* Show monitor for selected session */}
+        {selectedSession ? (
           <StudentNetworkMonitor
-            sessionId={
-              selectedSession?.status === 'live' 
-                ? (selectedSession.zoomMeetingId || selectedSession.id)
-                : (sessions.find(s => s.status === 'live')?.zoomMeetingId || sessions.find(s => s.status === 'live')?.id || '')
-            }
+            sessionId={selectedSession.zoomMeetingId || selectedSession.id}
             autoRefresh={true}
             refreshInterval={5000}
             className=""
           />
+        ) : sessions.length > 0 ? (
+          /* Has sessions but none selected */
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="rounded-full bg-indigo-100 p-4 mb-4">
+                <UsersIcon className="h-8 w-8 text-indigo-500" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Select a Session to View Student Network
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md mb-4">
+                Choose a session from the dropdown above to monitor your students' 
+                network quality and connection status.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {sessions.slice(0, 3).map((session) => (
+                  <Button
+                    key={session.id}
+                    variant={session.status === 'live' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSession(session)}
+                  >
+                    {session.title} {session.status === 'live' && '🔴'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : (
-          /* No live session - show placeholder */
+          /* No sessions at all */
           <div className="bg-white shadow rounded-lg p-8 text-center">
             <div className="flex flex-col items-center">
               <div className="rounded-full bg-gray-100 p-4 mb-4">
                 <WifiIcon className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Live Session Active
+                No Sessions Available
               </h3>
               <p className="text-sm text-gray-500 max-w-md">
-                Start a live session to monitor your students' network quality in real-time. 
-                You'll be able to see connection quality, latency, and identify students 
-                who may be experiencing technical difficulties.
+                Create a session to start monitoring your students' network quality.
               </p>
-              <div className="mt-6 grid grid-cols-5 gap-4 text-center text-xs w-full max-w-md">
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1"></div>
-                  <span className="text-green-700">Excellent</span>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-green-400 mx-auto mb-1"></div>
-                  <span className="text-green-600">Good</span>
-                </div>
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500 mx-auto mb-1"></div>
-                  <span className="text-yellow-700">Fair</span>
-                </div>
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-orange-500 mx-auto mb-1"></div>
-                  <span className="text-orange-700">Poor</span>
-                </div>
-                <div className="p-3 bg-red-50 rounded-lg">
-                  <div className="w-3 h-3 rounded-full bg-red-500 mx-auto mb-1"></div>
-                  <span className="text-red-700">Critical</span>
-                </div>
-              </div>
-              {sessions.length > 0 && (
-                <Button 
-                  variant="primary" 
-                  className="mt-6"
-                  leftIcon={<PlayIcon className="h-4 w-4" />}
-                  onClick={() => {
-                    const firstSession = sessions[0];
-                    if (firstSession) handleJoinSession(firstSession);
-                  }}
-                >
-                  Start First Session
+              <Link to="/dashboard/sessions/create">
+                <Button variant="primary" className="mt-4">
+                  Create Session
                 </Button>
-              )}
+              </Link>
             </div>
           </div>
         )}
+        
+        {/* Connection Quality Legend */}
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Connection Quality Guide</h4>
+          <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            <div className="p-2 bg-white rounded border border-green-200">
+              <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1"></div>
+              <span className="text-green-700 font-medium">Excellent</span>
+              <div className="text-gray-500">&lt;50ms</div>
+            </div>
+            <div className="p-2 bg-white rounded border border-green-200">
+              <div className="w-3 h-3 rounded-full bg-green-400 mx-auto mb-1"></div>
+              <span className="text-green-600 font-medium">Good</span>
+              <div className="text-gray-500">&lt;100ms</div>
+            </div>
+            <div className="p-2 bg-white rounded border border-yellow-200">
+              <div className="w-3 h-3 rounded-full bg-yellow-500 mx-auto mb-1"></div>
+              <span className="text-yellow-700 font-medium">Fair</span>
+              <div className="text-gray-500">&lt;200ms</div>
+            </div>
+            <div className="p-2 bg-white rounded border border-orange-200">
+              <div className="w-3 h-3 rounded-full bg-orange-500 mx-auto mb-1"></div>
+              <span className="text-orange-700 font-medium">Poor</span>
+              <div className="text-gray-500">&lt;500ms</div>
+            </div>
+            <div className="p-2 bg-white rounded border border-red-200">
+              <div className="w-3 h-3 rounded-full bg-red-500 mx-auto mb-1"></div>
+              <span className="text-red-700 font-medium">Critical</span>
+              <div className="text-gray-500">≥500ms</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
