@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   BellIcon,
@@ -7,12 +7,15 @@ import {
   ActivityIcon,
   PlayIcon,
   CalendarIcon,
+  WifiIcon,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
 import { sessionService, Session } from "../../services/sessionService";
 import { toast } from "sonner";
+import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
+import { ConnectionQualityBadge } from "../../components/engagement/ConnectionQualityIndicator";
 
 // =====================================================
 // 🔔 NOTIFICATION HELPERS
@@ -249,6 +252,29 @@ export const StudentDashboard = () => {
   const [sessionWs, setSessionWs] = useState<WebSocket | null>(null);
   const [connectedSessionId, setConnectedSessionId] = useState<string | null>(null);
 
+  // 📶 WebRTC-aware Connection Latency Monitoring
+  // This monitors network quality when student joins a session
+  const handleConnectionQualityChange = useCallback((quality: ConnectionQuality) => {
+    if (quality === 'poor' || quality === 'critical') {
+      toast.warning(`⚠️ Your connection quality is ${quality}. This may affect your session.`);
+    }
+  }, []);
+
+  const {
+    isMonitoring: isLatencyMonitoring,
+    currentRtt,
+    quality: connectionQuality,
+    stats: latencyStats,
+  } = useLatencyMonitor({
+    sessionId: connectedSessionId, // Only monitor when connected to a session
+    studentId: user?.id,
+    studentName: `${user?.firstName} ${user?.lastName}`,
+    enabled: !!connectedSessionId && !!user?.id, // Enable only when in a session
+    pingInterval: 5000, // Ping every 5 seconds
+    reportInterval: 10000, // Report to server every 10 seconds
+    onQualityChange: handleConnectionQualityChange
+  });
+
   // ===========================================================
   // ⭐ LOAD REAL SESSIONS FROM BACKEND
   // ===========================================================
@@ -423,16 +449,30 @@ export const StudentDashboard = () => {
           </p>
         </div>
 
-        <Link to="/dashboard/student/engagement" className="w-full sm:w-auto">
-          <Button
-            variant="primary"
-            leftIcon={<ActivityIcon className="h-4 w-4" />}
-            fullWidth
-            className="sm:w-auto"
-          >
-            View Engagement
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* 📶 Connection Quality Badge - shows when connected to session */}
+          {connectedSessionId && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border">
+              <WifiIcon className="h-4 w-4 text-gray-500" />
+              <ConnectionQualityBadge
+                quality={connectionQuality}
+                rtt={currentRtt}
+                isMonitoring={isLatencyMonitoring}
+              />
+            </div>
+          )}
+          
+          <Link to="/dashboard/student/engagement" className="w-full sm:w-auto">
+            <Button
+              variant="primary"
+              leftIcon={<ActivityIcon className="h-4 w-4" />}
+              fullWidth
+              className="sm:w-auto"
+            >
+              View Engagement
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Performance Summary */}
@@ -485,43 +525,74 @@ export const StudentDashboard = () => {
               <span className="text-sm text-indigo-600 hover:text-indigo-800">View All</span>
             </Link>
           </div>
+          
+          {/* 📶 Show connection status banner when connected */}
+          {connectedSessionId && (
+            <div className="mx-4 mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-800">
+                    Connected to session
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <WifiIcon className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-700">
+                    {currentRtt ? `${Math.round(currentRtt)}ms` : 'Measuring...'} • {connectionQuality}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-green-600 mt-1">
+                Your network quality is being monitored for engagement analysis.
+              </p>
+            </div>
+          )}
 
           {sessions.length === 0 ? (
             <div className="px-4 py-8 text-center text-gray-500">
               <p className="text-sm">No upcoming sessions</p>
             </div>
           ) : (
-            sessions.map((session) => (
-              <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-indigo-600">
-                        {session.title}
+            sessions.map((session) => {
+              const sessionKey = session.zoomMeetingId || session.id;
+              const isConnectedToThis = connectedSessionId === sessionKey;
+              
+              return (
+                <div key={session.id} className={`px-4 py-4 border-t hover:bg-gray-50 ${isConnectedToThis ? 'bg-green-50' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-indigo-600">
+                          {session.title}
+                        </p>
+                        {session.status === 'live' && (
+                          <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
+                        )}
+                        {isConnectedToThis && (
+                          <Badge variant="success" className="bg-green-600 text-white text-xs">CONNECTED</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {session.course} • {session.instructor}
                       </p>
-                      {session.status === 'live' && (
-                        <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
-                      )}
+                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                        <CalendarIcon className="h-3 w-3" />
+                        {session.date} • {session.time}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {session.course} • {session.instructor}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                      <CalendarIcon className="h-3 w-3" />
-                      {session.date} • {session.time}
-                    </p>
+                    <Button
+                      variant={isConnectedToThis ? 'secondary' : session.status === 'live' ? 'primary' : 'outline'}
+                      size="sm"
+                      leftIcon={isConnectedToThis ? <WifiIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                      onClick={() => handleJoinSession(session)}
+                    >
+                      {isConnectedToThis ? 'Joined' : session.status === 'live' ? 'Join' : 'Join'}
+                    </Button>
                   </div>
-                  <Button
-                    variant={session.status === 'live' ? 'primary' : 'outline'}
-                    size="sm"
-                    leftIcon={<PlayIcon className="h-4 w-4" />}
-                    onClick={() => handleJoinSession(session)}
-                  >
-                    {session.status === 'live' ? 'Join' : 'Join'}
-                  </Button>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
