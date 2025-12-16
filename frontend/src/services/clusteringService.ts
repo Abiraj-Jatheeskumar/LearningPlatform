@@ -19,7 +19,8 @@ export interface ClusterUpdate {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// ✔ Correct API root — no slash, no /api suffix
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const clusteringService = {
   // Get default clusters (fallback)
@@ -67,7 +68,7 @@ export const clusteringService = {
 
     try {
       const encodedSessionId = encodeURIComponent(sessionId);
-      const response = await fetch(`${API_BASE_URL}/clustering/session/${encodedSessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clustering/session/${encodedSessionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ export const clusteringService = {
   // Update clusters based on quiz performance
   async updateClusters(update: ClusterUpdate): Promise<StudentCluster[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/clustering/update`, {
+      const response = await fetch(`${API_BASE_URL}/api/clustering/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export const clusteringService = {
   // Get student cluster assignment
   async getStudentCluster(studentId: string, sessionId: string): Promise<string | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/clustering/student/${studentId}?sessionId=${sessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clustering/student/${studentId}?sessionId=${sessionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

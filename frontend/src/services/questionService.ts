@@ -22,7 +22,8 @@ export interface CreateQuestionData {
   timeLimit?: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// ✔ Correct API root — no slash, no /api suffix
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Get auth token and user role from localStorage
 const getAuthToken = (): string => {
@@ -55,7 +56,7 @@ export const questionService = {
   // Create a new question
   async createQuestion(questionData: CreateQuestionData): Promise<Question> {
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/`, {
+      const response = await fetch(`${API_BASE_URL}/api/questions/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ export const questionService = {
   // Get all questions
   async getAllQuestions(): Promise<Question[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/`, {
+      const response = await fetch(`${API_BASE_URL}/api/questions/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +118,7 @@ export const questionService = {
   // Get a question by ID
   async getQuestionById(questionId: string): Promise<Question> {
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +143,7 @@ export const questionService = {
   // Update a question
   async updateQuestion(questionId: string, questionData: CreateQuestionData): Promise<Question> {
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ export const questionService = {
   // Delete a question
   async deleteQuestion(questionId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -56,7 +56,8 @@ export interface ParticipantStatusResponse {
   studentId: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// ✔ Correct API root — no slash, no /api suffix
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const getAuthToken = (): string => {
   try {
@@ -94,7 +95,7 @@ export const quizService = {
   // Submit quiz answer
   async submitAnswer(answer: QuizAnswer): Promise<{ success: boolean; isCorrect: boolean }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/quiz/submit`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/submit`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(answer),
@@ -164,7 +165,7 @@ export const quizService = {
     try {
       const encodedQuestionId = encodeURIComponent(questionId);
       const encodedSessionId = encodeURIComponent(sessionId);
-      const response = await fetch(`${API_BASE_URL}/quiz/performance/${encodedQuestionId}?sessionId=${encodedSessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/performance/${encodedQuestionId}?sessionId=${encodedSessionId}`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -188,7 +189,7 @@ export const quizService = {
   // This triggers via HTTP API - the backend will then broadcast via WebSocket to session room
   async triggerQuestion(questionId: string, sessionId: string): Promise<{ success: boolean }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/quiz/trigger`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/trigger`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ questionId, sessionId }),
@@ -234,7 +235,7 @@ export const quizService = {
   // Trigger personalized questions (unique per student)
   async triggerIndividualQuestions(sessionId: string): Promise<{ success: boolean; mode?: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/quiz/trigger/individual`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/trigger/individual`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ sessionId }),
@@ -262,7 +263,7 @@ export const quizService = {
     try {
       const encodedSessionId = encodeURIComponent(sessionId);
       const encodedStudentId = encodeURIComponent(studentId);
-      const response = await fetch(`${API_BASE_URL}/quiz/assignment?sessionId=${encodedSessionId}&studentId=${encodedStudentId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/assignment?sessionId=${encodedSessionId}&studentId=${encodedStudentId}`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -288,7 +289,7 @@ export const quizService = {
   // Join a session - must be called before quiz is triggered to receive questions
   async joinSession(sessionId: string, studentName?: string, studentEmail?: string): Promise<JoinSessionResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/quiz/session/join`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/session/join`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ sessionId, studentName, studentEmail }),
@@ -310,7 +311,7 @@ export const quizService = {
   // Leave a session
   async leaveSession(sessionId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/quiz/session/leave`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/session/leave`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ sessionId }),
@@ -333,7 +334,7 @@ export const quizService = {
   async checkParticipantStatus(sessionId: string): Promise<ParticipantStatusResponse> {
     try {
       const encodedSessionId = encodeURIComponent(sessionId);
-      const response = await fetch(`${API_BASE_URL}/quiz/session/participant-status?sessionId=${encodedSessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/session/participant-status?sessionId=${encodedSessionId}`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -355,7 +356,7 @@ export const quizService = {
   async getSessionParticipants(sessionId: string): Promise<{ success: boolean; count: number; participants: any[] }> {
     try {
       const encodedSessionId = encodeURIComponent(sessionId);
-      const response = await fetch(`${API_BASE_URL}/quiz/session/participants?sessionId=${encodedSessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz/session/participants?sessionId=${encodedSessionId}`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
