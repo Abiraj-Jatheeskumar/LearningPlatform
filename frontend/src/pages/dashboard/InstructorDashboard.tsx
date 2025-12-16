@@ -1,17 +1,44 @@
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/Button";
-import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon } from "lucide-react";
+import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon, WifiIcon, ActivityIcon } from "lucide-react";
 import { sessionService, Session } from "../../services/sessionService";
 import { Badge } from "../../components/ui/Badge";
+import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
+import { ConnectionQualityIndicator } from "../../components/engagement/ConnectionQualityIndicator";
 
 export const InstructorDashboard = () => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+  // ================================
+  // 📶 WebRTC-aware Connection Latency Monitoring
+  // ================================
+  const handleConnectionQualityChange = useCallback((quality: ConnectionQuality) => {
+    if (quality === 'poor' || quality === 'critical') {
+      console.warn(`⚠️ Connection quality degraded: ${quality}`);
+    }
+  }, []);
+
+  const {
+    isMonitoring: isLatencyMonitoring,
+    currentRtt,
+    quality: connectionQuality,
+    stats: latencyStats,
+    shouldAdjustEngagement
+  } = useLatencyMonitor({
+    sessionId: selectedSession?.id || 'instructor-dashboard',
+    studentId: user?.id,
+    studentName: `${user?.firstName} ${user?.lastName}`,
+    enabled: true, // Always monitor on dashboard
+    pingInterval: 5000,
+    reportInterval: 15000,
+    onQualityChange: handleConnectionQualityChange
+  });
 
   // ================================
   // ⭐ LOAD REAL SESSIONS FROM BACKEND
@@ -133,7 +160,7 @@ export const InstructorDashboard = () => {
       </div>
 
       {/* ================= CARDS SECTION ================= */}
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
         {/* Active Courses */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -198,6 +225,63 @@ export const InstructorDashboard = () => {
             <a className="text-sm font-medium text-indigo-700 hover:text-indigo-900" href="#">
               View details
             </a>
+          </div>
+        </div>
+
+        {/* 📶 Connection Quality Card */}
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className={`flex-shrink-0 rounded-md p-3 ${
+                  connectionQuality === 'excellent' || connectionQuality === 'good' 
+                    ? 'bg-green-500' 
+                    : connectionQuality === 'fair' 
+                    ? 'bg-yellow-500' 
+                    : connectionQuality === 'poor' || connectionQuality === 'critical'
+                    ? 'bg-red-500'
+                    : 'bg-gray-400'
+                }`}>
+                  <WifiIcon className="h-5 w-5 text-white" />
+                </div>
+                <div className="ml-4">
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Connection Quality
+                  </dt>
+                  <dd className="flex items-center">
+                    <div className="text-lg font-medium text-gray-900 capitalize">
+                      {connectionQuality}
+                    </div>
+                    {isLatencyMonitoring && (
+                      <span className="ml-2 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
+              <div className="bg-gray-50 rounded p-2">
+                <div className="font-medium text-gray-900">{currentRtt ? `${Math.round(currentRtt)}ms` : '--'}</div>
+                <div className="text-gray-500">RTT</div>
+              </div>
+              <div className="bg-gray-50 rounded p-2">
+                <div className="font-medium text-gray-900">{latencyStats.jitter.toFixed(0)}ms</div>
+                <div className="text-gray-500">Jitter</div>
+              </div>
+              <div className="bg-gray-50 rounded p-2">
+                <div className="font-medium text-gray-900">{latencyStats.stabilityScore.toFixed(0)}%</div>
+                <div className="text-gray-500">Stability</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-5 py-3">
+            <div className="text-xs text-gray-500 flex items-center">
+              <ActivityIcon className="h-3 w-3 mr-1" />
+              {isLatencyMonitoring ? 'WebRTC Monitoring Active' : 'Not Monitoring'}
+            </div>
           </div>
         </div>
       </div>
@@ -275,6 +359,39 @@ export const InstructorDashboard = () => {
             </ul>
           )}
         </div>
+      </div>
+
+      {/* ================= CONNECTION QUALITY DETAILED PANEL ================= */}
+      <div className="mt-8">
+        <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <WifiIcon className="h-5 w-5 mr-2 text-indigo-600" />
+          WebRTC Connection Monitoring
+        </h2>
+        <ConnectionQualityIndicator
+          quality={connectionQuality}
+          stats={latencyStats}
+          currentRtt={currentRtt}
+          isMonitoring={isLatencyMonitoring}
+          showDetails={true}
+          className="bg-white shadow rounded-lg"
+        />
+        {shouldAdjustEngagement() && (
+          <div className="mt-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <WifiIcon className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">Connection Quality Alert</h3>
+                <p className="mt-1 text-sm text-yellow-700">
+                  Your connection quality is currently <strong>{connectionQuality}</strong>. 
+                  Engagement analytics will be adjusted to account for potential network-related issues.
+                  Students with similar connectivity problems will not be misclassified as disengaged.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
