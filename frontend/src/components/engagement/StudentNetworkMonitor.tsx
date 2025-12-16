@@ -66,22 +66,116 @@ interface StudentNetworkMonitorProps {
   refreshInterval?: number; // in milliseconds
   className?: string;
   compact?: boolean;
+  showDemoData?: boolean; // Show demo data for testing
 }
+
+// Demo data for testing/demonstration
+const DEMO_STUDENTS: StudentLatency[] = [
+  {
+    student_id: 'student_john_doe_123',
+    session_id: 'demo',
+    avg_rtt_ms: 45,
+    min_rtt_ms: 32,
+    max_rtt_ms: 78,
+    jitter_ms: 8.5,
+    quality: 'good',
+    stability_score: 92,
+    samples_count: 25,
+    last_updated: new Date().toISOString(),
+    needs_attention: false
+  },
+  {
+    student_id: 'student_sarah_smith_456',
+    session_id: 'demo',
+    avg_rtt_ms: 180,
+    min_rtt_ms: 120,
+    max_rtt_ms: 280,
+    jitter_ms: 45,
+    quality: 'fair',
+    stability_score: 68,
+    samples_count: 20,
+    last_updated: new Date().toISOString(),
+    needs_attention: false
+  },
+  {
+    student_id: 'student_mike_wilson_789',
+    session_id: 'demo',
+    avg_rtt_ms: 520,
+    min_rtt_ms: 350,
+    max_rtt_ms: 890,
+    jitter_ms: 95,
+    quality: 'critical',
+    stability_score: 35,
+    samples_count: 18,
+    last_updated: new Date().toISOString(),
+    needs_attention: true
+  },
+  {
+    student_id: 'student_emma_davis_012',
+    session_id: 'demo',
+    avg_rtt_ms: 28,
+    min_rtt_ms: 22,
+    max_rtt_ms: 45,
+    jitter_ms: 5,
+    quality: 'excellent',
+    stability_score: 98,
+    samples_count: 30,
+    last_updated: new Date().toISOString(),
+    needs_attention: false
+  },
+  {
+    student_id: 'student_alex_brown_345',
+    session_id: 'demo',
+    avg_rtt_ms: 320,
+    min_rtt_ms: 250,
+    max_rtt_ms: 450,
+    jitter_ms: 65,
+    quality: 'poor',
+    stability_score: 52,
+    samples_count: 22,
+    last_updated: new Date().toISOString(),
+    needs_attention: true
+  }
+];
 
 export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
   sessionId,
   autoRefresh = true,
   refreshInterval = 5000,
   className = '',
-  compact = false
+  compact = false,
+  showDemoData = false
 }) => {
   const [data, setData] = useState<SessionStudentsLatency | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [useDemoData, setUseDemoData] = useState(showDemoData);
 
   const fetchStudentLatency = useCallback(async () => {
     if (!sessionId) return;
+
+    // If using demo data, set it directly
+    if (useDemoData) {
+      const demoSummary: SessionLatencySummary = {
+        total: DEMO_STUDENTS.length,
+        excellent: DEMO_STUDENTS.filter(s => s.quality === 'excellent').length,
+        good: DEMO_STUDENTS.filter(s => s.quality === 'good').length,
+        fair: DEMO_STUDENTS.filter(s => s.quality === 'fair').length,
+        poor: DEMO_STUDENTS.filter(s => s.quality === 'poor').length,
+        critical: DEMO_STUDENTS.filter(s => s.quality === 'critical').length,
+      };
+      
+      setData({
+        session_id: sessionId,
+        students: DEMO_STUDENTS,
+        summary: demoSummary,
+        timestamp: new Date().toISOString()
+      });
+      setLastRefresh(new Date());
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/latency/session/${sessionId}/students`);
@@ -100,17 +194,22 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, useDemoData]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
     fetchStudentLatency();
 
-    if (autoRefresh) {
+    if (autoRefresh && !useDemoData) {
       const interval = setInterval(fetchStudentLatency, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchStudentLatency, autoRefresh, refreshInterval]);
+  }, [fetchStudentLatency, autoRefresh, refreshInterval, useDemoData]);
+
+  // Refetch when demo mode changes
+  useEffect(() => {
+    fetchStudentLatency();
+  }, [useDemoData]);
 
   const getQualityIcon = (quality: string) => {
     switch (quality) {
@@ -252,6 +351,11 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
             <Users className="h-5 w-5 mr-2 text-indigo-500" />
             Student Network Monitor
+            {useDemoData && (
+              <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                DEMO
+              </span>
+            )}
           </h3>
           <div className="flex items-center space-x-2">
             {lastRefresh && (
@@ -259,6 +363,17 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
                 Updated: {lastRefresh.toLocaleTimeString()}
               </span>
             )}
+            <button
+              onClick={() => setUseDemoData(!useDemoData)}
+              className={`px-2 py-1 text-xs rounded ${
+                useDemoData 
+                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={useDemoData ? 'Switch to real data' : 'Show demo data'}
+            >
+              {useDemoData ? '📊 Real Data' : '🎭 Demo'}
+            </button>
             <Button 
               variant="outline" 
               size="sm" 
