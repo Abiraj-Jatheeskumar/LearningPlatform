@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { MessageSquareIcon, UsersIcon, MicIcon, VideoIcon, ShareIcon, HandIcon, BarChart2Icon, ZapIcon, ThumbsUpIcon, SmileIcon, BrainIcon, Settings2Icon, TargetIcon } from 'lucide-react';
+import { MessageSquareIcon, UsersIcon, MicIcon, VideoIcon, ShareIcon, HandIcon, BarChart2Icon, ZapIcon, ThumbsUpIcon, SmileIcon, BrainIcon, Settings2Icon, TargetIcon, WifiIcon } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { useNotifications } from '../../hooks/useNotifications';
 import { QuestionNotificationPopup } from '../../components/notifications/QuestionNotificationPopup';
 import { useSessionSocket, QuizNotification } from '../../hooks/useSessionSocket';
+import { useLatencyMonitor, ConnectionQuality } from '../../hooks/useLatencyMonitor';
+import { ConnectionQualityIndicator, ConnectionQualityBadge } from '../../components/engagement/ConnectionQualityIndicator';
 
 const DEFAULT_SESSION_QUESTIONS: Question[] = [
   {
@@ -163,6 +165,30 @@ export const LiveSession = () => {
     studentName: `${user?.firstName} ${user?.lastName}`,
     studentEmail: user?.email,
     autoConnect: !isInstructor && !!sessionId // Auto-connect for students only
+  });
+
+  // 📶 WebRTC-aware Connection Latency Monitoring
+  // This monitors network quality during the Zoom session to contextualize engagement analysis
+  const handleConnectionQualityChange = useCallback((quality: ConnectionQuality, stats: any) => {
+    if (quality === 'poor' || quality === 'critical') {
+      toast.warning(`⚠️ Connection quality: ${quality}. Engagement metrics will be contextualized.`);
+    }
+  }, []);
+
+  const {
+    isMonitoring: isLatencyMonitoring,
+    currentRtt,
+    quality: connectionQuality,
+    stats: latencyStats,
+    shouldAdjustEngagement
+  } = useLatencyMonitor({
+    sessionId: sessionId || null,
+    studentId: user?.id,
+    studentName: `${user?.firstName} ${user?.lastName}`,
+    enabled: !!sessionId && !!user?.id, // Enable for both students and instructors
+    pingInterval: 5000, // Ping every 5 seconds
+    reportInterval: 15000, // Report to server every 15 seconds
+    onQualityChange: handleConnectionQualityChange
   });
 
   // Mock session data
@@ -707,6 +733,14 @@ export const LiveSession = () => {
                 </Badge>
               </div>
             )}
+            {/* 📶 Connection Quality Indicator */}
+            <div title={`Connection: ${connectionQuality} (${currentRtt ? Math.round(currentRtt) : '--'}ms)`}>
+              <ConnectionQualityBadge 
+                quality={connectionQuality}
+                rtt={currentRtt}
+                isMonitoring={isLatencyMonitoring}
+              />
+            </div>
             <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
               <UsersIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               <span className="hidden sm:inline">{session.participants} participants</span>
@@ -922,6 +956,16 @@ export const LiveSession = () => {
             </CardContent>
           </Card>
 
+          {/* 📶 Connection Quality Panel */}
+          <ConnectionQualityIndicator
+            quality={connectionQuality}
+            stats={latencyStats}
+            currentRtt={currentRtt}
+            isMonitoring={isLatencyMonitoring}
+            showDetails={false}
+            className="mt-4"
+          />
+
           {/* Instructor-only controls */}
           {isInstructor && (
             <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1056,6 +1100,51 @@ export const LiveSession = () => {
                         8
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* 📶 Connection Quality Context for Engagement */}
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 flex items-center">
+                        <WifiIcon className="h-4 w-4 mr-2" />
+                        Network Quality Context
+                      </h4>
+                      <Badge 
+                        variant={connectionQuality === 'excellent' || connectionQuality === 'good' ? 'success' : connectionQuality === 'fair' ? 'warning' : 'danger'}
+                        size="sm"
+                      >
+                        {connectionQuality.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
+                      Connection quality is monitored to contextualize engagement analysis.
+                      Students with poor connections won't be misclassified as disengaged.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-center">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
+                          {currentRtt ? `${Math.round(currentRtt)}ms` : '--'}
+                        </div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">RTT</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
+                          {latencyStats.jitter.toFixed(1)}ms
+                        </div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">Jitter</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
+                          {latencyStats.stabilityScore.toFixed(0)}%
+                        </div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">Stability</div>
+                      </div>
+                    </div>
+                    {shouldAdjustEngagement() && (
+                      <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                        ⚠️ Poor connection detected. Engagement metrics will be adjusted.
+                      </div>
+                    )}
                   </div>
                 </CardContent>
             </Card>

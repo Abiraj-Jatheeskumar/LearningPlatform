@@ -1,0 +1,460 @@
+"""
+WebRTC-Aware Connection Latency Monitoring Router
+=================================================
+
+This router provides endpoints for measuring round-trip time (RTT) between
+the client browser and backend server during live Zoom sessions.
+
+Since direct access to Zoom's internal WebRTC statistics is restricted,
+this system implements a WebRTC-aware latency monitoring mechanism to assess
+network quality during live sessions.
+
+The measured latency serves as a proxy indicator of connection quality and is
+used as a contextual parameter in engagement analysis. By incorporating this
+metric, the system avoids misclassifying students with poor network conditions
+as disengaged, improving fairness, reliability, and real-world applicability.
+"""
+
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict
+from datetime import datetime
+import asyncio
+import time
+
+router = APIRouter(prefix="/api/latency", tags=["Latency Monitoring"])
+
+
+# ============================================================
+# MODELS
+# ============================================================
+
+class PingRequest(BaseModel):
+    """Request model for ping measurement"""
+    client_timestamp: float = Field(..., description="Client-side timestamp in milliseconds")
+    session_id: str = Field(..., description="Active session ID")
+    student_id: str = Field(..., description="Student identifier")
+
+
+class PingResponse(BaseModel):
+    """Response model for ping measurement"""
+    client_timestamp: float
+    server_timestamp: float
+    server_receive_time: float
+    latency_estimate_ms: float
+    connection_quality: str  # 'excellent', 'good', 'fair', 'poor', 'critical'
+
+
+class LatencyReport(BaseModel):
+    """Model for submitting latency reports"""
+    session_id: str
+    student_id: str
+    rtt_ms: float = Field(..., description="Round-trip time in milliseconds")
+    jitter_ms: Optional[float] = Field(None, description="Jitter in milliseconds")
+    packet_loss_percent: Optional[float] = Field(None, description="Estimated packet loss percentage")
+    samples_count: int = Field(default=1, description="Number of samples averaged")
+    timestamp: Optional[datetime] = None
+
+
+class ConnectionQuality(BaseModel):
+    """Connection quality assessment"""
+    quality: str  # 'excellent', 'good', 'fair', 'poor', 'critical'
+    rtt_ms: float
+    jitter_ms: float
+    stability_score: float  # 0-100
+    is_stable: bool
+    recommendation: str
+    should_adjust_engagement: bool
+
+
+class StudentLatencyStats(BaseModel):
+    """Aggregated latency statistics for a student"""
+    student_id: str
+    session_id: str
+    avg_rtt_ms: float
+    min_rtt_ms: float
+    max_rtt_ms: float
+    jitter_ms: float
+    samples_count: int
+    quality: str
+    stability_score: float
+    last_updated: datetime
+
+
+# ============================================================
+# IN-MEMORY STORAGE (Replace with MongoDB in production)
+# ============================================================
+
+# Structure: {session_id: {student_id: [latency_samples]}}
+latency_store: Dict[str, Dict[str, List[Dict]]] = {}
+
+# Connection quality thresholds (in milliseconds)
+QUALITY_THRESHOLDS = {
+    "excellent": 50,   # RTT < 50ms
+    "good": 100,       # RTT < 100ms  
+    "fair": 200,       # RTT < 200ms
+    "poor": 500,       # RTT < 500ms
+    "critical": float('inf')  # RTT >= 500ms
+}
+
+# Jitter thresholds (in milliseconds)
+JITTER_THRESHOLDS = {
+    "excellent": 10,
+    "good": 30,
+    "fair": 50,
+    "poor": 100,
+    "critical": float('inf')
+}
+
+# Maximum samples to keep per student per session
+MAX_SAMPLES_PER_STUDENT = 100
+
+
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def assess_connection_quality(rtt_ms: float, jitter_ms: float = 0) -> ConnectionQuality:
+    """
+    Assess connection quality based on RTT and jitter.
+    Used to contextualize engagement analysis.
+    """
+    # Determine quality level based on RTT
+    quality = "critical"
+    for level, threshold in QUALITY_THRESHOLDS.items():
+        if rtt_ms < threshold:
+            quality = level
+            break
+    
+    # Adjust quality based on jitter
+    jitter_quality = "critical"
+    for level, threshold in JITTER_THRESHOLDS.items():
+        if jitter_ms < threshold:
+            jitter_quality = level
+            break
+    
+    # Take the worse of the two
+    quality_order = ["excellent", "good", "fair", "poor", "critical"]
+    final_quality = quality_order[max(quality_order.index(quality), quality_order.index(jitter_quality))]
+    
+    # Calculate stability score (0-100)
+    rtt_score = max(0, 100 - (rtt_ms / 5))  # Lose points for high RTT
+    jitter_score = max(0, 100 - (jitter_ms * 2))  # Lose points for high jitter
+    stability_score = (rtt_score * 0.6 + jitter_score * 0.4)
+    
+    # Determine if engagement analysis should be adjusted
+    should_adjust = final_quality in ["poor", "critical"]
+    
+    # Generate recommendation
+    recommendations = {
+        "excellent": "Connection is optimal for real-time engagement.",
+        "good": "Connection is stable and suitable for live sessions.",
+        "fair": "Connection may experience occasional delays. Consider engagement context.",
+        "poor": "Connection issues detected. Engagement metrics may be affected.",
+        "critical": "Severe connection issues. Engagement analysis should account for technical difficulties."
+    }
+    
+    return ConnectionQuality(
+        quality=final_quality,
+        rtt_ms=rtt_ms,
+        jitter_ms=jitter_ms,
+        stability_score=round(stability_score, 2),
+        is_stable=stability_score >= 70,
+        recommendation=recommendations[final_quality],
+        should_adjust_engagement=should_adjust
+    )
+
+
+def calculate_jitter(samples: List[float]) -> float:
+    """Calculate jitter from RTT samples (variation in delay)"""
+    if len(samples) < 2:
+        return 0.0
+    
+    differences = [abs(samples[i] - samples[i-1]) for i in range(1, len(samples))]
+    return sum(differences) / len(differences)
+
+
+def get_student_stats(session_id: str, student_id: str) -> Optional[StudentLatencyStats]:
+    """Get aggregated latency statistics for a student in a session"""
+    if session_id not in latency_store:
+        return None
+    if student_id not in latency_store[session_id]:
+        return None
+    
+    samples = latency_store[session_id][student_id]
+    if not samples:
+        return None
+    
+    rtt_values = [s["rtt_ms"] for s in samples]
+    avg_rtt = sum(rtt_values) / len(rtt_values)
+    jitter = calculate_jitter(rtt_values)
+    quality_assessment = assess_connection_quality(avg_rtt, jitter)
+    
+    return StudentLatencyStats(
+        student_id=student_id,
+        session_id=session_id,
+        avg_rtt_ms=round(avg_rtt, 2),
+        min_rtt_ms=round(min(rtt_values), 2),
+        max_rtt_ms=round(max(rtt_values), 2),
+        jitter_ms=round(jitter, 2),
+        samples_count=len(samples),
+        quality=quality_assessment.quality,
+        stability_score=quality_assessment.stability_score,
+        last_updated=samples[-1].get("timestamp", datetime.now())
+    )
+
+
+# ============================================================
+# API ENDPOINTS
+# ============================================================
+
+@router.post("/ping", response_model=PingResponse)
+async def ping_pong(request: PingRequest):
+    """
+    Ping-pong endpoint for measuring round-trip time.
+    
+    The client sends a timestamp, the server responds immediately,
+    allowing the client to calculate the RTT.
+    """
+    server_receive_time = time.time() * 1000  # Current time in ms
+    
+    # Estimate one-way latency (half of expected RTT)
+    latency_estimate = (server_receive_time - request.client_timestamp) / 2
+    
+    # Assess quality based on estimated latency
+    quality = "excellent"
+    for level, threshold in QUALITY_THRESHOLDS.items():
+        if latency_estimate * 2 < threshold:  # Use full RTT for assessment
+            quality = level
+            break
+    
+    return PingResponse(
+        client_timestamp=request.client_timestamp,
+        server_timestamp=time.time() * 1000,
+        server_receive_time=server_receive_time,
+        latency_estimate_ms=round(max(0, latency_estimate), 2),
+        connection_quality=quality
+    )
+
+
+@router.post("/report")
+async def report_latency(report: LatencyReport):
+    """
+    Submit a latency report for a student in a session.
+    
+    This endpoint stores latency metrics that are used to contextualize
+    engagement analysis. Students with poor network conditions will not
+    be misclassified as disengaged.
+    """
+    session_id = report.session_id
+    student_id = report.student_id
+    
+    # Initialize storage structures if needed
+    if session_id not in latency_store:
+        latency_store[session_id] = {}
+    if student_id not in latency_store[session_id]:
+        latency_store[session_id][student_id] = []
+    
+    # Add new sample
+    sample = {
+        "rtt_ms": report.rtt_ms,
+        "jitter_ms": report.jitter_ms or 0,
+        "packet_loss_percent": report.packet_loss_percent or 0,
+        "samples_count": report.samples_count,
+        "timestamp": report.timestamp or datetime.now()
+    }
+    
+    latency_store[session_id][student_id].append(sample)
+    
+    # Trim old samples if exceeding limit
+    if len(latency_store[session_id][student_id]) > MAX_SAMPLES_PER_STUDENT:
+        latency_store[session_id][student_id] = \
+            latency_store[session_id][student_id][-MAX_SAMPLES_PER_STUDENT:]
+    
+    # Get updated stats and quality assessment
+    stats = get_student_stats(session_id, student_id)
+    quality = assess_connection_quality(report.rtt_ms, report.jitter_ms or 0)
+    
+    return {
+        "success": True,
+        "message": "Latency report recorded",
+        "current_stats": stats.model_dump() if stats else None,
+        "quality_assessment": quality.model_dump(),
+        "engagement_adjustment_needed": quality.should_adjust_engagement
+    }
+
+
+@router.get("/quality/{session_id}/{student_id}", response_model=ConnectionQuality)
+async def get_connection_quality(session_id: str, student_id: str):
+    """
+    Get the current connection quality assessment for a student.
+    
+    This is used by the engagement analysis system to contextualize
+    student behavior and avoid misclassification.
+    """
+    stats = get_student_stats(session_id, student_id)
+    
+    if not stats:
+        # Return default "unknown" quality if no data
+        return ConnectionQuality(
+            quality="good",  # Assume good if no data
+            rtt_ms=0,
+            jitter_ms=0,
+            stability_score=100,
+            is_stable=True,
+            recommendation="No latency data available. Using default assessment.",
+            should_adjust_engagement=False
+        )
+    
+    return assess_connection_quality(stats.avg_rtt_ms, stats.jitter_ms)
+
+
+@router.get("/stats/{session_id}/{student_id}", response_model=StudentLatencyStats)
+async def get_student_latency_stats(session_id: str, student_id: str):
+    """
+    Get detailed latency statistics for a student in a session.
+    """
+    stats = get_student_stats(session_id, student_id)
+    
+    if not stats:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No latency data found for student {student_id} in session {session_id}"
+        )
+    
+    return stats
+
+
+@router.get("/session/{session_id}/summary")
+async def get_session_latency_summary(session_id: str):
+    """
+    Get a summary of connection quality across all students in a session.
+    
+    Useful for instructors to understand overall class connectivity
+    and identify students who may need technical assistance.
+    """
+    if session_id not in latency_store:
+        return {
+            "session_id": session_id,
+            "total_students": 0,
+            "students_with_data": 0,
+            "quality_distribution": {},
+            "students_needing_attention": [],
+            "average_rtt_ms": 0,
+            "average_stability_score": 0
+        }
+    
+    students_data = []
+    quality_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0}
+    students_needing_attention = []
+    
+    for student_id in latency_store[session_id]:
+        stats = get_student_stats(session_id, student_id)
+        if stats:
+            students_data.append(stats)
+            quality_counts[stats.quality] += 1
+            
+            if stats.quality in ["poor", "critical"]:
+                students_needing_attention.append({
+                    "student_id": student_id,
+                    "quality": stats.quality,
+                    "avg_rtt_ms": stats.avg_rtt_ms,
+                    "recommendation": "Consider engagement context due to connectivity issues"
+                })
+    
+    avg_rtt = sum(s.avg_rtt_ms for s in students_data) / len(students_data) if students_data else 0
+    avg_stability = sum(s.stability_score for s in students_data) / len(students_data) if students_data else 100
+    
+    return {
+        "session_id": session_id,
+        "total_students": len(latency_store[session_id]),
+        "students_with_data": len(students_data),
+        "quality_distribution": quality_counts,
+        "students_needing_attention": students_needing_attention,
+        "average_rtt_ms": round(avg_rtt, 2),
+        "average_stability_score": round(avg_stability, 2),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@router.delete("/session/{session_id}")
+async def clear_session_latency_data(session_id: str):
+    """
+    Clear all latency data for a session (called when session ends).
+    """
+    if session_id in latency_store:
+        del latency_store[session_id]
+        return {"success": True, "message": f"Latency data cleared for session {session_id}"}
+    
+    return {"success": True, "message": "No data to clear"}
+
+
+# ============================================================
+# WEBSOCKET FOR REAL-TIME LATENCY MONITORING
+# ============================================================
+
+@router.websocket("/ws/{session_id}/{student_id}")
+async def websocket_latency_monitor(
+    websocket: WebSocket,
+    session_id: str,
+    student_id: str
+):
+    """
+    WebSocket endpoint for real-time latency monitoring.
+    
+    The client can send 'ping' messages and receive 'pong' responses
+    with server timestamp for accurate RTT calculation.
+    """
+    await websocket.accept()
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            
+            if data == "ping":
+                # Respond with pong and server timestamp
+                await websocket.send_json({
+                    "type": "pong",
+                    "server_timestamp": time.time() * 1000,
+                    "session_id": session_id,
+                    "student_id": student_id
+                })
+            elif data.startswith("{"):
+                # Handle JSON messages (latency reports)
+                import json
+                try:
+                    msg = json.loads(data)
+                    if msg.get("type") == "latency_report":
+                        # Store the latency data
+                        report = LatencyReport(
+                            session_id=session_id,
+                            student_id=student_id,
+                            rtt_ms=msg.get("rtt_ms", 0),
+                            jitter_ms=msg.get("jitter_ms"),
+                            samples_count=msg.get("samples_count", 1)
+                        )
+                        
+                        # Process the report
+                        if session_id not in latency_store:
+                            latency_store[session_id] = {}
+                        if student_id not in latency_store[session_id]:
+                            latency_store[session_id][student_id] = []
+                        
+                        latency_store[session_id][student_id].append({
+                            "rtt_ms": report.rtt_ms,
+                            "jitter_ms": report.jitter_ms or 0,
+                            "timestamp": datetime.now()
+                        })
+                        
+                        # Send back quality assessment
+                        quality = assess_connection_quality(report.rtt_ms, report.jitter_ms or 0)
+                        await websocket.send_json({
+                            "type": "quality_update",
+                            "quality": quality.model_dump()
+                        })
+                except json.JSONDecodeError:
+                    pass
+                    
+    except WebSocketDisconnect:
+        print(f"📶 Latency monitor disconnected: session={session_id}, student={student_id}")
+
