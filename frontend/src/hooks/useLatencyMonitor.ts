@@ -216,6 +216,7 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
         body: JSON.stringify({
           session_id: sessionId,
           student_id: studentId,
+          student_name: studentName || studentId, // Include student name
           rtt_ms: currentStats.avgRtt,
           jitter_ms: currentStats.jitter,
           samples_count: currentStats.samplesCount
@@ -224,7 +225,7 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     } catch (err) {
       console.warn('Failed to report latency:', err);
     }
-  }, [sessionId, studentId, calculateStats]);
+  }, [sessionId, studentId, studentName, calculateStats]);
 
   /**
    * Start monitoring

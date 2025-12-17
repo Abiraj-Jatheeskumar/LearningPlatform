@@ -33,6 +33,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 interface StudentLatency {
   student_id: string;
   session_id: string;
+  student_name?: string;  // Display name for the student
   avg_rtt_ms: number;
   min_rtt_ms: number;
   max_rtt_ms: number;
@@ -73,6 +74,7 @@ interface StudentNetworkMonitorProps {
 const DEMO_STUDENTS: StudentLatency[] = [
   {
     student_id: 'student_john_doe_123',
+    student_name: 'John Doe',
     session_id: 'demo',
     avg_rtt_ms: 45,
     min_rtt_ms: 32,
@@ -86,6 +88,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
   },
   {
     student_id: 'student_sarah_smith_456',
+    student_name: 'Sarah Smith',
     session_id: 'demo',
     avg_rtt_ms: 180,
     min_rtt_ms: 120,
@@ -99,6 +102,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
   },
   {
     student_id: 'student_mike_wilson_789',
+    student_name: 'Mike Wilson',
     session_id: 'demo',
     avg_rtt_ms: 520,
     min_rtt_ms: 350,
@@ -112,6 +116,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
   },
   {
     student_id: 'student_emma_davis_012',
+    student_name: 'Emma Davis',
     session_id: 'demo',
     avg_rtt_ms: 28,
     min_rtt_ms: 22,
@@ -125,6 +130,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
   },
   {
     student_id: 'student_alex_brown_345',
+    student_name: 'Alex Brown',
     session_id: 'demo',
     avg_rtt_ms: 320,
     min_rtt_ms: 250,
@@ -353,7 +359,9 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
                   key={student.student_id} 
                   className="flex items-center justify-between text-xs p-2 bg-red-50 dark:bg-red-900/20 rounded"
                 >
-                  <span className="truncate max-w-[100px]">{student.student_id.slice(0, 8)}...</span>
+                  <span className="truncate max-w-[120px]" title={student.student_name || student.student_id}>
+                    {student.student_name || student.student_id.slice(0, 8) + '...'}
+                  </span>
                   <span className="text-red-600 dark:text-red-400">{Math.round(student.avg_rtt_ms)}ms</span>
                 </div>
               ))}
@@ -549,12 +557,12 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
                         <span className="text-xs font-medium text-indigo-600 dark:text-indigo-300">
-                          {student.student_id.slice(0, 2).toUpperCase()}
+                          {(student.student_name || student.student_id).slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {student.student_id.slice(0, 12)}...
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100" title={student.student_id}>
+                          {student.student_name || student.student_id.slice(0, 12) + '...'}
                         </div>
                         <div className="text-xs text-gray-500">
                           {student.samples_count} samples

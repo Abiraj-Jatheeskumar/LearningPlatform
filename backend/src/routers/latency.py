@@ -49,6 +49,7 @@ class LatencyReport(BaseModel):
     """Model for submitting latency reports"""
     session_id: str
     student_id: str
+    student_name: Optional[str] = Field(None, description="Student display name")
     rtt_ms: float = Field(..., description="Round-trip time in milliseconds")
     jitter_ms: Optional[float] = Field(None, description="Jitter in milliseconds")
     packet_loss_percent: Optional[float] = Field(None, description="Estimated packet loss percentage")
@@ -70,6 +71,7 @@ class ConnectionQuality(BaseModel):
 class StudentLatencyStats(BaseModel):
     """Aggregated latency statistics for a student"""
     student_id: str
+    student_name: Optional[str] = None  # Display name for the student
     session_id: str
     avg_rtt_ms: float
     min_rtt_ms: float
@@ -78,6 +80,7 @@ class StudentLatencyStats(BaseModel):
     samples_count: int
     quality: str
     stability_score: float
+    needs_attention: bool = False
     last_updated: datetime
 
 
@@ -190,8 +193,15 @@ def get_student_stats(session_id: str, student_id: str) -> Optional[StudentLaten
     jitter = calculate_jitter(rtt_values)
     quality_assessment = assess_connection_quality(avg_rtt, jitter)
     
+    # Get student name from the most recent sample
+    student_name = samples[-1].get("student_name") or student_id
+    
+    # Determine if student needs attention (poor or critical connection)
+    needs_attention = quality_assessment.quality in ["poor", "critical"]
+    
     return StudentLatencyStats(
         student_id=student_id,
+        student_name=student_name,
         session_id=session_id,
         avg_rtt_ms=round(avg_rtt, 2),
         min_rtt_ms=round(min(rtt_values), 2),
@@ -200,6 +210,7 @@ def get_student_stats(session_id: str, student_id: str) -> Optional[StudentLaten
         samples_count=len(samples),
         quality=quality_assessment.quality,
         stability_score=quality_assessment.stability_score,
+        needs_attention=needs_attention,
         last_updated=samples[-1].get("timestamp", datetime.now())
     )
 
@@ -255,12 +266,13 @@ async def report_latency(report: LatencyReport):
     if student_id not in latency_store[session_id]:
         latency_store[session_id][student_id] = []
     
-    # Add new sample
+    # Add new sample with student name
     sample = {
         "rtt_ms": report.rtt_ms,
         "jitter_ms": report.jitter_ms or 0,
         "packet_loss_percent": report.packet_loss_percent or 0,
         "samples_count": report.samples_count,
+        "student_name": report.student_name,  # Store student name with sample
         "timestamp": report.timestamp or datetime.now()
     }
     
