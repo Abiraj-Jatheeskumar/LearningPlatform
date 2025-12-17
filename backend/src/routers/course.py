@@ -227,6 +227,70 @@ async def get_my_enrolled_courses(current_user: dict = Depends(get_current_user)
         )
 
 
+# ============================================================
+# ENROLLMENT KEY ENDPOINTS (MUST be before /{course_id} routes)
+# ============================================================
+
+class EnrollWithKeyRequest(BaseModel):
+    enrollment_key: str
+
+
+@router.post("/enroll-with-key")
+async def enroll_with_key(
+    request_data: EnrollWithKeyRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Enroll in a course using enrollment key (students only)"""
+    try:
+        if current_user.get("role") != "student":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only students can enroll in courses"
+            )
+        
+        result = await CourseModel.enroll_student_with_key(
+            request_data.enrollment_key.upper(),
+            current_user
+        )
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to enroll in course"
+            )
+        
+        if "error" in result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["error"]
+            )
+        
+        # Convert datetime objects
+        course = result
+        if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
+            course["createdAt"] = course["createdAt"].isoformat()
+        if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
+            course["updatedAt"] = course["updatedAt"].isoformat()
+        if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
+            course["startDate"] = course["startDate"].isoformat()
+        if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
+            course["endDate"] = course["endDate"].isoformat()
+        
+        return {
+            "success": True,
+            "message": f"Successfully enrolled in '{course.get('title')}'",
+            "course": course
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error enrolling with key: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to enroll in course"
+        )
+
+
 @router.get("/{course_id}")
 async def get_course_by_id(course_id: str):
     """Get a specific course by ID"""
@@ -537,70 +601,6 @@ async def get_courses_by_instructor(instructor_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch courses"
-        )
-
-
-# ============================================================
-# ENROLLMENT KEY ENDPOINTS
-# ============================================================
-
-class EnrollWithKeyRequest(BaseModel):
-    enrollment_key: str
-
-
-@router.post("/enroll-with-key")
-async def enroll_with_key(
-    request_data: EnrollWithKeyRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """Enroll in a course using enrollment key (students only)"""
-    try:
-        if current_user.get("role") != "student":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only students can enroll in courses"
-            )
-        
-        result = await CourseModel.enroll_student_with_key(
-            request_data.enrollment_key.upper(),
-            current_user
-        )
-        
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to enroll in course"
-            )
-        
-        if "error" in result:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
-        
-        # Convert datetime objects
-        course = result
-        if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
-            course["createdAt"] = course["createdAt"].isoformat()
-        if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
-            course["updatedAt"] = course["updatedAt"].isoformat()
-        if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
-            course["startDate"] = course["startDate"].isoformat()
-        if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
-            course["endDate"] = course["endDate"].isoformat()
-        
-        return {
-            "success": True,
-            "message": f"Successfully enrolled in '{course.get('title')}'",
-            "course": course
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error enrolling with key: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to enroll in course"
         )
 
 
