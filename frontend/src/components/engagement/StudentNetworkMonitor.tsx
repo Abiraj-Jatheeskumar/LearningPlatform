@@ -141,7 +141,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
 export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
   sessionId,
   autoRefresh = true,
-  refreshInterval = 5000,
+  refreshInterval = 3000, // Refresh every 3 seconds for real-time updates
   className = '',
   compact = false,
   showDemoData = false
@@ -151,6 +151,8 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [useDemoData, setUseDemoData] = useState(showDemoData);
+  const [nextRefreshIn, setNextRefreshIn] = useState(refreshInterval / 1000);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(autoRefresh);
 
   const fetchStudentLatency = useCallback(async () => {
     if (!sessionId) return;
@@ -196,15 +198,40 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
     }
   }, [sessionId, useDemoData]);
 
-  // Initial fetch and auto-refresh
+  // Initial fetch
   useEffect(() => {
     fetchStudentLatency();
+  }, [sessionId]);
 
-    if (autoRefresh && !useDemoData) {
-      const interval = setInterval(fetchStudentLatency, refreshInterval);
-      return () => clearInterval(interval);
+  // Auto-refresh with countdown timer
+  useEffect(() => {
+    if (!isAutoRefreshing || useDemoData) {
+      return;
     }
-  }, [fetchStudentLatency, autoRefresh, refreshInterval, useDemoData]);
+
+    // Reset countdown when refresh happens
+    setNextRefreshIn(refreshInterval / 1000);
+
+    // Countdown timer (updates every second)
+    const countdownInterval = setInterval(() => {
+      setNextRefreshIn(prev => {
+        if (prev <= 1) {
+          return refreshInterval / 1000;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Fetch interval
+    const fetchIntervalId = setInterval(() => {
+      fetchStudentLatency();
+    }, refreshInterval);
+
+    return () => {
+      clearInterval(countdownInterval);
+      clearInterval(fetchIntervalId);
+    };
+  }, [isAutoRefreshing, refreshInterval, useDemoData, fetchStudentLatency]);
 
   // Refetch when demo mode changes
   useEffect(() => {
@@ -358,9 +385,16 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
             )}
           </h3>
           <div className="flex items-center space-x-2">
+            {/* Auto-refresh indicator */}
+            {isAutoRefreshing && !useDemoData && (
+              <div className="flex items-center space-x-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span>Auto-refresh: {nextRefreshIn}s</span>
+              </div>
+            )}
             {lastRefresh && (
               <span className="text-xs text-gray-500">
-                Updated: {lastRefresh.toLocaleTimeString()}
+                {lastRefresh.toLocaleTimeString()}
               </span>
             )}
             <button
@@ -374,11 +408,24 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
             >
               {useDemoData ? '📊 Real Data' : '🎭 Demo'}
             </button>
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setIsAutoRefreshing(!isAutoRefreshing)}
+              className={`px-2 py-1 text-xs rounded ${
+                isAutoRefreshing 
+                  ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={isAutoRefreshing ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+            >
+              {isAutoRefreshing ? '⏸️ Pause' : '▶️ Auto'}
+            </button>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={fetchStudentLatency}
               disabled={loading}
+              title="Refresh now"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
