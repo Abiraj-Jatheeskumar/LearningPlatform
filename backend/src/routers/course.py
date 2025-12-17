@@ -504,3 +504,270 @@ async def get_courses_by_instructor(instructor_id: str):
             detail="Failed to fetch courses"
         )
 
+
+# ============================================================
+# ENROLLMENT KEY ENDPOINTS
+# ============================================================
+
+class EnrollWithKeyRequest(BaseModel):
+    enrollment_key: str
+
+
+@router.post("/enroll-with-key")
+async def enroll_with_key(
+    request_data: EnrollWithKeyRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Enroll in a course using enrollment key (students only)"""
+    try:
+        if current_user.get("role") != "student":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only students can enroll in courses"
+            )
+        
+        result = await CourseModel.enroll_student_with_key(
+            request_data.enrollment_key.upper(),
+            current_user
+        )
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to enroll in course"
+            )
+        
+        if "error" in result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["error"]
+            )
+        
+        # Convert datetime objects
+        course = result
+        if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
+            course["createdAt"] = course["createdAt"].isoformat()
+        if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
+            course["updatedAt"] = course["updatedAt"].isoformat()
+        if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
+            course["startDate"] = course["startDate"].isoformat()
+        if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
+            course["endDate"] = course["endDate"].isoformat()
+        
+        return {
+            "success": True,
+            "message": f"Successfully enrolled in '{course.get('title')}'",
+            "course": course
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error enrolling with key: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to enroll in course"
+        )
+
+
+@router.get("/my-enrolled-courses")
+async def get_my_enrolled_courses(current_user: dict = Depends(get_current_user)):
+    """Get all courses the current student is enrolled in"""
+    try:
+        courses = await CourseModel.find_enrolled_courses(current_user["id"])
+        
+        # Convert datetime objects
+        for course in courses:
+            if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
+                course["createdAt"] = course["createdAt"].isoformat()
+            if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
+                course["updatedAt"] = course["updatedAt"].isoformat()
+            if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
+                course["startDate"] = course["startDate"].isoformat()
+            if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
+                course["endDate"] = course["endDate"].isoformat()
+            
+            # Remove enrollment key from student response
+            course.pop("enrollmentKey", None)
+            course.pop("enrolledStudentDetails", None)
+        
+        return {
+            "success": True,
+            "count": len(courses),
+            "courses": courses
+        }
+    except Exception as e:
+        print(f"Error fetching enrolled courses: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch enrolled courses"
+        )
+
+
+@router.post("/{course_id}/regenerate-key")
+async def regenerate_enrollment_key(
+    course_id: str,
+    current_user: dict = Depends(require_instructor)
+):
+    """Regenerate enrollment key for a course (instructor only)"""
+    try:
+        # Check if course exists and belongs to instructor
+        course = await CourseModel.find_by_id(course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found"
+            )
+        
+        if course["instructorId"] != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage your own courses"
+            )
+        
+        new_key = await CourseModel.regenerate_enrollment_key(course_id)
+        if not new_key:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to regenerate enrollment key"
+            )
+        
+        return {
+            "success": True,
+            "message": "Enrollment key regenerated successfully",
+            "enrollmentKey": new_key
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error regenerating key: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to regenerate enrollment key"
+        )
+
+
+@router.post("/{course_id}/toggle-enrollment")
+async def toggle_enrollment(
+    course_id: str,
+    active: bool,
+    current_user: dict = Depends(require_instructor)
+):
+    """Enable or disable enrollment for a course (instructor only)"""
+    try:
+        # Check if course exists and belongs to instructor
+        course = await CourseModel.find_by_id(course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found"
+            )
+        
+        if course["instructorId"] != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage your own courses"
+            )
+        
+        updated = await CourseModel.toggle_enrollment_key(course_id, active)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update enrollment status"
+            )
+        
+        return {
+            "success": True,
+            "message": f"Enrollment {'enabled' if active else 'disabled'} successfully",
+            "enrollmentKeyActive": active
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error toggling enrollment: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update enrollment status"
+        )
+
+
+@router.get("/{course_id}/students")
+async def get_course_students(
+    course_id: str,
+    current_user: dict = Depends(require_instructor)
+):
+    """Get all students enrolled in a course (instructor only)"""
+    try:
+        # Check if course exists and belongs to instructor
+        course = await CourseModel.find_by_id(course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found"
+            )
+        
+        if course["instructorId"] != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view students in your own courses"
+            )
+        
+        return {
+            "success": True,
+            "courseId": course_id,
+            "courseTitle": course.get("title"),
+            "enrollmentKey": course.get("enrollmentKey"),
+            "enrollmentKeyActive": course.get("enrollmentKeyActive", True),
+            "totalStudents": len(course.get("enrolledStudents", [])),
+            "students": course.get("enrolledStudentDetails", [])
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching course students: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch students"
+        )
+
+
+@router.delete("/{course_id}/students/{student_id}")
+async def remove_student_from_course(
+    course_id: str,
+    student_id: str,
+    current_user: dict = Depends(require_instructor)
+):
+    """Remove a student from a course (instructor only)"""
+    try:
+        # Check if course exists and belongs to instructor
+        course = await CourseModel.find_by_id(course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found"
+            )
+        
+        if course["instructorId"] != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage your own courses"
+            )
+        
+        result = await CourseModel.unenroll_student(course_id, student_id)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to remove student"
+            )
+        
+        return {
+            "success": True,
+            "message": "Student removed successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error removing student: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove student"
+        )

@@ -48,6 +48,7 @@ export const SessionCreate = () => {
         title: data.title,
         course: data.course,
         courseCode: data.courseCode,
+        courseId: data.courseId || null,    // Link to course for access control
         date: data.date,                    // "2025-11-25"
         time: data.startTime,               // use startTime ONLY (backend expects 1 time)
         durationMinutes: durationMinutes,

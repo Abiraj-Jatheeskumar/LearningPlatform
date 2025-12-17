@@ -16,6 +16,8 @@ import { UserProfile } from './pages/profile/UserProfile';
 import { QuestionManagement } from './pages/questions/QuestionManagement';
 import { CourseList } from './pages/courses/CourseList';
 import { CourseDetail } from './pages/courses/CourseDetail';
+import { CourseManagement } from './pages/courses/CourseManagement';
+import { StudentEnrollment } from './pages/courses/StudentEnrollment';
 import { SessionList } from './pages/sessions/SessionList';
 import { LiveSession } from './pages/sessions/LiveSession';
 import { SessionCreate } from './pages/sessions/SessionCreate';
@@ -71,10 +73,12 @@ export function App() {
           
           {/* Student-specific routes */}
           <Route path="student/engagement" element={<StudentEngagement />} />
+          <Route path="student/enrollment" element={<StudentEnrollment />} />
           
           {/* Instructor-specific routes */}
           <Route path="instructor/analytics" element={<InstructorAnalytics />} />
           <Route path="instructor/questions" element={<QuestionManagement />} />
+          <Route path="instructor/courses" element={<CourseManagement />} />
           
           {/* Admin-specific routes */}
           <Route path="admin/users" element={<UserManagement />} />

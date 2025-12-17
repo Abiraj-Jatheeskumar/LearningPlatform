@@ -2,7 +2,18 @@ from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
 from bson import ObjectId
+import secrets
+import string
 from ..database.connection import get_database
+
+
+def generate_enrollment_key(length: int = 8) -> str:
+    """Generate a unique enrollment key like 'ABC12345'"""
+    # Mix of uppercase letters and digits for readability
+    chars = string.ascii_uppercase + string.digits
+    # Remove confusing characters (0, O, I, 1, L)
+    chars = chars.replace('0', '').replace('O', '').replace('I', '').replace('1', '').replace('L', '')
+    return ''.join(secrets.choice(chars) for _ in range(length))
 
 
 class Course(BaseModel):
@@ -17,7 +28,10 @@ class Course(BaseModel):
     level: Optional[str] = "Beginner"  # Beginner, Intermediate, Advanced
     thumbnail: Optional[str] = None
     syllabus: Optional[List[dict]] = []
-    enrolledStudents: Optional[List[str]] = []
+    enrolledStudents: Optional[List[str]] = []  # List of student IDs
+    enrolledStudentDetails: Optional[List[dict]] = []  # List of {id, name, email, enrolledAt}
+    enrollmentKey: Optional[str] = None  # Unique key for students to enroll
+    enrollmentKeyActive: bool = True  # Whether key is currently accepting enrollments
     maxStudents: Optional[int] = None
     status: str = "draft"  # draft, published, archived
     startDate: Optional[datetime] = None
@@ -44,7 +58,7 @@ class Course(BaseModel):
 class CourseModel:
     @staticmethod
     async def create(course_data: dict) -> dict:
-        """Create a new course"""
+        """Create a new course with auto-generated enrollment key"""
         database = get_database()
         if database is None:
             raise Exception("Database not connected")
@@ -52,7 +66,19 @@ class CourseModel:
         course_data["createdAt"] = datetime.now()
         course_data["updatedAt"] = datetime.now()
         course_data["enrolledStudents"] = course_data.get("enrolledStudents", [])
+        course_data["enrolledStudentDetails"] = course_data.get("enrolledStudentDetails", [])
         course_data["syllabus"] = course_data.get("syllabus", [])
+        
+        # Generate unique enrollment key
+        while True:
+            enrollment_key = generate_enrollment_key()
+            # Check if key already exists
+            existing = await database.courses.find_one({"enrollmentKey": enrollment_key})
+            if not existing:
+                break
+        
+        course_data["enrollmentKey"] = enrollment_key
+        course_data["enrollmentKeyActive"] = True
         
         result = await database.courses.insert_one(course_data)
         course_data["id"] = str(result.inserted_id)
@@ -187,7 +213,10 @@ class CourseModel:
             result = await database.courses.update_one(
                 {"_id": ObjectId(course_id)},
                 {
-                    "$pull": {"enrolledStudents": student_id},
+                    "$pull": {
+                        "enrolledStudents": student_id,
+                        "enrolledStudentDetails": {"id": student_id}
+                    },
                     "$set": {"updatedAt": datetime.now()}
                 }
             )
@@ -198,4 +227,165 @@ class CourseModel:
         except Exception as e:
             print(f"Error unenrolling student: {e}")
             return None
+
+    @staticmethod
+    async def find_by_enrollment_key(enrollment_key: str) -> Optional[dict]:
+        """Find course by enrollment key"""
+        database = get_database()
+        if database is None:
+            return None
+        try:
+            course = await database.courses.find_one({"enrollmentKey": enrollment_key.upper()})
+            if course:
+                course["id"] = str(course["_id"])
+                del course["_id"]
+            return course
+        except Exception as e:
+            print(f"Error finding course by key: {e}")
+            return None
+
+    @staticmethod
+    async def enroll_student_with_key(enrollment_key: str, student_data: dict) -> Optional[dict]:
+        """Enroll a student using enrollment key"""
+        database = get_database()
+        if database is None:
+            return None
+        
+        try:
+            # Find course by enrollment key
+            course = await CourseModel.find_by_enrollment_key(enrollment_key)
+            if not course:
+                return {"error": "Invalid enrollment key"}
+            
+            # Check if enrollment key is active
+            if not course.get("enrollmentKeyActive", True):
+                return {"error": "Enrollment is closed for this course"}
+            
+            # Check if course is published
+            if course.get("status") != "published":
+                return {"error": "This course is not available for enrollment"}
+            
+            # Check max students limit
+            max_students = course.get("maxStudents")
+            enrolled = course.get("enrolledStudents", [])
+            if max_students and len(enrolled) >= max_students:
+                return {"error": "Course is full"}
+            
+            # Check if student is already enrolled
+            if student_data["id"] in enrolled:
+                return {"error": "You are already enrolled in this course", "course": course}
+            
+            # Add student to enrolled list
+            student_detail = {
+                "id": student_data["id"],
+                "name": f"{student_data.get('firstName', '')} {student_data.get('lastName', '')}".strip(),
+                "email": student_data.get("email", ""),
+                "enrolledAt": datetime.now().isoformat()
+            }
+            
+            result = await database.courses.update_one(
+                {"enrollmentKey": enrollment_key.upper()},
+                {
+                    "$push": {
+                        "enrolledStudents": student_data["id"],
+                        "enrolledStudentDetails": student_detail
+                    },
+                    "$set": {"updatedAt": datetime.now()}
+                }
+            )
+            
+            if result.modified_count:
+                return await CourseModel.find_by_enrollment_key(enrollment_key)
+            return None
+        except Exception as e:
+            print(f"Error enrolling student with key: {e}")
+            return None
+
+    @staticmethod
+    async def regenerate_enrollment_key(course_id: str) -> Optional[str]:
+        """Generate a new enrollment key for a course"""
+        database = get_database()
+        if database is None:
+            return None
+        
+        try:
+            # Generate unique new key
+            while True:
+                new_key = generate_enrollment_key()
+                existing = await database.courses.find_one({"enrollmentKey": new_key})
+                if not existing:
+                    break
+            
+            result = await database.courses.update_one(
+                {"_id": ObjectId(course_id)},
+                {
+                    "$set": {
+                        "enrollmentKey": new_key,
+                        "updatedAt": datetime.now()
+                    }
+                }
+            )
+            
+            if result.modified_count:
+                return new_key
+            return None
+        except Exception as e:
+            print(f"Error regenerating enrollment key: {e}")
+            return None
+
+    @staticmethod
+    async def toggle_enrollment_key(course_id: str, active: bool) -> Optional[dict]:
+        """Enable or disable enrollment key"""
+        database = get_database()
+        if database is None:
+            return None
+        
+        try:
+            result = await database.courses.update_one(
+                {"_id": ObjectId(course_id)},
+                {
+                    "$set": {
+                        "enrollmentKeyActive": active,
+                        "updatedAt": datetime.now()
+                    }
+                }
+            )
+            
+            if result.modified_count or result.matched_count:
+                return await CourseModel.find_by_id(course_id)
+            return None
+        except Exception as e:
+            print(f"Error toggling enrollment key: {e}")
+            return None
+
+    @staticmethod
+    async def find_enrolled_courses(student_id: str) -> List[dict]:
+        """Find all courses a student is enrolled in"""
+        database = get_database()
+        if database is None:
+            return []
+        
+        courses = []
+        async for course in database.courses.find({"enrolledStudents": student_id}):
+            course["id"] = str(course["_id"])
+            del course["_id"]
+            courses.append(course)
+        return courses
+
+    @staticmethod
+    async def is_student_enrolled(course_id: str, student_id: str) -> bool:
+        """Check if a student is enrolled in a course"""
+        database = get_database()
+        if database is None:
+            return False
+        
+        try:
+            course = await database.courses.find_one({
+                "_id": ObjectId(course_id),
+                "enrolledStudents": student_id
+            })
+            return course is not None
+        except Exception as e:
+            print(f"Error checking enrollment: {e}")
+            return False
 
