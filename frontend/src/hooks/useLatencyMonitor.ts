@@ -267,15 +267,21 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
       }
     };
 
-    // Initial ping
-    doPing();
+    // Initial ping and immediate report so instructor sees student name immediately
+    doPing().then(() => {
+      // Report immediately after first ping (with slight delay to ensure data is collected)
+      setTimeout(() => {
+        reportToServer();
+        console.log(`📶 Initial latency report sent for student: ${studentName || studentId}`);
+      }, 1000);
+    });
 
     // Set up intervals
     pingIntervalRef.current = setInterval(doPing, pingInterval);
     reportIntervalRef.current = setInterval(reportToServer, reportInterval);
 
-    console.log(`📶 Latency monitoring started for session ${sessionId}`);
-  }, [sessionId, studentId, enabled, ping, pingInterval, reportInterval, maxSamples, calculateStats, reportToServer, onQualityChange]);
+    console.log(`📶 Latency monitoring started for session ${sessionId}, student: ${studentName || studentId}`);
+  }, [sessionId, studentId, studentName, enabled, ping, pingInterval, reportInterval, maxSamples, calculateStats, reportToServer, onQualityChange]);
 
   /**
    * Stop monitoring

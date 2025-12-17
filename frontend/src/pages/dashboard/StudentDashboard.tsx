@@ -260,6 +260,13 @@ export const StudentDashboard = () => {
     }
   }, []);
 
+  // Build display name with fallbacks
+  const studentDisplayName = user 
+    ? (user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`.trim()
+        : user.firstName || user.lastName || user.email?.split('@')[0] || 'Student')
+    : 'Student';
+
   const {
     isMonitoring: isLatencyMonitoring,
     currentRtt,
@@ -268,10 +275,10 @@ export const StudentDashboard = () => {
   } = useLatencyMonitor({
     sessionId: connectedSessionId, // Only monitor when connected to a session
     studentId: user?.id,
-    studentName: `${user?.firstName} ${user?.lastName}`,
+    studentName: studentDisplayName, // Use proper display name
     enabled: !!connectedSessionId && !!user?.id, // Enable only when in a session
-    pingInterval: 5000, // Ping every 5 seconds
-    reportInterval: 10000, // Report to server every 10 seconds
+    pingInterval: 3000, // Ping every 3 seconds for faster updates
+    reportInterval: 5000, // Report to server every 5 seconds
     onQualityChange: handleConnectionQualityChange
   });
 
