@@ -192,6 +192,41 @@ async def get_my_courses(current_user: dict = Depends(require_instructor)):
         )
 
 
+# NOTE: This route MUST be before /{course_id} to avoid route conflict
+@router.get("/my-enrolled-courses")
+async def get_my_enrolled_courses(current_user: dict = Depends(get_current_user)):
+    """Get all courses the current student is enrolled in"""
+    try:
+        courses = await CourseModel.find_enrolled_courses(current_user["id"])
+        
+        # Convert datetime objects
+        for course in courses:
+            if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
+                course["createdAt"] = course["createdAt"].isoformat()
+            if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
+                course["updatedAt"] = course["updatedAt"].isoformat()
+            if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
+                course["startDate"] = course["startDate"].isoformat()
+            if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
+                course["endDate"] = course["endDate"].isoformat()
+            
+            # Remove enrollment key from student response
+            course.pop("enrollmentKey", None)
+            course.pop("enrolledStudentDetails", None)
+        
+        return {
+            "success": True,
+            "count": len(courses),
+            "courses": courses
+        }
+    except Exception as e:
+        print(f"Error fetching enrolled courses: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch enrolled courses"
+        )
+
+
 @router.get("/{course_id}")
 async def get_course_by_id(course_id: str):
     """Get a specific course by ID"""
@@ -566,40 +601,6 @@ async def enroll_with_key(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to enroll in course"
-        )
-
-
-@router.get("/my-enrolled-courses")
-async def get_my_enrolled_courses(current_user: dict = Depends(get_current_user)):
-    """Get all courses the current student is enrolled in"""
-    try:
-        courses = await CourseModel.find_enrolled_courses(current_user["id"])
-        
-        # Convert datetime objects
-        for course in courses:
-            if "createdAt" in course and hasattr(course["createdAt"], "isoformat"):
-                course["createdAt"] = course["createdAt"].isoformat()
-            if "updatedAt" in course and hasattr(course["updatedAt"], "isoformat"):
-                course["updatedAt"] = course["updatedAt"].isoformat()
-            if "startDate" in course and course.get("startDate") and hasattr(course["startDate"], "isoformat"):
-                course["startDate"] = course["startDate"].isoformat()
-            if "endDate" in course and course.get("endDate") and hasattr(course["endDate"], "isoformat"):
-                course["endDate"] = course["endDate"].isoformat()
-            
-            # Remove enrollment key from student response
-            course.pop("enrollmentKey", None)
-            course.pop("enrolledStudentDetails", None)
-        
-        return {
-            "success": True,
-            "count": len(courses),
-            "courses": courses
-        }
-    except Exception as e:
-        print(f"Error fetching enrolled courses: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch enrolled courses"
         )
 
 
