@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpenIcon, CalendarIcon, MenuIcon, XIcon, HomeIcon, GraduationCapIcon, BellIcon, LogOutIcon, BarChart3Icon, ActivityIcon, ChevronLeftIcon, ChevronRightIcon, TargetIcon, UsersIcon } from 'lucide-react';
+import { BookOpenIcon, CalendarIcon, MenuIcon, XIcon, HomeIcon, GraduationCapIcon, BellIcon, LogOutIcon, BarChart3Icon, ActivityIcon, ChevronLeftIcon, ChevronRightIcon, TargetIcon, UsersIcon, KeyIcon } from 'lucide-react';
 
 export const DashboardLayout = () => {
   const location = useLocation();
@@ -58,6 +58,11 @@ export const DashboardLayout = () => {
 
     // Add role-specific items
     if (user?.role === 'student') {
+      baseItems.push({
+        name: 'Enroll',
+        href: '/dashboard/student/enrollment',
+        icon: KeyIcon
+      });
       baseItems.push({
         name: 'My Engagement',
         href: '/dashboard/student/engagement',
