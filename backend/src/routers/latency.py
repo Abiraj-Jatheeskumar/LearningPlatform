@@ -422,6 +422,7 @@ async def get_all_students_latency(session_id: str):
             quality_counts[stats.quality] += 1
             students_list.append({
                 "student_id": stats.student_id,
+                "student_name": stats.student_name,  # ✅ Include student name!
                 "session_id": stats.session_id,
                 "avg_rtt_ms": stats.avg_rtt_ms,
                 "min_rtt_ms": stats.min_rtt_ms,
@@ -431,7 +432,7 @@ async def get_all_students_latency(session_id: str):
                 "stability_score": stats.stability_score,
                 "samples_count": stats.samples_count,
                 "last_updated": stats.last_updated.isoformat() if stats.last_updated else None,
-                "needs_attention": stats.quality in ["poor", "critical"]
+                "needs_attention": stats.needs_attention
             })
     
     # Sort by quality (worst first) for instructor attention
