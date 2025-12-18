@@ -2,7 +2,7 @@ from typing import Dict, Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from pydantic import BaseModel
 from ..services.quiz_service import QuizService
-from ..models.quiz_answer import QuizAnswer
+from ..models.quiz_answer import QuizAnswer, NetworkStrength
 from ..models.quiz_performance import QuizPerformance
 from ..models.session_participant_model import SessionParticipantModel
 from ..middleware.auth import get_current_user, require_instructor
@@ -17,6 +17,7 @@ class SubmitAnswerRequest(BaseModel):
     timeTaken: float
     studentId: str
     sessionId: str
+    networkStrength: Optional[NetworkStrength] = None  # Network quality at answer time
 
 
 class TriggerQuestionRequest(BaseModel):
@@ -48,7 +49,7 @@ async def submit_answer(
     request: Request,
     user: dict = Depends(get_current_user)
 ):
-    """Submit quiz answer"""
+    """Submit quiz answer with network strength data"""
     try:
         answer = QuizAnswer(
             questionId=request_data.questionId,
@@ -56,6 +57,7 @@ async def submit_answer(
             timeTaken=request_data.timeTaken,
             studentId=request_data.studentId,
             sessionId=request_data.sessionId,
+            networkStrength=request_data.networkStrength,  # Include network quality
         )
 
         result = await quiz_service.submit_answer(answer)

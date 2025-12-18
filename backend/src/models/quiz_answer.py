@@ -3,6 +3,13 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class NetworkStrength(BaseModel):
+    """Network strength at the moment of answering"""
+    quality: str  # excellent, good, fair, poor, critical, unknown
+    rttMs: Optional[float] = None  # Round-trip time in milliseconds
+    jitterMs: Optional[float] = None  # Jitter in milliseconds
+
+
 class QuizAnswer(BaseModel):
     questionId: str
     answerIndex: int
@@ -10,6 +17,7 @@ class QuizAnswer(BaseModel):
     studentId: str
     sessionId: str
     timestamp: Optional[datetime] = None
+    networkStrength: Optional[NetworkStrength] = None  # Network quality at answer time
 
     class Config:
         json_schema_extra = {
@@ -19,6 +27,11 @@ class QuizAnswer(BaseModel):
                 "timeTaken": 5.5,
                 "studentId": "student123",
                 "sessionId": "session456",
+                "networkStrength": {
+                    "quality": "good",
+                    "rttMs": 45,
+                    "jitterMs": 5
+                }
             }
         }
 

@@ -86,9 +86,14 @@ interface QuizPopupProps {
   quiz: any;
   onClose: () => void;
   onAnswerSubmitted?: (isCorrect: boolean) => void;
+  networkStrength?: {
+    quality: string;
+    rttMs: number | null;
+    jitterMs?: number;
+  };
 }
 
-const QuizPopup = ({ quiz, onClose, onAnswerSubmitted }: QuizPopupProps) => {
+const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPopupProps) => {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<number>(quiz?.timeLimit || 30);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,6 +134,12 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted }: QuizPopupProps) => {
         timeTaken: (quiz?.timeLimit || 30) - timeLeft,
         studentId: user?.id || quiz?.studentId || "UNKNOWN",
         sessionId: quiz?.sessionId || quiz?.session_id || "GLOBAL",
+        // 📶 Network strength at the moment of answering
+        networkStrength: networkStrength ? {
+          quality: networkStrength.quality,
+          rttMs: networkStrength.rttMs ? Math.round(networkStrength.rttMs) : null,
+          jitterMs: networkStrength.jitterMs ? Math.round(networkStrength.jitterMs) : null,
+        } : null,
       };
 
       console.log("📤 Submitting answer:", payload);
@@ -481,6 +492,11 @@ export const StudentDashboard = () => {
               questionsAnswered: prev.questionsAnswered + 1,
               correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
             }));
+          }}
+          networkStrength={{
+            quality: connectionQuality,
+            rttMs: currentRtt,
+            jitterMs: latencyStats?.jitter,
           }}
         />
       )}
