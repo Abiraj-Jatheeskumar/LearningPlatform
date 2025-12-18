@@ -82,7 +82,13 @@ const showBrowserNotification = (title: string, body: string) => {
 // --------------------------------------
 // QUIZ POPUP COMPONENT
 // --------------------------------------
-const QuizPopup = ({ quiz, onClose }: any) => {
+interface QuizPopupProps {
+  quiz: any;
+  onClose: () => void;
+  onAnswerSubmitted?: (isCorrect: boolean) => void;
+}
+
+const QuizPopup = ({ quiz, onClose, onAnswerSubmitted }: QuizPopupProps) => {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<number>(quiz?.timeLimit || 30);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,6 +149,9 @@ const QuizPopup = ({ quiz, onClose }: any) => {
         const data = await res.json();
         console.log("✅ Answer stored:", data);
         alert(data.isCorrect ? "✅ Correct!" : "❌ Incorrect");
+        
+        // 📊 Notify parent about answer submission
+        onAnswerSubmitted?.(data.isCorrect);
       }
 
       setHasSubmitted(true);
@@ -251,6 +260,13 @@ export const StudentDashboard = () => {
   // 🎯 Session WebSocket state - only joined sessions receive quizzes
   const [sessionWs, setSessionWs] = useState<WebSocket | null>(null);
   const [connectedSessionId, setConnectedSessionId] = useState<string | null>(null);
+  
+  // 📊 Session quiz tracking - resets each session
+  const [sessionQuizStats, setSessionQuizStats] = useState({
+    questionsReceived: 0,    // Questions sent by instructor
+    questionsAnswered: 0,    // Total questions student answered
+    correctAnswers: 0,       // Correct answers count
+  });
 
   // 📶 WebRTC-aware Connection Latency Monitoring
   // This monitors network quality when student joins a session
@@ -332,6 +348,13 @@ export const StudentDashboard = () => {
       console.log(`✅ Connected to session ${sessionKey} WebSocket`);
       setConnectedSessionId(sessionKey);
       
+      // 📊 Reset session quiz stats for new session
+      setSessionQuizStats({
+        questionsReceived: 0,
+        questionsAnswered: 0,
+        correctAnswers: 0,
+      });
+      
       // 🔔 Request notification permission
       if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
@@ -362,6 +385,12 @@ export const StudentDashboard = () => {
         // Handle quiz questions from session room
         if (data.type === "quiz") {
           console.log("🎯 Quiz received from session room!");
+          
+          // 📊 Increment questions received from instructor
+          setSessionQuizStats(prev => ({
+            ...prev,
+            questionsReceived: prev.questionsReceived + 1,
+          }));
           
           // 🔔 1) Play notification sound
           playNotificationSound();
@@ -443,7 +472,17 @@ export const StudentDashboard = () => {
     <div className="py-6">
       {/* QUIZ POPUP */}
       {incomingQuiz && (
-        <QuizPopup quiz={incomingQuiz} onClose={() => setIncomingQuiz(null)} />
+        <QuizPopup 
+          quiz={incomingQuiz} 
+          onClose={() => setIncomingQuiz(null)}
+          onAnswerSubmitted={(isCorrect) => {
+            setSessionQuizStats(prev => ({
+              ...prev,
+              questionsAnswered: prev.questionsAnswered + 1,
+              correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
+            }));
+          }}
+        />
       )}
 
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -497,22 +536,47 @@ export const StudentDashboard = () => {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Network Strength - Shows connection quality when in session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <CheckCircleIcon className="h-6 w-6 text-green-300" />
-            <p className="text-sm font-medium">Attendance Rate</p>
-            <p className="text-lg font-bold">{performanceData.attendanceRate}%</p>
+            <WifiIcon className="h-6 w-6 text-green-300" />
+            <p className="text-sm font-medium">Network Strength</p>
+            <p className="text-lg font-bold">
+              {connectedSessionId ? (
+                <span className={`capitalize ${
+                  connectionQuality === 'excellent' || connectionQuality === 'good' 
+                    ? 'text-green-300' 
+                    : connectionQuality === 'fair' 
+                      ? 'text-yellow-300'
+                      : connectionQuality === 'poor' || connectionQuality === 'critical'
+                        ? 'text-red-300'
+                        : ''
+                }`}>
+                  {connectionQuality}
+                  {currentRtt && <span className="text-xs ml-1">({Math.round(currentRtt)}ms)</span>}
+                </span>
+              ) : (
+                <span className="text-gray-300">Not in session</span>
+              )}
+            </p>
           </div>
 
+          {/* Questions - Count of questions instructor has given this session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
             <BellIcon className="h-6 w-6 text-yellow-300" />
-            <p className="text-sm font-medium">Questions Asked</p>
-            <p className="text-lg font-bold">{performanceData.questionsAsked}</p>
+            <p className="text-sm font-medium">Questions Given</p>
+            <p className="text-lg font-bold">{sessionQuizStats.questionsReceived}</p>
           </div>
 
+          {/* Quiz Stats - Correct answers / total questions for this session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
             <TrendingUpIcon className="h-6 w-6 text-blue-300" />
-            <p className="text-sm font-medium">Quiz Average</p>
-            <p className="text-lg font-bold">{performanceData.quizAverage}%</p>
+            <p className="text-sm font-medium">Correct Answers</p>
+            <p className="text-lg font-bold">
+              {sessionQuizStats.correctAnswers}
+              <span className="text-sm font-normal text-indigo-200">
+                {" "}/ {sessionQuizStats.questionsAnswered}
+              </span>
+            </p>
           </div>
 
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
