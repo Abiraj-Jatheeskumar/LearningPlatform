@@ -149,15 +149,15 @@ export const Register = () => {
       {/* Progress Steps */}
       <div className="flex items-center gap-3 mb-8">
         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm transition-all duration-300 ${
-          step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+          step >= 1 ? 'bg-emerald-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
         }`}>
           {step > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
         </div>
         <div className={`flex-1 h-1 rounded-full transition-all duration-300 ${
-          step > 1 ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
+          step > 1 ? 'bg-emerald-600' : 'bg-gray-200 dark:bg-gray-700'
         }`} />
         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm transition-all duration-300 ${
-          step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+          step >= 2 ? 'bg-emerald-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
         }`}>
           2
         </div>
@@ -175,7 +175,7 @@ export const Register = () => {
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className={`h-5 w-5 transition-colors duration-200 ${
-                    errors.firstName ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                    errors.firstName ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
                   }`} />
                 </div>
                 <input
@@ -191,7 +191,7 @@ export const Register = () => {
                     focus:outline-none focus:ring-0
                     ${errors.firstName 
                       ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                      : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                      : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                     }
                   `}
                   placeholder="John"
@@ -209,7 +209,7 @@ export const Register = () => {
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className={`h-5 w-5 transition-colors duration-200 ${
-                    errors.lastName ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                    errors.lastName ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
                   }`} />
                 </div>
                 <input
@@ -225,7 +225,7 @@ export const Register = () => {
                     focus:outline-none focus:ring-0
                     ${errors.lastName 
                       ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                      : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                      : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                     }
                   `}
                   placeholder="Doe"
@@ -245,7 +245,7 @@ export const Register = () => {
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Mail className={`h-5 w-5 transition-colors duration-200 ${
-                  errors.email ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                  errors.email ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
                 }`} />
               </div>
               <input
@@ -261,7 +261,7 @@ export const Register = () => {
                   focus:outline-none focus:ring-0
                   ${errors.email 
                     ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                    : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                   }
                 `}
                 placeholder="you@example.com"
@@ -284,23 +284,23 @@ export const Register = () => {
                 className={`
                   flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200
                   ${formData.role === 'student'
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }
                 `}
               >
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
                   formData.role === 'student' 
-                    ? 'bg-indigo-100 dark:bg-indigo-900/40' 
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40' 
                     : 'bg-gray-100 dark:bg-gray-800'
                 }`}>
                   <GraduationCap className={`w-6 h-6 ${
-                    formData.role === 'student' ? 'text-indigo-600' : 'text-gray-500'
+                    formData.role === 'student' ? 'text-emerald-600' : 'text-gray-500'
                   }`} />
                 </div>
                 <span className={`font-medium ${
                   formData.role === 'student' 
-                    ? 'text-indigo-600 dark:text-indigo-400' 
+                    ? 'text-emerald-600 dark:text-emerald-400' 
                     : 'text-gray-700 dark:text-gray-300'
                 }`}>
                   Student
@@ -313,23 +313,23 @@ export const Register = () => {
                 className={`
                   flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200
                   ${formData.role === 'instructor'
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }
                 `}
               >
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
                   formData.role === 'instructor' 
-                    ? 'bg-indigo-100 dark:bg-indigo-900/40' 
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40' 
                     : 'bg-gray-100 dark:bg-gray-800'
                 }`}>
                   <BookOpen className={`w-6 h-6 ${
-                    formData.role === 'instructor' ? 'text-indigo-600' : 'text-gray-500'
+                    formData.role === 'instructor' ? 'text-emerald-600' : 'text-gray-500'
                   }`} />
                 </div>
                 <span className={`font-medium ${
                   formData.role === 'instructor' 
-                    ? 'text-indigo-600 dark:text-indigo-400' 
+                    ? 'text-emerald-600 dark:text-emerald-400' 
                     : 'text-gray-700 dark:text-gray-300'
                 }`}>
                   Instructor
@@ -344,12 +344,12 @@ export const Register = () => {
             onClick={handleNextStep}
             className="
               w-full py-4 px-6 rounded-xl font-semibold text-white
-              bg-gradient-to-r from-indigo-600 to-purple-600 
-              hover:from-indigo-700 hover:to-purple-700
-              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+              bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
+              hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
+              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
               transform hover:scale-[1.02] active:scale-[0.98]
               transition-all duration-200
-              shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30
+              shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40
               flex items-center justify-center gap-2
               group
             "
@@ -369,7 +369,7 @@ export const Register = () => {
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                  errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                  errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
                 }`} />
               </div>
               <input
@@ -385,7 +385,7 @@ export const Register = () => {
                   focus:outline-none focus:ring-0
                   ${errors.password 
                     ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                    : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                   }
                 `}
                 placeholder="Create a password"
@@ -456,7 +456,7 @@ export const Register = () => {
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                  errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                  errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
                 }`} />
               </div>
               <input
@@ -472,7 +472,7 @@ export const Register = () => {
                   focus:outline-none focus:ring-0
                   ${errors.confirmPassword 
                     ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                    : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                   }
                 `}
                 placeholder="Confirm your password"
@@ -521,13 +521,13 @@ export const Register = () => {
               disabled={isLoading}
               className="
                 relative flex-1 py-4 px-6 rounded-xl font-semibold text-white
-                bg-gradient-to-r from-indigo-600 to-purple-600 
-                hover:from-indigo-700 hover:to-purple-700
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
+                hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
+                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
                 disabled:opacity-70 disabled:cursor-not-allowed
                 transform hover:scale-[1.02] active:scale-[0.98]
                 transition-all duration-200
-                shadow-lg shadow-indigo-500/25
+                shadow-lg shadow-emerald-500/30
                 group overflow-hidden
               "
             >
@@ -564,10 +564,11 @@ export const Register = () => {
           flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
           font-semibold text-gray-700 dark:text-gray-200
           bg-white dark:bg-gray-800
-          border-2 border-gray-200 dark:border-gray-700
-          hover:border-indigo-500 dark:hover:border-indigo-400
-          hover:text-indigo-600 dark:hover:text-indigo-400
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+          border-2 border-emerald-200 dark:border-emerald-800
+          hover:border-emerald-500 dark:hover:border-emerald-400
+          hover:text-emerald-600 dark:hover:text-emerald-400
+          hover:bg-emerald-50 dark:hover:bg-emerald-900/20
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
           transform hover:scale-[1.02] active:scale-[0.98]
           transition-all duration-200
           group
