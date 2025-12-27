@@ -129,14 +129,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await authService.register(userData);
 
       if (response.success) {
-        toast.success("Registration successful!");
+        toast.success("Registration successful! Please check your email to verify your account.");
         return true;
       }
 
       toast.error("Registration failed");
       return false;
     } catch (err: any) {
-      toast.error("Registration failed");
+      const message = err.message || "Registration failed";
+      toast.error(message);
       return false;
     } finally {
       setIsLoading(false);

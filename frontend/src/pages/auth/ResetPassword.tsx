@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { AuthLayout } from '../../components/auth/AuthLayout';
+import { authService } from '../../services/authService';
 import { Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
 
 const passwordRequirements = [
   { regex: /.{6,}/, text: 'At least 6 characters' },
@@ -12,7 +13,6 @@ const passwordRequirements = [
 ];
 
 export const ResetPassword = () => {
-  const { resetPassword } = useAuth();
   const navigate = useNavigate();
   const { token } = useParams();
   const [password, setPassword] = useState('');
@@ -58,11 +58,15 @@ export const ResetPassword = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    const success = await resetPassword(token || '', password);
-    if (success) {
+    try {
+      await authService.resetPassword(token || '', password);
+      toast.success('Password reset successfully!');
       navigate('/login');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const passwordStrength = getPasswordStrength();
@@ -92,7 +96,7 @@ export const ResetPassword = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
               }`} />
             </div>
             <input
@@ -113,7 +117,7 @@ export const ResetPassword = () => {
                 focus:outline-none focus:ring-0
                 ${errors.password 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                 }
               `}
               placeholder="Create a new password"
@@ -190,7 +194,7 @@ export const ResetPassword = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-indigo-500'
+                errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
               }`} />
             </div>
             <input
@@ -211,7 +215,7 @@ export const ResetPassword = () => {
                 focus:outline-none focus:ring-0
                 ${errors.confirmPassword 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
                 }
               `}
               placeholder="Confirm your new password"
@@ -248,13 +252,13 @@ export const ResetPassword = () => {
           disabled={isLoading}
           className="
             relative w-full py-4 px-6 rounded-xl font-semibold text-white
-            bg-gradient-to-r from-indigo-600 to-purple-600 
-            hover:from-indigo-700 hover:to-purple-700
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+            bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
+            hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
             disabled:opacity-70 disabled:cursor-not-allowed
             transform hover:scale-[1.02] active:scale-[0.98]
             transition-all duration-200
-            shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30
+            shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40
             group overflow-hidden
           "
         >
@@ -289,10 +293,11 @@ export const ResetPassword = () => {
           flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
           font-semibold text-gray-700 dark:text-gray-200
           bg-white dark:bg-gray-800
-          border-2 border-gray-200 dark:border-gray-700
-          hover:border-indigo-500 dark:hover:border-indigo-400
-          hover:text-indigo-600 dark:hover:text-indigo-400
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+          border-2 border-emerald-200 dark:border-emerald-800
+          hover:border-emerald-500 dark:hover:border-emerald-400
+          hover:text-emerald-600 dark:hover:text-emerald-400
+          hover:bg-emerald-50 dark:hover:bg-emerald-900/20
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
           transform hover:scale-[1.02] active:scale-[0.98]
           transition-all duration-200
           group

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AuthLayout } from '../../components/auth/AuthLayout';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, GraduationCap, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, GraduationCap, BookOpen, CheckCircle2, MailCheck } from 'lucide-react';
 
 interface FormData {
   firstName: string;
@@ -47,6 +47,7 @@ export const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState(1);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -124,7 +125,7 @@ export const Register = () => {
     const success = await register(formData);
     
     if (success) {
-      navigate('/login');
+      setRegistrationComplete(true);
     }
     
     setIsLoading(false);
@@ -140,6 +141,73 @@ export const Register = () => {
   };
 
   const passwordStrength = getPasswordStrength();
+
+  // Show success screen after registration
+  if (registrationComplete) {
+    return (
+      <AuthLayout 
+        title="Check your email!"
+        subtitle="We've sent a verification link to your inbox"
+      >
+        <div className="text-center">
+          {/* Success Icon */}
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full mb-6">
+            <MailCheck className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+            Verification email sent!
+          </h3>
+          
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            We've sent a verification link to:
+          </p>
+          
+          <p className="text-emerald-600 dark:text-emerald-400 font-medium mb-6">
+            {formData.email}
+          </p>
+          
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 mb-8 border border-emerald-200 dark:border-emerald-800">
+            <p className="text-sm text-emerald-800 dark:text-emerald-300">
+              <strong>Next steps:</strong>
+            </p>
+            <ol className="text-sm text-emerald-700 dark:text-emerald-400 mt-2 text-left list-decimal list-inside space-y-1">
+              <li>Check your email inbox (and spam folder)</li>
+              <li>Click the verification link in the email</li>
+              <li>Start learning on Class Pulse!</li>
+            </ol>
+          </div>
+          
+          <Link
+            to="/login"
+            className="
+              inline-flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
+              font-semibold text-white
+              bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
+              hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
+              transform hover:scale-[1.02] active:scale-[0.98]
+              transition-all duration-200
+              shadow-lg shadow-emerald-500/30
+              group
+            "
+          >
+            Go to Login
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </Link>
+          
+          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+            Didn't receive the email?{' '}
+            <button 
+              onClick={() => setRegistrationComplete(false)}
+              className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+            >
+              Try again
+            </button>
+          </p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout 
