@@ -32,7 +32,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 animate-gradient" />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 animate-gradient" />
         
         {/* Decorative patterns */}
         <div className="absolute inset-0 opacity-10">
@@ -69,7 +69,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
             <div className="space-y-4">
               <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight">
                 AI-Powered Adaptive Learning
-                <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-yellow-200">
+                <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-lime-200 to-yellow-200">
                   in Real-Time
                 </span>
               </h1>
@@ -110,7 +110,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
       {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
         {/* Mobile header */}
-        <div className="lg:hidden p-6 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <div className="lg:hidden p-6 bg-gradient-to-r from-emerald-500 to-teal-600">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Layers className="w-6 h-6 text-white" />

@@ -210,7 +210,7 @@ export const InstructorDashboard = () => {
         {/* Total Students */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3"></div>
+            <div className="flex-shrink-0 bg-emerald-500 rounded-md p-3"></div>
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">

@@ -56,7 +56,7 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
           <div>
             <div className="flex items-center space-x-2 mb-2">
-              <Target className="h-5 w-5 text-indigo-600" />
+              <Target className="h-5 w-5 text-emerald-600" />
               <h3 className="text-lg font-semibold text-gray-900">Quiz Performance</h3>
               <Badge variant={getPerformanceBadge(performance.correctPercentage) as any}>
                 {performance.correctPercentage.toFixed(0)}% Correct
@@ -76,15 +76,15 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
 
         {/* Overall Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-indigo-50 rounded-lg p-4">
+          <div className="bg-emerald-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <Users className="h-5 w-5 text-indigo-600" />
-              <span className="text-2xl font-bold text-indigo-900">
+              <Users className="h-5 w-5 text-emerald-600" />
+              <span className="text-2xl font-bold text-emerald-900">
                 {performance.answeredStudents}/{performance.totalStudents}
               </span>
             </div>
-            <p className="text-xs text-indigo-700">Students Answered</p>
-            <p className="text-xs text-indigo-600 mt-1">
+            <p className="text-xs text-emerald-700">Students Answered</p>
+            <p className="text-xs text-emerald-600 mt-1">
               {((performance.answeredStudents / performance.totalStudents) * 100).toFixed(0)}% participation
             </p>
           </div>
@@ -115,15 +115,15 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
             </p>
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="bg-emerald-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              <span className="text-2xl font-bold text-blue-900">
+              <Clock className="h-5 w-5 text-emerald-600" />
+              <span className="text-2xl font-bold text-emerald-900">
                 {performance.averageTime.toFixed(1)}s
               </span>
             </div>
-            <p className="text-xs text-blue-700">Average Time</p>
-            <p className="text-xs text-blue-600 mt-1">Response speed</p>
+            <p className="text-xs text-emerald-700">Average Time</p>
+            <p className="text-xs text-emerald-600 mt-1">Response speed</p>
           </div>
         </div>
 

@@ -216,7 +216,7 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPo
           <span>
             Time Left: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-500' : ''}`}>{timeLeft}s</span>
           </span>
-          {isSubmitting && <span className="text-indigo-600">Sending...</span>}
+          {isSubmitting && <span className="text-emerald-600">Sending...</span>}
         </div>
 
         {/* Close button */}
@@ -542,7 +542,7 @@ export const StudentDashboard = () => {
         <div className="flex justify-between">
           <div>
             <h2 className="text-xl font-bold">Your Learning Summary</h2>
-            <p className="text-indigo-100 mt-1">
+            <p className="text-emerald-100 mt-1">
               You are in <span className="font-semibold">Active Participants</span>
             </p>
           </div>
@@ -585,11 +585,11 @@ export const StudentDashboard = () => {
 
           {/* Quiz Stats - Correct answers / total questions for this session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <TrendingUpIcon className="h-6 w-6 text-blue-300" />
+            <TrendingUpIcon className="h-6 w-6 text-emerald-300" />
             <p className="text-sm font-medium">Correct Answers</p>
             <p className="text-lg font-bold">
               {sessionQuizStats.correctAnswers}
-              <span className="text-sm font-normal text-indigo-200">
+              <span className="text-sm font-normal text-emerald-200">
                 {" "}/ {sessionQuizStats.questionsAnswered}
               </span>
             </p>
@@ -609,7 +609,7 @@ export const StudentDashboard = () => {
           <div className="px-4 py-5 flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">Your Sessions</h3>
             <Link to="/dashboard/sessions">
-              <span className="text-sm text-indigo-600 hover:text-indigo-800">View All</span>
+              <span className="text-sm text-emerald-600 hover:text-emerald-800">View All</span>
             </Link>
           </div>
           
@@ -650,7 +650,7 @@ export const StudentDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-indigo-600">
+                        <p className="text-sm font-medium text-emerald-600">
                           {session.title}
                         </p>
                         {session.status === 'live' && (
@@ -691,7 +691,7 @@ export const StudentDashboard = () => {
 
           {recentActivities.map((activity) => (
             <div key={activity.id} className="px-4 py-4 border-t">
-              <p className="text-sm font-medium text-indigo-600">
+              <p className="text-sm font-medium text-emerald-600">
                 {activity.title}
               </p>
               <p className="text-xs text-gray-500">{activity.course}</p>
@@ -704,7 +704,7 @@ export const StudentDashboard = () => {
               )}
 
               {activity.type === "quiz" && (
-                <p className="text-xs mt-1 text-blue-600 font-medium">
+                <p className="text-xs mt-1 text-emerald-600 font-medium">
                   Score: {activity.score}
                 </p>
               )}

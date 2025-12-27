@@ -188,8 +188,8 @@ export const ForgotPassword = () => {
       </form>
 
       {/* Help Text */}
-      <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-        <p className="text-sm text-blue-800 dark:text-blue-300">
+      <div className="mt-8 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+        <p className="text-sm text-emerald-800 dark:text-emerald-300">
           <strong>Tip:</strong> If you don't see the email in your inbox, check your spam or junk folder. The email will be sent from noreply@classpulse.com.
         </p>
       </div>

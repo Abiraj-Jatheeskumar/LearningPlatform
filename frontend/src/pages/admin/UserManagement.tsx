@@ -87,13 +87,13 @@ export const UserManagement = () => {
               <p className="text-sm text-gray-600">Total Users</p>
               <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
-            <UsersIcon className="h-8 w-8 text-indigo-600" />
+            <UsersIcon className="h-8 w-8 text-emerald-600" />
           </div>
         </Card>
         <Card className="p-4">
           <div>
             <p className="text-sm text-gray-600">Students</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.students}</p>
+            <p className="text-2xl font-bold text-emerald-600">{stats.students}</p>
           </div>
         </Card>
         <Card className="p-4">

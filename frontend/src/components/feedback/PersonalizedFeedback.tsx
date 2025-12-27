@@ -39,7 +39,7 @@ export const PersonalizedFeedback: React.FC<PersonalizedFeedbackProps> = ({
   const getColor = (type: string) => {
     switch (type) {
       case 'encouragement':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-emerald-50 border-emerald-200 text-emerald-800';
       case 'improvement':
         return 'bg-yellow-50 border-yellow-200 text-yellow-800';
       case 'achievement':
