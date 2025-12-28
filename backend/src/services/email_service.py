@@ -35,6 +35,10 @@ class EmailService:
                 print(f"   Subject: {subject}")
                 return True  # Return True for development
             
+            print(f"📤 Starting email send to: {to_email}")
+            print(f"   SMTP: {self.smtp_host}:{self.smtp_port}")
+            print(f"   From: {self.smtp_user}")
+            
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
             msg['From'] = self.from_email
@@ -44,19 +48,32 @@ class EmailService:
             msg.attach(html_part)
             
             with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30) as server:
+                print(f"   → Connected to SMTP server")
                 server.starttls()
+                print(f"   → TLS started")
                 server.login(self.smtp_user, self.smtp_password)
+                print(f"   → Logged in successfully")
                 server.sendmail(self.from_email, to_email, msg.as_string())
+                print(f"   → Email sent!")
             
-            print(f"✅ Email sent to: {to_email}")
+            print(f"✅ Email delivered to: {to_email}")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"❌ SMTP AUTH ERROR for {to_email}: {e}")
+            print(f"   Check SMTP_USER and SMTP_PASSWORD in environment variables")
+            return False
+        except smtplib.SMTPException as e:
+            print(f"❌ SMTP ERROR for {to_email}: {e}")
+            return False
         except Exception as e:
             print(f"❌ Failed to send email to {to_email}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
-    def send_email(self, to_email: str, subject: str, html_content: str, background: bool = True) -> bool:
-        """Send an email (in background by default for faster response)"""
+    def send_email(self, to_email: str, subject: str, html_content: str, background: bool = False) -> bool:
+        """Send an email (synchronous by default for reliability on Railway)"""
         if background:
             # Send in background thread - don't block the request
             thread = threading.Thread(
@@ -68,6 +85,8 @@ class EmailService:
             print(f"📧 Email queued for: {to_email}")
             return True
         else:
+            # Synchronous - more reliable on Railway/serverless
+            print(f"📧 Sending email to: {to_email}")
             return self._send_email_sync(to_email, subject, html_content)
     
     def send_verification_email(self, to_email: str, first_name: str, token: str) -> bool:
