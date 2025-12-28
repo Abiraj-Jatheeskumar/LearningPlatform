@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional
 import secrets
 from datetime import datetime, timedelta
+import threading
 
 
 class EmailService:
@@ -26,8 +27,8 @@ class EmailService:
         """Get token expiry datetime"""
         return datetime.utcnow() + timedelta(hours=hours)
     
-    def send_email(self, to_email: str, subject: str, html_content: str) -> bool:
-        """Send an email"""
+    def _send_email_sync(self, to_email: str, subject: str, html_content: str) -> bool:
+        """Send an email synchronously (internal use)"""
         try:
             if not self.smtp_user or not self.smtp_password:
                 print(f"⚠️ SMTP credentials not configured. Email would be sent to: {to_email}")
@@ -42,7 +43,7 @@ class EmailService:
             html_part = MIMEText(html_content, 'html')
             msg.attach(html_part)
             
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30) as server:
                 server.starttls()
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, to_email, msg.as_string())
@@ -53,6 +54,21 @@ class EmailService:
         except Exception as e:
             print(f"❌ Failed to send email to {to_email}: {e}")
             return False
+    
+    def send_email(self, to_email: str, subject: str, html_content: str, background: bool = True) -> bool:
+        """Send an email (in background by default for faster response)"""
+        if background:
+            # Send in background thread - don't block the request
+            thread = threading.Thread(
+                target=self._send_email_sync,
+                args=(to_email, subject, html_content)
+            )
+            thread.daemon = True
+            thread.start()
+            print(f"📧 Email queued for: {to_email}")
+            return True
+        else:
+            return self._send_email_sync(to_email, subject, html_content)
     
     def send_verification_email(self, to_email: str, first_name: str, token: str) -> bool:
         """Send account verification email"""

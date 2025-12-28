@@ -23,3 +23,11 @@ ZOOM_CHATBOT_JID=your_chatbot_jid
 # Zoom Webhook Secret Token (for verifying webhooks)
 ZOOM_WEBHOOK_SECRET_TOKEN=your_webhook_secret_token
 
+# Email Configuration (for sending verification emails)
+# Get App Password from: https://myaccount.google.com/apppasswords
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+FROM_EMAIL=your-email@gmail.com
+
