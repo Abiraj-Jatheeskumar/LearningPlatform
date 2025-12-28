@@ -21,6 +21,18 @@ export const AccountActivation = () => {
       try {
         const response = await authService.verifyEmail(token);
         setIsSuccess(response.success);
+        
+        // Auto-redirect to login after 3 seconds on success
+        if (response.success) {
+          setTimeout(() => {
+            navigate('/login', { 
+              state: { 
+                message: 'Email verified successfully! Please sign in.',
+                verified: true 
+              } 
+            });
+          }, 3000);
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to activate account');
       } finally {
@@ -29,7 +41,7 @@ export const AccountActivation = () => {
     };
     
     activate();
-  }, [token]);
+  }, [token, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
@@ -79,8 +91,11 @@ export const AccountActivation = () => {
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   Welcome to Class Pulse!
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Your email has been verified successfully. You can now sign in to your account and start learning!
+                </p>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-6">
+                  Redirecting to login in 3 seconds...
                 </p>
                 <Link
                   to="/login"
@@ -95,7 +110,7 @@ export const AccountActivation = () => {
                     group
                   "
                 >
-                  Sign in to your account
+                  Sign in now
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
