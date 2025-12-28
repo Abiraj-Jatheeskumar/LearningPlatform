@@ -17,7 +17,8 @@ class EmailService:
     
     def __init__(self):
         self.resend_api_key = os.environ.get("RESEND_API_KEY", "")
-        self.from_email = os.environ.get("FROM_EMAIL", "ZoomLearningApp <noreply@zoomlearningapp.de>")
+        # FROM_EMAIL can be just email or "Name <email>" format
+        self.from_email = os.environ.get("FROM_EMAIL", "noreply@zoomlearningapp.de")
         self.frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
         
         # Initialize Resend
