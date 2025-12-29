@@ -18,11 +18,34 @@ as disengaged, improving fairness, reliability, and real-world applicability.
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import time
 
+# MongoDB imports
+from ..database.connection import get_database
+
 router = APIRouter(prefix="/api/latency", tags=["Latency Monitoring"])
+
+
+# ============================================================
+# DATABASE HELPER FUNCTIONS
+# ============================================================
+
+def get_latency_collection():
+    """Get the latency_reports collection from MongoDB"""
+    db = get_database()
+    if db is None:
+        return None
+    return db.latency_reports
+
+
+def get_latency_summary_collection():
+    """Get the latency_summary collection for aggregated stats"""
+    db = get_database()
+    if db is None:
+        return None
+    return db.latency_summary
 
 
 # ============================================================
@@ -85,11 +108,12 @@ class StudentLatencyStats(BaseModel):
 
 
 # ============================================================
-# IN-MEMORY STORAGE (Replace with MongoDB in production)
+# IN-MEMORY CACHE (for real-time updates, synced with MongoDB)
 # ============================================================
 
 # Structure: {session_id: {student_id: [latency_samples]}}
-latency_store: Dict[str, Dict[str, List[Dict]]] = {}
+# This is a cache for fast real-time access, MongoDB is the source of truth
+latency_cache: Dict[str, Dict[str, List[Dict]]] = {}
 
 # Connection quality thresholds (in milliseconds)
 # Adjusted for HTTP-based ping which includes HTTP overhead (~100-200ms baseline)
@@ -180,14 +204,14 @@ def calculate_jitter(samples: List[float]) -> float:
     return sum(differences) / len(differences)
 
 
-def get_student_stats(session_id: str, student_id: str) -> Optional[StudentLatencyStats]:
-    """Get aggregated latency statistics for a student in a session"""
-    if session_id not in latency_store:
+def get_student_stats_from_cache(session_id: str, student_id: str) -> Optional[StudentLatencyStats]:
+    """Get aggregated latency statistics for a student from in-memory cache"""
+    if session_id not in latency_cache:
         return None
-    if student_id not in latency_store[session_id]:
+    if student_id not in latency_cache[session_id]:
         return None
     
-    samples = latency_store[session_id][student_id]
+    samples = latency_cache[session_id][student_id]
     if not samples:
         return None
     
@@ -215,6 +239,53 @@ def get_student_stats(session_id: str, student_id: str) -> Optional[StudentLaten
         stability_score=quality_assessment.stability_score,
         needs_attention=needs_attention,
         last_updated=samples[-1].get("timestamp", datetime.now())
+    )
+
+
+async def get_student_stats_from_db(session_id: str, student_id: str) -> Optional[StudentLatencyStats]:
+    """Get aggregated latency statistics for a student from MongoDB"""
+    collection = get_latency_collection()
+    if collection is None:
+        return get_student_stats_from_cache(session_id, student_id)
+    
+    # Get recent samples from MongoDB (last 30 minutes)
+    time_threshold = datetime.now() - timedelta(minutes=30)
+    
+    cursor = collection.find({
+        "session_id": session_id,
+        "student_id": student_id,
+        "timestamp": {"$gte": time_threshold}
+    }).sort("timestamp", -1).limit(MAX_SAMPLES_PER_STUDENT)
+    
+    samples = await cursor.to_list(length=MAX_SAMPLES_PER_STUDENT)
+    
+    if not samples:
+        return get_student_stats_from_cache(session_id, student_id)
+    
+    rtt_values = [s["rtt_ms"] for s in samples]
+    avg_rtt = sum(rtt_values) / len(rtt_values)
+    jitter = calculate_jitter(rtt_values)
+    quality_assessment = assess_connection_quality(avg_rtt, jitter)
+    
+    # Get student name from the most recent sample
+    student_name = samples[0].get("student_name") or student_id
+    
+    # Determine if student needs attention
+    needs_attention = quality_assessment.quality in ["poor", "critical"]
+    
+    return StudentLatencyStats(
+        student_id=student_id,
+        student_name=student_name,
+        session_id=session_id,
+        avg_rtt_ms=round(avg_rtt, 2),
+        min_rtt_ms=round(min(rtt_values), 2),
+        max_rtt_ms=round(max(rtt_values), 2),
+        jitter_ms=round(jitter, 2),
+        samples_count=len(samples),
+        quality=quality_assessment.quality,
+        stability_score=quality_assessment.stability_score,
+        needs_attention=needs_attention,
+        last_updated=samples[0].get("timestamp", datetime.now())
     )
 
 
@@ -259,35 +330,50 @@ async def report_latency(report: LatencyReport):
     This endpoint stores latency metrics that are used to contextualize
     engagement analysis. Students with poor network conditions will not
     be misclassified as disengaged.
+    
+    Data is stored in both:
+    - In-memory cache (for real-time access)
+    - MongoDB (for persistence and historical analysis)
     """
     session_id = report.session_id
     student_id = report.student_id
+    current_timestamp = report.timestamp or datetime.now()
     
-    # Initialize storage structures if needed
-    if session_id not in latency_store:
-        latency_store[session_id] = {}
-    if student_id not in latency_store[session_id]:
-        latency_store[session_id][student_id] = []
-    
-    # Add new sample with student name
+    # Create sample document
     sample = {
+        "session_id": session_id,
+        "student_id": student_id,
+        "student_name": report.student_name,
         "rtt_ms": report.rtt_ms,
         "jitter_ms": report.jitter_ms or 0,
         "packet_loss_percent": report.packet_loss_percent or 0,
         "samples_count": report.samples_count,
-        "student_name": report.student_name,  # Store student name with sample
-        "timestamp": report.timestamp or datetime.now()
+        "timestamp": current_timestamp
     }
     
-    latency_store[session_id][student_id].append(sample)
+    # 1. Update in-memory cache for real-time access
+    if session_id not in latency_cache:
+        latency_cache[session_id] = {}
+    if student_id not in latency_cache[session_id]:
+        latency_cache[session_id][student_id] = []
     
-    # Trim old samples if exceeding limit
-    if len(latency_store[session_id][student_id]) > MAX_SAMPLES_PER_STUDENT:
-        latency_store[session_id][student_id] = \
-            latency_store[session_id][student_id][-MAX_SAMPLES_PER_STUDENT:]
+    latency_cache[session_id][student_id].append(sample)
+    
+    # Trim cache if exceeding limit
+    if len(latency_cache[session_id][student_id]) > MAX_SAMPLES_PER_STUDENT:
+        latency_cache[session_id][student_id] = \
+            latency_cache[session_id][student_id][-MAX_SAMPLES_PER_STUDENT:]
+    
+    # 2. Save to MongoDB for persistence
+    collection = get_latency_collection()
+    if collection is not None:
+        try:
+            await collection.insert_one(sample.copy())
+        except Exception as e:
+            print(f"⚠️ Failed to save latency to MongoDB: {e}")
     
     # Get updated stats and quality assessment
-    stats = get_student_stats(session_id, student_id)
+    stats = get_student_stats_from_cache(session_id, student_id)
     quality = assess_connection_quality(report.rtt_ms, report.jitter_ms or 0)
     
     return {
@@ -307,7 +393,7 @@ async def get_connection_quality(session_id: str, student_id: str):
     This is used by the engagement analysis system to contextualize
     student behavior and avoid misclassification.
     """
-    stats = get_student_stats(session_id, student_id)
+    stats = await get_student_stats_from_db(session_id, student_id)
     
     if not stats:
         # Return default "unknown" quality if no data
@@ -329,7 +415,7 @@ async def get_student_latency_stats(session_id: str, student_id: str):
     """
     Get detailed latency statistics for a student in a session.
     """
-    stats = get_student_stats(session_id, student_id)
+    stats = await get_student_stats_from_db(session_id, student_id)
     
     if not stats:
         raise HTTPException(
@@ -348,7 +434,7 @@ async def get_session_latency_summary(session_id: str):
     Useful for instructors to understand overall class connectivity
     and identify students who may need technical assistance.
     """
-    if session_id not in latency_store:
+    if session_id not in latency_cache:
         return {
             "session_id": session_id,
             "total_students": 0,
@@ -363,8 +449,8 @@ async def get_session_latency_summary(session_id: str):
     quality_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0}
     students_needing_attention = []
     
-    for student_id in latency_store[session_id]:
-        stats = get_student_stats(session_id, student_id)
+    for student_id in latency_cache[session_id]:
+        stats = get_student_stats_from_cache(session_id, student_id)
         if stats:
             students_data.append(stats)
             quality_counts[stats.quality] += 1
@@ -372,6 +458,7 @@ async def get_session_latency_summary(session_id: str):
             if stats.quality in ["poor", "critical"]:
                 students_needing_attention.append({
                     "student_id": student_id,
+                    "student_name": stats.student_name,
                     "quality": stats.quality,
                     "avg_rtt_ms": stats.avg_rtt_ms,
                     "recommendation": "Consider engagement context due to connectivity issues"
@@ -382,7 +469,7 @@ async def get_session_latency_summary(session_id: str):
     
     return {
         "session_id": session_id,
-        "total_students": len(latency_store[session_id]),
+        "total_students": len(latency_cache[session_id]),
         "students_with_data": len(students_data),
         "quality_distribution": quality_counts,
         "students_needing_attention": students_needing_attention,
@@ -401,7 +488,7 @@ async def get_all_students_latency(session_id: str):
     quality of all joined students in real-time. It helps identify
     students who may be experiencing connectivity issues.
     """
-    if session_id not in latency_store:
+    if session_id not in latency_cache:
         return {
             "session_id": session_id,
             "students": [],
@@ -419,8 +506,8 @@ async def get_all_students_latency(session_id: str):
     students_list = []
     quality_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0}
     
-    for student_id in latency_store[session_id]:
-        stats = get_student_stats(session_id, student_id)
+    for student_id in latency_cache[session_id]:
+        stats = get_student_stats_from_cache(session_id, student_id)
         if stats:
             quality_counts[stats.quality] += 1
             students_list.append({
@@ -456,13 +543,89 @@ async def get_all_students_latency(session_id: str):
 @router.delete("/session/{session_id}")
 async def clear_session_latency_data(session_id: str):
     """
-    Clear all latency data for a session (called when session ends).
+    Clear latency cache for a session (called when session ends).
+    Note: MongoDB data is preserved for historical analysis.
     """
-    if session_id in latency_store:
-        del latency_store[session_id]
-        return {"success": True, "message": f"Latency data cleared for session {session_id}"}
+    cleared_cache = False
+    if session_id in latency_cache:
+        del latency_cache[session_id]
+        cleared_cache = True
     
-    return {"success": True, "message": "No data to clear"}
+    return {
+        "success": True, 
+        "message": f"Latency cache cleared for session {session_id}",
+        "cache_cleared": cleared_cache,
+        "note": "Historical data preserved in database"
+    }
+
+
+@router.get("/history/{session_id}")
+async def get_session_latency_history(session_id: str, hours: int = 24):
+    """
+    Get historical latency data for a session from MongoDB.
+    
+    This endpoint retrieves all stored latency records for analysis
+    and reporting purposes.
+    """
+    collection = get_latency_collection()
+    if collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    time_threshold = datetime.now() - timedelta(hours=hours)
+    
+    # Aggregate data by student
+    pipeline = [
+        {
+            "$match": {
+                "session_id": session_id,
+                "timestamp": {"$gte": time_threshold}
+            }
+        },
+        {
+            "$group": {
+                "_id": "$student_id",
+                "student_name": {"$last": "$student_name"},
+                "avg_rtt_ms": {"$avg": "$rtt_ms"},
+                "min_rtt_ms": {"$min": "$rtt_ms"},
+                "max_rtt_ms": {"$max": "$rtt_ms"},
+                "avg_jitter_ms": {"$avg": "$jitter_ms"},
+                "total_samples": {"$sum": 1},
+                "first_seen": {"$min": "$timestamp"},
+                "last_seen": {"$max": "$timestamp"}
+            }
+        },
+        {
+            "$project": {
+                "student_id": "$_id",
+                "student_name": 1,
+                "avg_rtt_ms": {"$round": ["$avg_rtt_ms", 2]},
+                "min_rtt_ms": {"$round": ["$min_rtt_ms", 2]},
+                "max_rtt_ms": {"$round": ["$max_rtt_ms", 2]},
+                "avg_jitter_ms": {"$round": ["$avg_jitter_ms", 2]},
+                "total_samples": 1,
+                "first_seen": 1,
+                "last_seen": 1,
+                "_id": 0
+            }
+        }
+    ]
+    
+    results = await collection.aggregate(pipeline).to_list(length=100)
+    
+    # Add quality assessment to each result
+    for result in results:
+        quality = assess_connection_quality(result["avg_rtt_ms"], result["avg_jitter_ms"])
+        result["quality"] = quality.quality
+        result["stability_score"] = quality.stability_score
+        result["needs_attention"] = quality.should_adjust_engagement
+    
+    return {
+        "session_id": session_id,
+        "time_range_hours": hours,
+        "students": results,
+        "total_students": len(results),
+        "retrieved_at": datetime.now().isoformat()
+    }
 
 
 # ============================================================
@@ -511,12 +674,12 @@ async def websocket_latency_monitor(
                         )
                         
                         # Process the report
-                        if session_id not in latency_store:
-                            latency_store[session_id] = {}
-                        if student_id not in latency_store[session_id]:
-                            latency_store[session_id][student_id] = []
+                        if session_id not in latency_cache:
+                            latency_cache[session_id] = {}
+                        if student_id not in latency_cache[session_id]:
+                            latency_cache[session_id][student_id] = []
                         
-                        latency_store[session_id][student_id].append({
+                        latency_cache[session_id][student_id].append({
                             "rtt_ms": report.rtt_ms,
                             "jitter_ms": report.jitter_ms or 0,
                             "timestamp": datetime.now()
