@@ -343,23 +343,25 @@ async def report_latency(report: LatencyReport):
     user_role = (report.user_role or "").lower()
     current_timestamp = report.timestamp or datetime.now()
     
-    # ⚠️ VALIDATION: Reject fake/test session IDs
-    fake_session_ids = ["instructor-dashboard", "admin-dashboard", "test", "demo", "null", "undefined", ""]
-    if not session_id or session_id.lower() in fake_session_ids:
+    # ⚠️ ONLY store data for STUDENTS - ignore instructors and admins
+    # (Instructors can still SEE their network quality, just not stored)
+    if user_role in ["instructor", "admin"]:
         return {
             "success": True,
-            "message": "Invalid session ID - not a real session",
+            "message": "Instructor/Admin latency not stored (students only)",
             "stored": False,
             "current_stats": None,
             "quality_assessment": assess_connection_quality(report.rtt_ms, report.jitter_ms or 0).model_dump(),
             "engagement_adjustment_needed": False
         }
     
-    # ⚠️ ONLY store data for STUDENTS - ignore instructors and admins
-    if user_role in ["instructor", "admin"]:
+    # ⚠️ VALIDATION: Reject fake/test session IDs for students
+    # Only real sessions (like Zoom meeting IDs) should be stored
+    fake_session_ids = ["instructor-dashboard", "instructor-view", "admin-dashboard", "student-dashboard", "test", "demo", "null", "undefined", ""]
+    if not session_id or session_id.lower() in fake_session_ids:
         return {
             "success": True,
-            "message": "Instructor/Admin latency not stored (students only)",
+            "message": "Not a real session - student must join an active session",
             "stored": False,
             "current_stats": None,
             "quality_assessment": assess_connection_quality(report.rtt_ms, report.jitter_ms or 0).model_dump(),
