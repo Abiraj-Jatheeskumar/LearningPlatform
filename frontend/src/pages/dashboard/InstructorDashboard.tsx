@@ -35,6 +35,7 @@ export const InstructorDashboard = () => {
     sessionId: selectedSession?.id || 'instructor-dashboard',
     studentId: user?.id,
     studentName: `${user?.firstName} ${user?.lastName}`,
+    userRole: 'instructor', // Instructor data is NOT stored in database
     enabled: true, // Always monitor on dashboard
     pingInterval: 5000,
     reportInterval: 15000,

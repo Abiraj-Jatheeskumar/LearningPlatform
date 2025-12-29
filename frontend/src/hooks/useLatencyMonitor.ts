@@ -36,6 +36,7 @@ export interface LatencyMonitorOptions {
   sessionId: string | null;
   studentId?: string;
   studentName?: string;
+  userRole?: string; // 'student', 'instructor', 'admin' - only students are stored
   enabled?: boolean;
   pingInterval?: number; // milliseconds between pings
   reportInterval?: number; // milliseconds between reports to server
@@ -54,6 +55,7 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     sessionId,
     studentId,
     studentName,
+    userRole = 'student', // Default to student if not specified
     enabled = true,
     pingInterval = 3000, // Ping every 3 seconds
     reportInterval = 10000, // Report to server every 10 seconds
@@ -218,7 +220,8 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
         body: JSON.stringify({
           session_id: sessionId,
           student_id: studentId,
-          student_name: studentName || studentId, // Include student name
+          student_name: studentName || studentId,
+          user_role: userRole, // Only students are stored in DB
           rtt_ms: currentStats.avgRtt,
           jitter_ms: currentStats.jitter,
           samples_count: currentStats.samplesCount
@@ -227,7 +230,7 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     } catch (err) {
       console.warn('Failed to report latency:', err);
     }
-  }, [sessionId, studentId, studentName, calculateStats]);
+  }, [sessionId, studentId, studentName, userRole, calculateStats]);
 
   /**
    * Start monitoring

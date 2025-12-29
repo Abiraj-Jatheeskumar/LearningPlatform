@@ -73,6 +73,7 @@ class LatencyReport(BaseModel):
     session_id: str
     student_id: str
     student_name: Optional[str] = Field(None, description="Student display name")
+    user_role: Optional[str] = Field(None, description="User role: student, instructor, admin")
     rtt_ms: float = Field(..., description="Round-trip time in milliseconds")
     jitter_ms: Optional[float] = Field(None, description="Jitter in milliseconds")
     packet_loss_percent: Optional[float] = Field(None, description="Estimated packet loss percentage")
@@ -331,19 +332,34 @@ async def report_latency(report: LatencyReport):
     engagement analysis. Students with poor network conditions will not
     be misclassified as disengaged.
     
+    NOTE: Only STUDENT data is stored. Instructor/Admin data is ignored.
+    
     Data is stored in both:
     - In-memory cache (for real-time access)
     - MongoDB (for persistence and historical analysis)
     """
     session_id = report.session_id
     student_id = report.student_id
+    user_role = (report.user_role or "").lower()
     current_timestamp = report.timestamp or datetime.now()
     
-    # Create sample document
+    # ⚠️ ONLY store data for STUDENTS - ignore instructors and admins
+    if user_role in ["instructor", "admin"]:
+        return {
+            "success": True,
+            "message": "Instructor/Admin latency not stored (students only)",
+            "stored": False,
+            "current_stats": None,
+            "quality_assessment": assess_connection_quality(report.rtt_ms, report.jitter_ms or 0).model_dump(),
+            "engagement_adjustment_needed": False
+        }
+    
+    # Create sample document for STUDENT
     sample = {
         "session_id": session_id,
         "student_id": student_id,
         "student_name": report.student_name,
+        "user_role": "student",
         "rtt_ms": report.rtt_ms,
         "jitter_ms": report.jitter_ms or 0,
         "packet_loss_percent": report.packet_loss_percent or 0,
@@ -364,7 +380,7 @@ async def report_latency(report: LatencyReport):
         latency_cache[session_id][student_id] = \
             latency_cache[session_id][student_id][-MAX_SAMPLES_PER_STUDENT:]
     
-    # 2. Save to MongoDB for persistence
+    # 2. Save to MongoDB for persistence (STUDENTS ONLY)
     collection = get_latency_collection()
     if collection is not None:
         try:

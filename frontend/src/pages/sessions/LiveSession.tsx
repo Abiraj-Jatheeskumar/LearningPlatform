@@ -185,6 +185,7 @@ export const LiveSession = () => {
     sessionId: sessionId || null,
     studentId: user?.id,
     studentName: `${user?.firstName} ${user?.lastName}`,
+    userRole: user?.role || 'student', // Only student data is stored in database
     enabled: !!sessionId && !!user?.id, // Enable for both students and instructors
     pingInterval: 5000, // Ping every 5 seconds
     reportInterval: 15000, // Report to server every 15 seconds

@@ -303,6 +303,7 @@ export const StudentDashboard = () => {
     sessionId: connectedSessionId, // Only monitor when connected to a session
     studentId: user?.id,
     studentName: studentDisplayName, // Use proper display name
+    userRole: 'student', // Only student data is stored in database
     enabled: !!connectedSessionId && !!user?.id, // Enable only when in a session
     pingInterval: 3000, // Ping every 3 seconds for faster updates
     reportInterval: 5000, // Report to server every 5 seconds
