@@ -85,12 +85,12 @@ export const ForgotPassword = () => {
               className="
                 flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
                 font-semibold text-white
-                bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
-                hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
+                bg-gradient-to-r from-green-500 via-green-600 to-green-600 
+                hover:from-green-600 hover:via-green-700 hover:to-green-700
+                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
                 transform hover:scale-[1.02] active:scale-[0.98]
                 transition-all duration-200
-                shadow-lg shadow-emerald-500/30
+                shadow-lg shadow-green-500/30
                 group
               "
             >
@@ -112,7 +112,7 @@ export const ForgotPassword = () => {
         {/* Back Link */}
         <Link 
           to="/login"
-          className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Back to sign in
@@ -129,7 +129,7 @@ export const ForgotPassword = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Mail className={`h-5 w-5 transition-colors duration-200 ${
-                error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'
+                error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-green-500'
               }`} />
             </div>
             <input
@@ -151,7 +151,7 @@ export const ForgotPassword = () => {
                 focus:outline-none focus:ring-0
                 ${error 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400'
                 }
               `}
               placeholder="Enter your email address"
@@ -171,13 +171,13 @@ export const ForgotPassword = () => {
           disabled={isLoading}
           className="
             relative w-full py-4 px-6 rounded-xl font-semibold text-white
-            bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 
-            hover:from-emerald-600 hover:via-emerald-700 hover:to-teal-700
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500
+            bg-gradient-to-r from-green-500 via-green-600 to-green-600 
+            hover:from-green-600 hover:via-green-700 hover:to-green-700
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
             disabled:opacity-70 disabled:cursor-not-allowed
             transform hover:scale-[1.02] active:scale-[0.98]
             transition-all duration-200
-            shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40
+            shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40
             group overflow-hidden
           "
         >
@@ -194,8 +194,8 @@ export const ForgotPassword = () => {
       </form>
 
       {/* Help Text */}
-      <div className="mt-8 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-        <p className="text-sm text-emerald-800 dark:text-emerald-300">
+      <div className="mt-8 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+        <p className="text-sm text-green-800 dark:text-green-300">
           <strong>Tip:</strong> If you don't see the email in your inbox, check your spam or junk folder. The email will be sent from noreply@classpulse.com.
         </p>
       </div>

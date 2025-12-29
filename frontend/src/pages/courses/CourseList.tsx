@@ -123,8 +123,8 @@ export const CourseList = () => {
   const getCourseGradient = (index: number) => {
     const gradients = [
       'bg-gradient-to-br from-indigo-500 to-purple-600',
-      'bg-gradient-to-br from-emerald-500 to-teal-600',
-      'bg-gradient-to-br from-green-500 to-emerald-600',
+      'bg-gradient-to-br from-green-500 to-green-600',
+      'bg-gradient-to-br from-green-500 to-green-600',
       'bg-gradient-to-br from-orange-500 to-red-600',
       'bg-gradient-to-br from-pink-500 to-rose-600',
       'bg-gradient-to-br from-violet-500 to-purple-600',

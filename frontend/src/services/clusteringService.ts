@@ -32,7 +32,7 @@ export const clusteringService = {
         description: 'Highly engaged students',
         studentCount: 18,
         engagementLevel: 'high',
-        color: '#10b981',
+        color: '#22c55e',
         prediction: 'stable',
         students: [],
       },

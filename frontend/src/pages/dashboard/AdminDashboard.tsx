@@ -14,7 +14,7 @@ export const AdminDashboard = () => {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-emerald-500 rounded-md p-3">
+              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
                 {/* Icon would go here */}
               </div>
               <div className="ml-5 w-0 flex-1">
@@ -33,7 +33,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-emerald-700 hover:text-emerald-900">
+              <a href="#" className="font-medium text-green-700 hover:text-green-900">
                 View all
               </a>
             </div>
@@ -60,7 +60,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-emerald-700 hover:text-emerald-900">
+              <a href="#" className="font-medium text-green-700 hover:text-green-900">
                 View all
               </a>
             </div>
@@ -70,7 +70,7 @@ export const AdminDashboard = () => {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-emerald-500 rounded-md p-3">
+              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
                 {/* Icon would go here */}
               </div>
               <div className="ml-5 w-0 flex-1">
@@ -87,7 +87,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-emerald-700 hover:text-emerald-900">
+              <a href="#" className="font-medium text-green-700 hover:text-green-900">
                 View all
               </a>
             </div>
@@ -114,7 +114,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-emerald-700 hover:text-emerald-900">
+              <a href="#" className="font-medium text-green-700 hover:text-green-900">
                 View all
               </a>
             </div>

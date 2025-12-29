@@ -141,7 +141,7 @@ export const ReportList = () => {
                       <div className="text-sm text-gray-900">{report.date}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${report.type === 'progress' ? 'bg-emerald-100 text-emerald-800' : report.type === 'attendance' ? 'bg-green-100 text-green-800' : report.type === 'assessment' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${report.type === 'progress' ? 'bg-green-100 text-green-800' : report.type === 'attendance' ? 'bg-green-100 text-green-800' : report.type === 'assessment' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'}`}>
                         {report.type.charAt(0).toUpperCase() + report.type.slice(1)}
                       </span>
                     </td>

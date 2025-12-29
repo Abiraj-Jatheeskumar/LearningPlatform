@@ -16,7 +16,7 @@ export const Badge: React.FC<BadgeProps> = ({
     success: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
     danger: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    info: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+    info: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
   };
   const sizeStyles = {
     sm: 'px-2 py-0.5 text-xs',

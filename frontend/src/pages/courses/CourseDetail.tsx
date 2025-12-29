@@ -72,7 +72,7 @@ export const CourseDetail = () => {
             <div className="flex items-center space-x-3 mb-2">
               <Link
                 to="/dashboard/courses"
-                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
               >
                 ← Back to Courses
               </Link>
@@ -111,13 +111,13 @@ export const CourseDetail = () => {
                 <p className="text-sm text-gray-600">Course Progress</p>
                 <p className="text-2xl font-bold text-gray-900">{course.progress}%</p>
       </div>
-              <div className="p-3 bg-emerald-100 rounded-lg">
-                <TrendingUpIcon className="h-6 w-6 text-emerald-600" />
+              <div className="p-3 bg-green-100 rounded-lg">
+                <TrendingUpIcon className="h-6 w-6 text-green-600" />
         </div>
             </div>
             <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-emerald-600 h-2 rounded-full"
+                className="bg-green-600 h-2 rounded-full"
                 style={{ width: `${course.progress}%` }}
               />
             </div>
@@ -163,7 +163,7 @@ export const CourseDetail = () => {
                   flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm
                   ${
                     activeTab === tab.id
-                      ? 'border-emerald-500 text-emerald-600'
+                      ? 'border-green-500 text-green-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
@@ -210,8 +210,8 @@ export const CourseDetail = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center">
-                  <div className="p-2 bg-emerald-100 rounded-lg mr-3">
-                    <ActivityIcon className="h-5 w-5 text-emerald-600" />
+                  <div className="p-2 bg-green-100 rounded-lg mr-3">
+                    <ActivityIcon className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Attendance</p>
@@ -345,14 +345,14 @@ export const CourseDetail = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
                       <div className={`p-3 rounded-lg ${
-                        material.type === 'pdf' ? 'bg-red-100' : 'bg-emerald-100'
+                        material.type === 'pdf' ? 'bg-red-100' : 'bg-green-100'
                       }`}>
                         {material.type === 'pdf' ? (
                           <FileTextIcon className={`h-6 w-6 ${
-                            material.type === 'pdf' ? 'text-red-600' : 'text-emerald-600'
+                            material.type === 'pdf' ? 'text-red-600' : 'text-green-600'
                           }`} />
                         ) : (
-                          <VideoIcon className="h-6 w-6 text-emerald-600" />
+                          <VideoIcon className="h-6 w-6 text-green-600" />
                         )}
                       </div>
                       <div className="flex-1">
@@ -368,7 +368,7 @@ export const CourseDetail = () => {
                         </div>
                       </div>
                     </div>
-                    <button className="ml-4 p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                    <button className="ml-4 p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
                       <DownloadIcon className="h-5 w-5" />
                     </button>
                   </div>
@@ -392,7 +392,7 @@ export const CourseDetail = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-emerald-600 h-2 rounded-full"
+                        className="bg-green-600 h-2 rounded-full"
                         style={{ width: `${course.engagement}%` }}
                       />
                     </div>

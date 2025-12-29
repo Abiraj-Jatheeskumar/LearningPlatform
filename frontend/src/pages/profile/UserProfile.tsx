@@ -354,12 +354,12 @@ export const UserProfile = () => {
                   </div>
                   <span className="text-lg font-bold text-yellow-600">{stats.achievements}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center">
-                    <Shield className="h-5 w-5 text-emerald-600 mr-3" />
+                    <Shield className="h-5 w-5 text-green-600 mr-3" />
                     <span className="text-sm font-medium text-gray-700">Average Score</span>
                   </div>
-                  <span className="text-lg font-bold text-emerald-600">{stats.averageScore}%</span>
+                  <span className="text-lg font-bold text-green-600">{stats.averageScore}%</span>
                 </div>
               </div>
             </div>

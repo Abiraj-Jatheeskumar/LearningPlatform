@@ -5,47 +5,47 @@
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 160 30% 10%;
-    --muted: 152 30% 96%;
-    --muted-foreground: 160 15% 45%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 160 30% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 160 30% 10%;
-    --border: 152 25% 90%;
-    --input: 152 25% 90%;
-    --primary: 152 76% 36%;
-    --primary-foreground: 152 40% 98%;
-    --secondary: 152 50% 94%;
-    --secondary-foreground: 152 76% 30%;
-    --accent: 152 30% 95%;
-    --accent-foreground: 160 30% 10%;
-    --destructive: 0 100% 50%;
+    --background: 120 40% 98%;
+    --foreground: 120 40% 10%;
+    --muted: 120 35% 94%;
+    --muted-foreground: 120 20% 40%;
+    --popover: 120 45% 99%;
+    --popover-foreground: 120 40% 10%;
+    --card: 120 50% 99%;
+    --card-foreground: 120 40% 10%;
+    --border: 120 40% 85%;
+    --input: 120 40% 90%;
+    --primary: 120 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 120 50% 90%;
+    --secondary-foreground: 120 60% 25%;
+    --accent: 120 45% 92%;
+    --accent-foreground: 120 40% 15%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 152 76% 36%;
+    --ring: 120 60% 45%;
     --radius: 0.5rem;
   }
   .dark {
-    --background: 160 40% 4%;
-    --foreground: 152 25% 92%;
-    --muted: 160 30% 12%;
-    --muted-foreground: 152 15% 60%;
-    --popover: 160 40% 4%;
-    --popover-foreground: 152 20% 70%;
-    --card: 160 40% 6%;
-    --card-foreground: 152 25% 92%;
-    --border: 160 25% 18%;
-    --input: 160 25% 18%;
-    --primary: 152 76% 42%;
+    --background: 120 30% 6%;
+    --foreground: 120 30% 92%;
+    --muted: 120 25% 14%;
+    --muted-foreground: 120 20% 60%;
+    --popover: 120 30% 8%;
+    --popover-foreground: 120 25% 85%;
+    --card: 120 30% 10%;
+    --card-foreground: 120 30% 92%;
+    --border: 120 25% 20%;
+    --input: 120 25% 20%;
+    --primary: 120 55% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 152 40% 18%;
-    --secondary-foreground: 152 30% 92%;
-    --accent: 160 25% 18%;
-    --accent-foreground: 152 30% 92%;
-    --destructive: 0 63% 31%;
+    --secondary: 120 35% 18%;
+    --secondary-foreground: 120 35% 90%;
+    --accent: 120 25% 20%;
+    --accent-foreground: 120 35% 90%;
+    --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 152 76% 42%;
+    --ring: 120 55% 50%;
   }
 }
 /* Custom animations */
@@ -181,17 +181,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #a7f3d0;
+    background: #86efac;
     border-radius: 4px;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: #065f46;
+    background: #166534;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #6ee7b7;
+    background: #4ade80;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: #047857;
+    background: #15803d;
   }
 }
 
@@ -225,7 +225,7 @@
 }
 .card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1), 0 8px 10px -6px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.15), 0 8px 10px -6px rgba(34, 197, 94, 0.12);
 }
 
 /* Smooth focus ring animation */
@@ -234,10 +234,10 @@
 }
 @keyframes focus-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
   }
 }
 
@@ -255,7 +255,7 @@
 
 /* Text gradient effect */
 .text-gradient {
-  background: linear-gradient(135deg, #10b981, #14b8a6, #06b6d4);
+  background: linear-gradient(135deg, #22c55e, #4ade80, #86efac);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
