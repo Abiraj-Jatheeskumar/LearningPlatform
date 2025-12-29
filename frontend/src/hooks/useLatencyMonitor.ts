@@ -88,8 +88,9 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
    */
   const assessQuality = useCallback((rtt: number, jitter: number = 0): ConnectionQuality => {
     // Combined assessment based on RTT and jitter
-    const rttQuality = rtt < 50 ? 'excellent' : rtt < 100 ? 'good' : rtt < 200 ? 'fair' : rtt < 500 ? 'poor' : 'critical';
-    const jitterQuality = jitter < 10 ? 'excellent' : jitter < 30 ? 'good' : jitter < 50 ? 'fair' : jitter < 100 ? 'poor' : 'critical';
+    // Thresholds adjusted for HTTP-based ping (includes HTTP overhead ~100-200ms)
+    const rttQuality = rtt < 150 ? 'excellent' : rtt < 300 ? 'good' : rtt < 500 ? 'fair' : rtt < 1000 ? 'poor' : 'critical';
+    const jitterQuality = jitter < 30 ? 'excellent' : jitter < 60 ? 'good' : jitter < 100 ? 'fair' : jitter < 200 ? 'poor' : 'critical';
     
     const qualityOrder: ConnectionQuality[] = ['excellent', 'good', 'fair', 'poor', 'critical'];
     const worstIndex = Math.max(qualityOrder.indexOf(rttQuality), qualityOrder.indexOf(jitterQuality));
@@ -135,8 +136,9 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     const quality = assessQuality(avgRtt, jitter);
 
     // Calculate stability score (0-100)
-    const rttScore = Math.max(0, 100 - (avgRtt / 5));
-    const jitterScore = Math.max(0, 100 - (jitter * 2));
+    // Adjusted for HTTP-based measurements (higher baseline latency)
+    const rttScore = Math.max(0, 100 - (avgRtt / 10));  // More lenient for HTTP
+    const jitterScore = Math.max(0, 100 - jitter);       // More lenient for jitter
     
     // Calculate variance for stability
     const variance = samples.reduce((acc, val) => acc + Math.pow(val - avgRtt, 2), 0) / samples.length;

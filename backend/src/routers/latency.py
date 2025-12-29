@@ -92,20 +92,22 @@ class StudentLatencyStats(BaseModel):
 latency_store: Dict[str, Dict[str, List[Dict]]] = {}
 
 # Connection quality thresholds (in milliseconds)
+# Adjusted for HTTP-based ping which includes HTTP overhead (~100-200ms baseline)
 QUALITY_THRESHOLDS = {
-    "excellent": 50,   # RTT < 50ms
-    "good": 100,       # RTT < 100ms  
-    "fair": 200,       # RTT < 200ms
-    "poor": 500,       # RTT < 500ms
-    "critical": float('inf')  # RTT >= 500ms
+    "excellent": 150,   # RTT < 150ms (very fast HTTP response)
+    "good": 300,        # RTT < 300ms (normal remote server)
+    "fair": 500,        # RTT < 500ms (acceptable latency)
+    "poor": 1000,       # RTT < 1000ms (noticeable delay)
+    "critical": float('inf')  # RTT >= 1000ms (severe issues)
 }
 
 # Jitter thresholds (in milliseconds)
+# Adjusted for HTTP-based measurements
 JITTER_THRESHOLDS = {
-    "excellent": 10,
-    "good": 30,
-    "fair": 50,
-    "poor": 100,
+    "excellent": 30,
+    "good": 60,
+    "fair": 100,
+    "poor": 200,
     "critical": float('inf')
 }
 
@@ -141,8 +143,9 @@ def assess_connection_quality(rtt_ms: float, jitter_ms: float = 0) -> Connection
     final_quality = quality_order[max(quality_order.index(quality), quality_order.index(jitter_quality))]
     
     # Calculate stability score (0-100)
-    rtt_score = max(0, 100 - (rtt_ms / 5))  # Lose points for high RTT
-    jitter_score = max(0, 100 - (jitter_ms * 2))  # Lose points for high jitter
+    # Adjusted for HTTP-based measurements (higher baseline latency expected)
+    rtt_score = max(0, 100 - (rtt_ms / 10))  # More lenient for HTTP overhead
+    jitter_score = max(0, 100 - jitter_ms)    # More lenient for jitter
     stability_score = (rtt_score * 0.6 + jitter_score * 0.4)
     
     # Determine if engagement analysis should be adjusted
