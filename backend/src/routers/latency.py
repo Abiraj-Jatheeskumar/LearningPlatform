@@ -343,6 +343,18 @@ async def report_latency(report: LatencyReport):
     user_role = (report.user_role or "").lower()
     current_timestamp = report.timestamp or datetime.now()
     
+    # ⚠️ VALIDATION: Reject fake/test session IDs
+    fake_session_ids = ["instructor-dashboard", "admin-dashboard", "test", "demo", "null", "undefined", ""]
+    if not session_id or session_id.lower() in fake_session_ids:
+        return {
+            "success": True,
+            "message": "Invalid session ID - not a real session",
+            "stored": False,
+            "current_stats": None,
+            "quality_assessment": assess_connection_quality(report.rtt_ms, report.jitter_ms or 0).model_dump(),
+            "engagement_adjustment_needed": False
+        }
+    
     # ⚠️ ONLY store data for STUDENTS - ignore instructors and admins
     if user_role in ["instructor", "admin"]:
         return {

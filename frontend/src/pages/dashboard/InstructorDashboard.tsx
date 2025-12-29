@@ -32,11 +32,11 @@ export const InstructorDashboard = () => {
     stats: latencyStats,
     shouldAdjustEngagement
   } = useLatencyMonitor({
-    sessionId: selectedSession?.id || 'instructor-dashboard',
+    sessionId: selectedSession?.id || null, // Only use real session IDs
     studentId: user?.id,
     studentName: `${user?.firstName} ${user?.lastName}`,
     userRole: 'instructor', // Instructor data is NOT stored in database
-    enabled: true, // Always monitor on dashboard
+    enabled: !!selectedSession?.id, // Only monitor when viewing a real session
     pingInterval: 5000,
     reportInterval: 15000,
     onQualityChange: handleConnectionQualityChange
