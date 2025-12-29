@@ -538,7 +538,7 @@ export const StudentDashboard = () => {
       </div>
 
       {/* Performance Summary */}
-      <div className="mb-8 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg shadow-lg p-6">
+      <div className="mb-8 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-xl shadow-lg p-6">
         <div className="flex justify-between">
           <div>
             <h2 className="text-xl font-bold">Your Learning Summary</h2>

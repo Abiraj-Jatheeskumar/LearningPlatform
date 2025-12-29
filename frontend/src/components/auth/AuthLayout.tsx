@@ -31,8 +31,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-green-400 via-green-500 to-green-600 animate-gradient" />
+        {/* Animated gradient background - Soft pastel mint green */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-300 via-green-400 to-green-500 animate-gradient" />
         
         {/* Decorative patterns */}
         <div className="absolute inset-0 opacity-10">
@@ -119,12 +119,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
           </Link>
         </div>
         
-        {/* Form container */}
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-gray-50 dark:bg-gray-900">
-          <div className="w-full max-w-md">
+        {/* Form container - Soft pastel green background */}
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-green-50 dark:bg-gray-900">
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             {/* Header */}
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+              <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 tracking-tight">
                 {title}
               </h2>
               {subtitle && (
@@ -140,7 +140,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
         </div>
         
         {/* Footer */}
-        <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-6 text-center text-sm text-green-600 dark:text-gray-400 bg-green-50 dark:bg-gray-900 border-t border-green-100 dark:border-gray-800">
           © {new Date().getFullYear()} Class Pulse. All rights reserved.
         </div>
       </div>

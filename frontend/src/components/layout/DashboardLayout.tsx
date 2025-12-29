@@ -128,11 +128,11 @@ export const DashboardLayout = () => {
       </div>
     );
   }
-  return <div className="h-screen flex overflow-hidden bg-gray-50">
+  return <div className="h-screen flex overflow-hidden bg-green-50">
       {/* Mobile sidebar */}
       <div className={`md:hidden ${sidebarOpen ? 'fixed inset-0 flex z-40' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" onClick={() => setSidebarOpen(false)} />
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-br from-green-500 via-green-600 to-green-700 transition-all duration-300 shadow-2xl">
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-br from-green-400 via-green-500 to-green-600 transition-all duration-300 shadow-2xl">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button className="ml-1 flex items-center justify-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors" onClick={() => setSidebarOpen(false)}>
               <XIcon className="h-6 w-6 text-white" aria-hidden="true" />
@@ -208,7 +208,7 @@ export const DashboardLayout = () => {
       {/* Static sidebar for desktop */}
       <div className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="flex flex-col w-full relative">
-          <div className="flex flex-col h-0 flex-1 bg-gradient-to-br from-green-500 via-green-600 to-green-700 shadow-2xl">
+          <div className="flex flex-col h-0 flex-1 bg-gradient-to-br from-green-400 via-green-500 to-green-600 shadow-2xl">
             <div className="flex-1 flex flex-col pt-6 pb-4 overflow-y-auto">
               {/* Logo/Brand Section */}
               <div className={`flex-shrink-0 flex items-center mb-8 transition-all duration-300 ${sidebarCollapsed ? 'px-3 justify-center' : 'px-6'}`}>
