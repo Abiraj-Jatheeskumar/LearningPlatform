@@ -81,6 +81,7 @@ async def get_session_attendance_report(
     """
     Get detailed attendance report for a specific session.
     Shows: Each student's join time, leave time, and total duration.
+    Looks up participants by BOTH MongoDB session_id AND zoomMeetingId.
     """
     try:
         instructor_id = user.get("id")
@@ -93,9 +94,20 @@ async def get_session_attendance_report(
         if session.get("instructorId") != instructor_id:
             raise HTTPException(status_code=403, detail="You can only view reports for your own sessions")
         
-        # Get all participants with their attendance data
+        # Get zoomMeetingId for lookup
+        zoom_meeting_id = session.get("zoomMeetingId")
+        
+        # Get all participants - check BOTH MongoDB session_id AND zoomMeetingId
         attendance_data = []
+        seen_students = set()
+        
+        # First by MongoDB session_id
         async for participant in db.database.session_participants.find({"sessionId": session_id}):
+            student_id = participant.get("studentId")
+            if student_id in seen_students:
+                continue
+            seen_students.add(student_id)
+            
             joined_at = participant.get("joinedAt")
             left_at = participant.get("leftAt")
             
@@ -108,7 +120,7 @@ async def get_session_attendance_report(
                 duration_minutes = int((datetime.utcnow() - joined_at).total_seconds() / 60)
             
             attendance_data.append({
-                "studentId": participant.get("studentId"),
+                "studentId": student_id,
                 "studentName": participant.get("studentName", "Unknown Student"),
                 "studentEmail": participant.get("studentEmail", ""),
                 "joinTime": joined_at.isoformat() if joined_at else None,
@@ -116,6 +128,33 @@ async def get_session_attendance_report(
                 "durationMinutes": duration_minutes,
                 "status": participant.get("status", "unknown")
             })
+        
+        # Also check by zoomMeetingId (participants might be stored with zoom ID)
+        if zoom_meeting_id:
+            async for participant in db.database.session_participants.find({"sessionId": str(zoom_meeting_id)}):
+                student_id = participant.get("studentId")
+                if student_id in seen_students:
+                    continue
+                seen_students.add(student_id)
+                
+                joined_at = participant.get("joinedAt")
+                left_at = participant.get("leftAt")
+                
+                duration_minutes = None
+                if joined_at and left_at:
+                    duration_minutes = int((left_at - joined_at).total_seconds() / 60)
+                elif joined_at:
+                    duration_minutes = int((datetime.utcnow() - joined_at).total_seconds() / 60)
+                
+                attendance_data.append({
+                    "studentId": student_id,
+                    "studentName": participant.get("studentName", "Unknown Student"),
+                    "studentEmail": participant.get("studentEmail", ""),
+                    "joinTime": joined_at.isoformat() if joined_at else None,
+                    "leaveTime": left_at.isoformat() if left_at else None,
+                    "durationMinutes": duration_minutes,
+                    "status": participant.get("status", "unknown")
+                })
         
         # Sort by join time
         attendance_data.sort(key=lambda x: x["joinTime"] or "", reverse=True)

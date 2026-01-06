@@ -341,9 +341,15 @@ export const StudentDashboard = () => {
     
     // 🎯 Connect to session-specific WebSocket
     const studentId = user?.id || `STUDENT_${Date.now()}`;
+    const studentName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Unknown Student';
+    const studentEmail = user?.email || '';
     const sessionKey = session.zoomMeetingId || session.id;
     const wsBase = import.meta.env.VITE_WS_URL;
-    const sessionWsUrl = `${wsBase}/ws/session/${sessionKey}/${studentId}`;
+    
+    // Include student name and email as query parameters for report generation
+    const encodedName = encodeURIComponent(studentName);
+    const encodedEmail = encodeURIComponent(studentEmail);
+    const sessionWsUrl = `${wsBase}/ws/session/${sessionKey}/${studentId}?student_name=${encodedName}&student_email=${encodedEmail}`;
     
     console.log(`🔗 Connecting to session WebSocket: ${sessionWsUrl}`);
     

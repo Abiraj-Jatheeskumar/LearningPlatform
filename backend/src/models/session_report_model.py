@@ -434,12 +434,31 @@ class SessionReportModel:
         if not session:
             return None
         
-        # Get ALL participants
+        # Get the Zoom meeting ID for this session (participants might be stored with this)
+        zoom_meeting_id = session.get("zoomMeetingId")
+        
+        # Get ALL participants - check BOTH MongoDB session_id AND zoomMeetingId
         participants = []
+        participant_ids_seen = set()
+        
+        # First, try by MongoDB session_id
         async for p in database.session_participants.find({"sessionId": session_id}):
             p["id"] = str(p["_id"])
             del p["_id"]
-            participants.append(p)
+            if p.get("studentId") not in participant_ids_seen:
+                participants.append(p)
+                participant_ids_seen.add(p.get("studentId"))
+        
+        # Also try by zoomMeetingId (as string)
+        if zoom_meeting_id:
+            async for p in database.session_participants.find({"sessionId": str(zoom_meeting_id)}):
+                p["id"] = str(p["_id"])
+                del p["_id"]
+                if p.get("studentId") not in participant_ids_seen:
+                    participants.append(p)
+                    participant_ids_seen.add(p.get("studentId"))
+        
+        print(f"📊 Report: Found {len(participants)} participants for session {session_id} (zoomId: {zoom_meeting_id})")
         
         # Get ALL quiz answers for this session
         quiz_answers = []

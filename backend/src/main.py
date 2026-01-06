@@ -173,9 +173,24 @@ async def websocket_session(
     WebSocket endpoint for students to join a session room.
     Only students connected to this room will receive quiz questions
     when the instructor triggers for this session.
+    
+    Query params:
+      - student_name: Student's display name (for reports)
+      - student_email: Student's email (for reports)
     """
     try:
         await websocket.accept()
+        
+        # Get query parameters from URL if not provided
+        # FastAPI should parse these automatically, but let's be safe
+        if not student_name:
+            query_params = dict(websocket.query_params)
+            student_name = query_params.get("student_name", f"Student {student_id[:8]}")
+        if not student_email:
+            query_params = dict(websocket.query_params) if 'query_params' not in dir() else query_params
+            student_email = query_params.get("student_email", "")
+        
+        print(f"📥 WebSocket join: session={session_id}, student={student_id}, name={student_name}, email={student_email}")
         
         # Join the session room
         result = await ws_manager.join_session_room(
