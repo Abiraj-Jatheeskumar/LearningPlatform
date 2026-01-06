@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpenIcon, CalendarIcon, MenuIcon, XIcon, HomeIcon, GraduationCapIcon, BellIcon, LogOutIcon, BarChart3Icon, ActivityIcon, ChevronLeftIcon, ChevronRightIcon, TargetIcon, UsersIcon, KeyIcon } from 'lucide-react';
+import { BookOpenIcon, CalendarIcon, MenuIcon, XIcon, HomeIcon, GraduationCapIcon, BellIcon, LogOutIcon, BarChart3Icon, ActivityIcon, ChevronLeftIcon, ChevronRightIcon, TargetIcon, UsersIcon, KeyIcon, FileTextIcon } from 'lucide-react';
 
 export const DashboardLayout = () => {
   const location = useLocation();
@@ -87,6 +87,13 @@ export const DashboardLayout = () => {
         icon: UsersIcon
       });
     }
+
+    // Reports available for all users (students and instructors)
+    baseItems.push({
+      name: 'Reports',
+      href: '/dashboard/reports',
+      icon: FileTextIcon
+    });
 
     return baseItems;
   }, [user?.role]);

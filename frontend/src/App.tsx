@@ -24,6 +24,7 @@ import { LiveSession } from './pages/sessions/LiveSession';
 import { SessionCreate } from './pages/sessions/SessionCreate';
 import { SessionEdit } from './pages/sessions/SessionEdit';
 import { SessionReport } from './pages/sessions/SessionReport';
+import { SessionReports } from './pages/reports/SessionReports';
 import { UserManagement } from './pages/admin/UserManagement';
 
 export function App() {
@@ -90,6 +91,7 @@ export function App() {
           
           {/* Common routes */}
           <Route path="profile" element={<UserProfile />} />
+          <Route path="reports" element={<SessionReports />} />
         </Route>
       </Routes>
     </BrowserRouter>
