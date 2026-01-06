@@ -114,6 +114,11 @@ app.include_router(latency.router)  # 📶 WebRTC-aware latency monitoring
 app.include_router(session_report.router)  # 📊 Session reports with download
 app.include_router(session_report.reports_router)  # 📊 All reports API
 
+# 📊 Role-based Reports
+from src.routers import instructor_reports, student_reports
+app.include_router(instructor_reports.router)  # 📊 Instructor reports (sessions, quiz, engagement)
+app.include_router(student_reports.router)  # 📊 Student reports (personal data only)
+
 
 # --------------------------------------------------------
 # HEALTH CHECK

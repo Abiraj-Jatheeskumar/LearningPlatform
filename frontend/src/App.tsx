@@ -26,6 +26,8 @@ import { SessionEdit } from './pages/sessions/SessionEdit';
 import { SessionReport } from './pages/sessions/SessionReport';
 import { SessionReports } from './pages/reports/SessionReports';
 import { UserManagement } from './pages/admin/UserManagement';
+import { InstructorReports } from './pages/instructor/InstructorReports';
+import { StudentReports } from './pages/student/StudentReports';
 
 export function App() {
   return (
@@ -79,11 +81,13 @@ export function App() {
           {/* Student-specific routes */}
           <Route path="student/engagement" element={<StudentEngagement />} />
           <Route path="student/enrollment" element={<StudentEnrollment />} />
+          <Route path="student/reports" element={<StudentReports />} />
           
           {/* Instructor-specific routes */}
           <Route path="instructor/analytics" element={<InstructorAnalytics />} />
           <Route path="instructor/questions" element={<QuestionManagement />} />
           <Route path="instructor/courses" element={<CourseManagement />} />
+          <Route path="instructor/reports" element={<InstructorReports />} />
           
           {/* Admin-specific routes */}
           <Route path="admin/users" element={<UserManagement />} />

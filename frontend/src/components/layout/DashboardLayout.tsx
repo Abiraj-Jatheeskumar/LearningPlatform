@@ -68,6 +68,12 @@ export const DashboardLayout = () => {
         href: '/dashboard/student/engagement',
         icon: ActivityIcon
       });
+      // Student Reports - shows ONLY their own data
+      baseItems.push({
+        name: 'My Reports',
+        href: '/dashboard/student/reports',
+        icon: FileTextIcon
+      });
     }
 
     if (user?.role === 'instructor' || user?.role === 'admin') {
@@ -86,13 +92,10 @@ export const DashboardLayout = () => {
         href: user?.role === 'admin' ? '/dashboard/admin/users' : '/dashboard/instructor/users',
         icon: UsersIcon
       });
-    }
-
-    // Reports ONLY for instructors/admins
-    if (user?.role === 'instructor' || user?.role === 'admin') {
+      // Instructor Reports - shows ALL student data
       baseItems.push({
         name: 'Reports',
-        href: '/dashboard/reports',
+        href: '/dashboard/instructor/reports',
         icon: FileTextIcon
       });
     }
