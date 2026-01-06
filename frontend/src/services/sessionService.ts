@@ -181,7 +181,78 @@ export const sessionService = {
       return null;
     }
   },
+
+  // End a session (instructor only) - automatically generates report
+  async endSession(sessionId: string): Promise<EndSessionResponse> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/end`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        return { 
+          success: false, 
+          message: errorText || "Failed to end session",
+          sessionId,
+          status: "error",
+          participantCount: 0,
+          reportGenerated: false,
+          emailsSent: 0
+        };
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("End session error:", err);
+      return { 
+        success: false, 
+        message: "Failed to end session",
+        sessionId,
+        status: "error",
+        participantCount: 0,
+        reportGenerated: false,
+        emailsSent: 0
+      };
+    }
+  },
+
+  // Start a session (instructor only)
+  async startSession(sessionId: string): Promise<{ success: boolean; message: string; status?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/start`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        return { success: false, message: "Failed to start session" };
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Start session error:", err);
+      return { success: false, message: "Failed to start session" };
+    }
+  },
 };
+
+// Types for end session response
+export interface EndSessionResponse {
+  success: boolean;
+  message: string;
+  sessionId: string;
+  status: string;
+  participantCount: number;
+  reportGenerated: boolean;
+  reportId?: string;
+  emailsSent: number;
+}
 
 // Types for session reports
 export interface StudentReportData {

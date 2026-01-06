@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
 
 import {
   SearchIcon,
@@ -13,7 +14,10 @@ import {
   BookOpenIcon,
   PlusIcon,
   EditIcon,
-  FileTextIcon
+  FileTextIcon,
+  StopCircleIcon,
+  Loader2Icon,
+  CheckCircleIcon
 } from 'lucide-react';
 
 import { Card } from '../../components/ui/Card';
@@ -30,6 +34,8 @@ export const SessionList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
+  const [startingSessionId, setStartingSessionId] = useState<string | null>(null);
 
   const isInstructor = user?.role === 'instructor' || user?.role === 'admin';
 
@@ -67,6 +73,54 @@ export const SessionList = () => {
     }
 
     window.location.href = session.join_url;
+  };
+
+  // ---------------------------------------------------
+  // ⭐ START SESSION (Instructor only)
+  // ---------------------------------------------------
+  const handleStartSession = async (sessionId: string) => {
+    setStartingSessionId(sessionId);
+    const result = await sessionService.startSession(sessionId);
+    if (result.success) {
+      toast.success('Session started successfully!');
+      // Reload sessions to update status
+      const all = await sessionService.getAllSessions();
+      setSessions(all);
+    } else {
+      toast.error(result.message || 'Failed to start session');
+    }
+    setStartingSessionId(null);
+  };
+
+  // ---------------------------------------------------
+  // ⭐ END SESSION (Instructor only) - Auto generates report
+  // ---------------------------------------------------
+  const handleEndSession = async (sessionId: string, sessionTitle: string) => {
+    if (!confirm(`Are you sure you want to end "${sessionTitle}"?\n\nThis will:\n• Mark the session as completed\n• Generate the final report\n• Send email notifications to all participants`)) {
+      return;
+    }
+    
+    setEndingSessionId(sessionId);
+    const result = await sessionService.endSession(sessionId);
+    
+    if (result.success) {
+      toast.success(
+        <div>
+          <p className="font-medium">Session ended successfully!</p>
+          <p className="text-sm text-gray-500">
+            {result.participantCount} participants • Report generated • {result.emailsSent} emails sent
+          </p>
+        </div>
+      );
+      // Reload sessions to update status
+      const all = await sessionService.getAllSessions();
+      setSessions(all);
+      // Navigate to report
+      navigate(`/dashboard/sessions/${sessionId}/report`);
+    } else {
+      toast.error(result.message || 'Failed to end session');
+    }
+    setEndingSessionId(null);
   };
 
   // ---------------------------------------------------
@@ -226,6 +280,22 @@ export const SessionList = () => {
                     </Button>
                   )}
 
+                  {/* START SESSION (Instructor only - for upcoming sessions) */}
+                  {isInstructor && session.status === 'upcoming' && (
+                    <Button
+                      variant="primary"
+                      leftIcon={
+                        startingSessionId === session.id 
+                          ? <Loader2Icon className="h-4 w-4 animate-spin" /> 
+                          : <PlayIcon className="h-4 w-4" />
+                      }
+                      onClick={() => handleStartSession(session.id)}
+                      disabled={startingSessionId === session.id}
+                    >
+                      {startingSessionId === session.id ? 'Starting...' : 'Start Session'}
+                    </Button>
+                  )}
+
                   {/* JOIN LIVE */}
                   {session.status === 'live' && (
                     <Button
@@ -237,6 +307,22 @@ export const SessionList = () => {
                     </Button>
                   )}
 
+                  {/* END SESSION (Instructor only - for live sessions) */}
+                  {isInstructor && session.status === 'live' && (
+                    <Button
+                      variant="danger"
+                      leftIcon={
+                        endingSessionId === session.id 
+                          ? <Loader2Icon className="h-4 w-4 animate-spin" /> 
+                          : <StopCircleIcon className="h-4 w-4" />
+                      }
+                      onClick={() => handleEndSession(session.id, session.title)}
+                      disabled={endingSessionId === session.id}
+                    >
+                      {endingSessionId === session.id ? 'Ending...' : 'End Session'}
+                    </Button>
+                  )}
+
                   {/* VIEW REPORT (for all sessions - students and instructors) */}
                   <Button
                     variant="outline"
@@ -245,6 +331,14 @@ export const SessionList = () => {
                   >
                     View Report
                   </Button>
+
+                  {/* Show completed indicator */}
+                  {session.status === 'completed' && (
+                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                      <CheckCircleIcon className="h-4 w-4" />
+                      <span>Report Available</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -9,6 +9,8 @@ from src.database.connection import db
 from src.middleware.auth import get_current_user, require_instructor
 from src.services.zoom_service import create_zoom_meeting, ZoomServiceError
 from src.models.course import CourseModel
+from src.models.session_report_model import SessionReportModel
+from src.services.email_service import email_service
 
 router = APIRouter(prefix="/api/sessions", tags=["Sessions"])
 
@@ -235,3 +237,144 @@ async def get_session(session_id: str, user: dict = Depends(get_current_user)):
         raise
     except Exception:
         raise HTTPException(status_code=404, detail="Session not found")
+
+
+@router.post("/{session_id}/end")
+async def end_session(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """
+    End a session and automatically generate report.
+    - Marks session as 'completed'
+    - Generates full report with all participant data
+    - Saves report to MongoDB
+    - Optionally sends email notifications to participants
+    """
+    try:
+        # Verify session exists and belongs to this instructor
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("instructorId") != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only end your own sessions")
+        
+        if session.get("status") == "completed":
+            raise HTTPException(status_code=400, detail="Session is already completed")
+        
+        # Update session status to completed
+        await db.database.sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {
+                "$set": {
+                    "status": "completed",
+                    "endedAt": datetime.utcnow(),
+                    "endedBy": user["id"]
+                }
+            }
+        )
+        
+        # Get participant count
+        participant_count = await db.database.session_participants.count_documents({
+            "sessionId": session_id
+        })
+        
+        # Update participant count in session
+        await db.database.sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"participants": participant_count}}
+        )
+        
+        # Generate and save the full report (instructor view with all data)
+        report = await SessionReportModel.generate_and_save_report(
+            session_id=session_id,
+            user_id=user["id"],
+            user_role="instructor"
+        )
+        
+        # Send email notifications to all participants
+        emails_sent = 0
+        participants = []
+        async for p in db.database.session_participants.find({"sessionId": session_id}):
+            participants.append(p)
+            if p.get("studentEmail"):
+                try:
+                    success = email_service.send_session_report_email(
+                        to_email=p.get("studentEmail"),
+                        student_name=p.get("studentName", "Student"),
+                        session_title=session.get("title", "Session"),
+                        course_name=session.get("course", "Course"),
+                        session_id=session_id,
+                        is_instructor=False
+                    )
+                    if success:
+                        emails_sent += 1
+                except Exception as e:
+                    print(f"Failed to send email to {p.get('studentEmail')}: {e}")
+        
+        # Send email to instructor
+        instructor_email = user.get("email")
+        if instructor_email:
+            try:
+                email_service.send_session_report_email(
+                    to_email=instructor_email,
+                    student_name=f"{user.get('firstName', '')} {user.get('lastName', '')}".strip(),
+                    session_title=session.get("title", "Session"),
+                    course_name=session.get("course", "Course"),
+                    session_id=session_id,
+                    is_instructor=True
+                )
+                emails_sent += 1
+            except Exception as e:
+                print(f"Failed to send email to instructor: {e}")
+        
+        return {
+            "success": True,
+            "message": "Session ended successfully",
+            "sessionId": session_id,
+            "status": "completed",
+            "participantCount": participant_count,
+            "reportGenerated": report is not None,
+            "reportId": report.get("id") if report else None,
+            "emailsSent": emails_sent
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error ending session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to end session")
+
+
+@router.post("/{session_id}/start")
+async def start_session(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """Start a session (mark as live)"""
+    try:
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("instructorId") != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only start your own sessions")
+        
+        await db.database.sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {
+                "$set": {
+                    "status": "live",
+                    "startedAt": datetime.utcnow()
+                }
+            }
+        )
+        
+        return {"success": True, "message": "Session started", "status": "live"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error starting session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start session")
