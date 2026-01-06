@@ -147,9 +147,27 @@ export const SessionReport = () => {
   }
 
   const studentData = report.students[0]; // For student view
+  const isPreview = report.reportType === 'preview' || report.sessionStatus === 'upcoming' || report.sessionStatus === 'live';
 
   return (
     <div className="py-6">
+      {/* Preview Banner for sessions not yet ended */}
+      {isPreview && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangleIcon className="h-5 w-5 text-amber-500 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-800 dark:text-amber-200">
+                {report.sessionStatus === 'live' ? 'Session In Progress' : 'Session Not Started Yet'}
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                {report.message || 'This is a preview report. Full report with all participant data will be available after the instructor ends the session.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <div>
@@ -168,6 +186,14 @@ export const SessionReport = () => {
           </p>
           {/* Storage indicator */}
           <div className="flex items-center gap-3 mt-2">
+            {report.sessionStatus && (
+              <Badge 
+                variant={report.sessionStatus === 'completed' ? 'success' : report.sessionStatus === 'live' ? 'primary' : 'warning'} 
+                size="sm"
+              >
+                {report.sessionStatus === 'completed' ? 'Completed' : report.sessionStatus === 'live' ? 'Live' : 'Upcoming'}
+              </Badge>
+            )}
             {report.id && (
               <Badge variant="success" size="sm" className="flex items-center gap-1">
                 <DatabaseIcon className="h-3 w-3" />

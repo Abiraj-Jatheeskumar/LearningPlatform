@@ -339,6 +339,7 @@ export interface SessionReport {
   savedAt?: string;
   updatedAt?: string;
   reportType: string;
+  message?: string; // For preview reports
   // Raw data (instructor only)
   allQuestions?: Question[];
   rawAssignments?: QuizAssignment[];

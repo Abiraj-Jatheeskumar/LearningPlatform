@@ -127,6 +127,7 @@ async def get_session_report(
     - Instructors get full report with all student data
     - Students get personalized report with their own data
     - Reports are automatically saved to MongoDB
+    - For sessions not yet ended, generates live/preview report
     """
     try:
         # Verify session exists
@@ -139,16 +140,28 @@ async def get_session_report(
         
         # Check access permissions
         if user_role == "student":
-            # Students can only view reports for sessions they participated in
+            # Check if student participated OR is enrolled in the course
             participant = await db.database.session_participants.find_one({
                 "sessionId": session_id,
                 "studentId": user_id
             })
+            
             if not participant:
-                raise HTTPException(
-                    status_code=403, 
-                    detail="You did not participate in this session"
-                )
+                # Check if enrolled in the course
+                course_id = session.get("courseId")
+                if course_id:
+                    from src.models.course import CourseModel
+                    is_enrolled = await CourseModel.is_student_enrolled(course_id, user_id)
+                    if not is_enrolled:
+                        raise HTTPException(
+                            status_code=403, 
+                            detail="You are not enrolled in this course"
+                        )
+                else:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="You did not participate in this session"
+                    )
         elif user_role == "instructor":
             # Instructors can only view reports for their own sessions
             if session.get("instructorId") != user_id:
@@ -157,16 +170,36 @@ async def get_session_report(
                     detail="You can only view reports for your own sessions"
                 )
         
-        # FIRST: Try to get stored report from MongoDB
-        # This retrieves the master report and filters based on user role
+        # FIRST: Try to get stored report from MongoDB (for completed sessions)
         report = await SessionReportModel.get_report_for_user(session_id, user_id, user_role)
         
         if not report:
-            # Fallback: Generate fresh report if no stored report exists
-            report = await SessionReportModel.generate_and_save_report(session_id, user_id, user_role)
+            # No stored report - generate fresh report (live or preview)
+            report = await SessionReportModel.generate_report(session_id, user_id, user_role)
         
         if not report:
-            raise HTTPException(status_code=404, detail="Could not generate report")
+            # Create a minimal report with session info if no data available
+            report = {
+                "sessionId": session_id,
+                "sessionTitle": session.get("title", "Unknown Session"),
+                "courseName": session.get("course", "Unknown Course"),
+                "courseCode": session.get("courseCode", ""),
+                "instructorName": session.get("instructor", "Unknown Instructor"),
+                "instructorId": session.get("instructorId", ""),
+                "sessionDate": session.get("date", ""),
+                "sessionTime": session.get("time", ""),
+                "sessionDuration": session.get("duration", ""),
+                "sessionStatus": session.get("status", "upcoming"),
+                "totalParticipants": 0,
+                "totalQuestionsAsked": 0,
+                "averageQuizScore": None,
+                "engagementSummary": {"highly_engaged": 0, "moderately_engaged": 0, "at_risk": 0},
+                "connectionQualitySummary": {},
+                "students": [],
+                "reportType": "preview",
+                "generatedAt": datetime.utcnow().isoformat(),
+                "message": "Session has not ended yet. Full report will be available after the session ends."
+            }
         
         return report
         
