@@ -7,6 +7,7 @@ from fastapi import WebSocket
 from typing import Dict, Set, Optional, List
 from datetime import datetime
 from ..models.session_participant_model import SessionParticipantModel
+from ..database.connection import get_database
 
 
 class WebSocketManager:
@@ -46,6 +47,9 @@ class WebSocketManager:
         Student joins a session room - REQUIRED to receive quiz questions
         Returns participant info
         Also saves to MongoDB for persistence
+        
+        NOTE: session_id here might be Zoom meeting ID or MongoDB ObjectId
+        We look up the MongoDB session ID for proper persistence
         """
         if session_id not in self.session_rooms:
             self.session_rooms[session_id] = {}
@@ -64,16 +68,39 @@ class WebSocketManager:
         self.session_rooms[session_id][student_id] = participant
 
         # 🎯 SAVE TO MONGODB for persistence and report generation
+        # Look up the actual MongoDB session ID from Zoom meeting ID
         try:
+            database = get_database()
+            mongo_session_id = session_id  # Default to provided ID
+            
+            if database:
+                # Try to find session by zoomMeetingId first
+                session_doc = await database.sessions.find_one({"zoomMeetingId": int(session_id) if session_id.isdigit() else session_id})
+                
+                if not session_doc:
+                    # Maybe the session_id is already the MongoDB ObjectId string
+                    from bson import ObjectId
+                    try:
+                        session_doc = await database.sessions.find_one({"_id": ObjectId(session_id)})
+                    except:
+                        pass
+                
+                if session_doc:
+                    mongo_session_id = str(session_doc["_id"])
+                    print(f"📍 Mapped session: zoom/input={session_id} → MongoDB={mongo_session_id}")
+            
+            # Save participant with the MongoDB session ID
             await SessionParticipantModel.join_session(
-                session_id=session_id,
+                session_id=mongo_session_id,
                 student_id=student_id,
                 student_name=final_student_name,
                 student_email=student_email
             )
-            print(f"✅ Participant saved to MongoDB: session={session_id}, student={student_id}")
+            print(f"✅ Participant saved to MongoDB: session={mongo_session_id}, student={student_id}")
         except Exception as e:
             print(f"⚠️ Failed to save participant to MongoDB: {e}")
+            import traceback
+            traceback.print_exc()
 
         print(f"✅ Student joined session room: session={session_id}, student={student_id}")
         print(f"   Session room now has {len(self.session_rooms[session_id])} participants")
@@ -93,10 +120,24 @@ class WebSocketManager:
             self.session_rooms[session_id][student_id]["status"] = "left"
             self.session_rooms[session_id][student_id]["leftAt"] = datetime.now().isoformat()
             
-            # 🎯 UPDATE MongoDB
+            # 🎯 UPDATE MongoDB - find the correct session ID
             try:
-                await SessionParticipantModel.leave_session(session_id, student_id)
-                print(f"✅ Participant left session in MongoDB: session={session_id}, student={student_id}")
+                database = get_database()
+                mongo_session_id = session_id
+                
+                if database:
+                    session_doc = await database.sessions.find_one({"zoomMeetingId": int(session_id) if session_id.isdigit() else session_id})
+                    if not session_doc:
+                        from bson import ObjectId
+                        try:
+                            session_doc = await database.sessions.find_one({"_id": ObjectId(session_id)})
+                        except:
+                            pass
+                    if session_doc:
+                        mongo_session_id = str(session_doc["_id"])
+                
+                await SessionParticipantModel.leave_session(mongo_session_id, student_id)
+                print(f"✅ Participant left session in MongoDB: session={mongo_session_id}, student={student_id}")
             except Exception as e:
                 print(f"⚠️ Failed to update participant leave in MongoDB: {e}")
             
