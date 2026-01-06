@@ -300,168 +300,242 @@ export const SessionReport = () => {
       </Card>
 
       {/* Instructor View: Student Performance Table */}
-      {isInstructor && report.students.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Student Performance
-            </h3>
-          </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Student
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Questions
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Correct
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Score
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Avg. Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Connection
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {report.students.map((student, idx) => (
-                  <tr key={student.studentId || idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                    <td className="px-4 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {student.studentName}
-                        </p>
-                        <p className="text-sm text-gray-500">{student.studentEmail || 'N/A'}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
-                      {student.totalQuestions}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-green-600 font-medium">{student.correctAnswers}</span>
-                      <span className="text-gray-400"> / </span>
-                      <span className="text-red-600">{student.incorrectAnswers}</span>
-                    </td>
-                    <td className={`px-4 py-4 font-semibold ${getScoreColor(student.quizScore)}`}>
-                      {student.quizScore !== null && student.quizScore !== undefined 
-                        ? `${student.quizScore.toFixed(1)}%` 
-                        : 'N/A'}
-                    </td>
-                    <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
-                      {student.averageResponseTime 
-                        ? `${student.averageResponseTime.toFixed(1)}s` 
-                        : 'N/A'}
-                    </td>
-                    <td className="px-4 py-4">
-                      {getConnectionBadge(student.averageConnectionQuality)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* Student View: Personal Quiz Results */}
-      {!isInstructor && studentData && (
+      {isInstructor && (
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Your Quiz Results
+                Student Performance
               </h3>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Your Score</p>
-                  <p className={`text-2xl font-bold ${getScoreColor(studentData.quizScore)}`}>
-                    {studentData.quizScore !== null && studentData.quizScore !== undefined 
-                      ? `${studentData.quizScore.toFixed(1)}%` 
-                      : 'N/A'}
-                  </p>
-                </div>
-              </div>
+              <Badge variant="default">
+                {report.students.length} Students
+              </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            {/* Personal Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
-                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {studentData.totalQuestions}
-                </p>
-                <p className="text-xs text-gray-500">Total Questions</p>
-              </div>
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-                <p className="text-xl font-bold text-green-600">{studentData.correctAnswers}</p>
-                <p className="text-xs text-green-700 dark:text-green-400">Correct</p>
-              </div>
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
-                <p className="text-xl font-bold text-red-600">{studentData.incorrectAnswers}</p>
-                <p className="text-xs text-red-700 dark:text-red-400">Incorrect</p>
-              </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-                <p className="text-xl font-bold text-blue-600">
-                  {studentData.averageResponseTime 
-                    ? `${studentData.averageResponseTime.toFixed(1)}s` 
-                    : 'N/A'}
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-400">Avg. Response Time</p>
-              </div>
-            </div>
-
-            {/* Quiz Details */}
-            <div className="space-y-3">
-              {studentData.quizDetails.map((quiz, idx) => (
-                <div 
-                  key={quiz.questionId || idx}
-                  className={`p-4 rounded-lg border-l-4 ${
-                    quiz.isCorrect 
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
-                      : 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          Question {idx + 1}
-                        </span>
-                        {quiz.isCorrect ? (
-                          <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <XCircleIcon className="h-5 w-5 text-red-600" />
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {quiz.question}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-gray-500 text-sm">
-                        <ClockIcon className="h-4 w-4" />
-                        {quiz.timeTaken ? `${quiz.timeTaken.toFixed(1)}s` : 'N/A'}
-                      </div>
-                    </div>
+          {report.students.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      #
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Student
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Questions Attempted
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Correct / Incorrect
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Avg. Response Time
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Connection
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {report.students.map((student, idx) => (
+                    <tr key={student.studentId || idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <td className="px-4 py-4 text-gray-500">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {student.studentName}
+                          </p>
+                          <p className="text-sm text-gray-500">{student.studentEmail || 'N/A'}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">{student.totalQuestions}</span>
+                        <span className="text-gray-400 text-sm"> questions</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircleIcon className="h-3 w-3 mr-1" />
+                            {student.correctAnswers}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <XCircleIcon className="h-3 w-3 mr-1" />
+                            {student.incorrectAnswers}
+                          </span>
+                        </div>
+                      </td>
+                      <td className={`px-4 py-4 font-semibold ${getScoreColor(student.quizScore)}`}>
+                        {student.quizScore !== null && student.quizScore !== undefined 
+                          ? `${student.quizScore.toFixed(1)}%` 
+                          : 'N/A'}
+                      </td>
+                      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
+                        {student.averageResponseTime 
+                          ? `${student.averageResponseTime.toFixed(1)}s` 
+                          : 'N/A'}
+                      </td>
+                      <td className="px-4 py-4">
+                        {getConnectionBadge(student.averageConnectionQuality)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Summary Row */}
+              <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    <strong>Total:</strong> {report.students.length} students participated
+                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-green-600">
+                      <strong>{report.students.reduce((sum, s) => sum + s.correctAnswers, 0)}</strong> correct answers
+                    </span>
+                    <span className="text-red-600">
+                      <strong>{report.students.reduce((sum, s) => sum + s.incorrectAnswers, 0)}</strong> incorrect answers
+                    </span>
                   </div>
                 </div>
-              ))}
-              
-              {studentData.quizDetails.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <HelpCircleIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No quiz questions were answered during this session.</p>
+              </div>
+            </div>
+          ) : (
+            <CardContent>
+              <div className="text-center py-8">
+                <UsersIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No students have participated yet</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Student performance data will appear here after students join and answer questions
+                </p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Student View: Personal Quiz Results */}
+      {!isInstructor && (
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Your Session Results
+              </h3>
+              {studentData && (
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">Your Score</p>
+                    <p className={`text-2xl font-bold ${getScoreColor(studentData.quizScore)}`}>
+                      {studentData.quizScore !== null && studentData.quizScore !== undefined 
+                        ? `${studentData.quizScore.toFixed(1)}%` 
+                        : 'N/A'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
+          </CardHeader>
+          <CardContent>
+            {studentData ? (
+              <>
+                {/* Personal Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+                    <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      {studentData.totalQuestions}
+                    </p>
+                    <p className="text-xs text-gray-500">Total Questions</p>
+                  </div>
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
+                    <p className="text-xl font-bold text-green-600">{studentData.correctAnswers}</p>
+                    <p className="text-xs text-green-700 dark:text-green-400">Correct Answers</p>
+                  </div>
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
+                    <p className="text-xl font-bold text-red-600">{studentData.incorrectAnswers}</p>
+                    <p className="text-xs text-red-700 dark:text-red-400">Incorrect Answers</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+                    <p className="text-xl font-bold text-blue-600">
+                      {studentData.averageResponseTime 
+                        ? `${studentData.averageResponseTime.toFixed(1)}s` 
+                        : 'N/A'}
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-400">Avg. Response Time</p>
+                  </div>
+                </div>
+
+                {/* Quiz Details */}
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                  Question-by-Question Results
+                </h4>
+                <div className="space-y-3">
+                  {studentData.quizDetails.length > 0 ? (
+                    studentData.quizDetails.map((quiz, idx) => (
+                      <div 
+                        key={quiz.questionId || idx}
+                        className={`p-4 rounded-lg border-l-4 ${
+                          quiz.isCorrect 
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                            : 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                Question {idx + 1}
+                              </span>
+                              {quiz.isCorrect ? (
+                                <Badge variant="success" size="sm">
+                                  <CheckCircleIcon className="h-3 w-3 mr-1" />
+                                  Correct
+                                </Badge>
+                              ) : (
+                                <Badge variant="danger" size="sm">
+                                  <XCircleIcon className="h-3 w-3 mr-1" />
+                                  Incorrect
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {quiz.question}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-gray-500 text-sm">
+                              <ClockIcon className="h-4 w-4" />
+                              {quiz.timeTaken ? `${quiz.timeTaken.toFixed(1)}s` : 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <HelpCircleIcon className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No quiz questions were answered during this session.</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Your quiz results will appear here after you answer questions
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <UsersIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No participation data found</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Your results will appear here after you participate in the session
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
