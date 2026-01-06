@@ -65,6 +65,10 @@ async def get_report_by_id(
                 raise HTTPException(status_code=403, detail="Access denied")
             # Filter to only show their data
             report["students"] = [s for s in report.get("students", []) if s.get("studentId") == user_id]
+            # Remove raw data from student view
+            report.pop("rawAssignments", None)
+            report.pop("rawQuizAnswers", None)
+            report.pop("allQuestions", None)
         elif user_role == "instructor":
             if report.get("instructorId") != user_id:
                 raise HTTPException(status_code=403, detail="Access denied")
@@ -76,6 +80,41 @@ async def get_report_by_id(
     except Exception as e:
         print(f"Error fetching report: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch report")
+
+
+@reports_router.get("/session/{session_id}/stored")
+async def get_stored_report_for_session(
+    session_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Get the stored master report for a specific session.
+    Returns the complete stored report from MongoDB.
+    """
+    try:
+        user_role = user.get("role", "student")
+        user_id = user.get("id")
+        
+        # Get stored report from MongoDB
+        report = await SessionReportModel.get_report_for_user(session_id, user_id, user_role)
+        
+        if not report:
+            raise HTTPException(
+                status_code=404, 
+                detail="No stored report found for this session. Report is generated when the session ends."
+            )
+        
+        return {
+            "stored": True,
+            "storedAt": report.get("generatedAt"),
+            "report": report
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching stored report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stored report")
 
 
 @router.get("/{session_id}/report")
@@ -118,8 +157,13 @@ async def get_session_report(
                     detail="You can only view reports for your own sessions"
                 )
         
-        # Generate and save report to MongoDB
-        report = await SessionReportModel.generate_and_save_report(session_id, user_id, user_role)
+        # FIRST: Try to get stored report from MongoDB
+        # This retrieves the master report and filters based on user role
+        report = await SessionReportModel.get_report_for_user(session_id, user_id, user_role)
+        
+        if not report:
+            # Fallback: Generate fresh report if no stored report exists
+            report = await SessionReportModel.generate_and_save_report(session_id, user_id, user_role)
         
         if not report:
             raise HTTPException(status_code=404, detail="Could not generate report")
@@ -169,8 +213,10 @@ async def download_session_report(
                     detail="You can only download reports for your own sessions"
                 )
         
-        # Generate report
-        report = await SessionReportModel.generate_report(session_id, user_id, user_role)
+        # Get report from MongoDB (or generate if not stored)
+        report = await SessionReportModel.get_report_for_user(session_id, user_id, user_role)
+        if not report:
+            report = await SessionReportModel.generate_report(session_id, user_id, user_role)
         if not report:
             raise HTTPException(status_code=404, detail="Could not generate report")
         

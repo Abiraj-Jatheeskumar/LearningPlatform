@@ -13,12 +13,14 @@ import {
   ClockIcon,
   WifiIcon,
   AlertTriangleIcon,
-  Loader2Icon
+  Loader2Icon,
+  DatabaseIcon,
+  CalendarIcon
 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { sessionService, SessionReport as SessionReportType, StudentReportData } from '../../services/sessionService';
+import { sessionService, SessionReport as SessionReportType } from '../../services/sessionService';
 import { toast } from 'sonner';
 
 export const SessionReport = () => {
@@ -164,6 +166,21 @@ export const SessionReport = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {report.sessionTitle} • {report.sessionDate}
           </p>
+          {/* Storage indicator */}
+          <div className="flex items-center gap-3 mt-2">
+            {report.id && (
+              <Badge variant="success" size="sm" className="flex items-center gap-1">
+                <DatabaseIcon className="h-3 w-3" />
+                Stored in MongoDB
+              </Badge>
+            )}
+            {report.generatedAt && (
+              <span className="text-xs text-gray-500 flex items-center gap-1">
+                <CalendarIcon className="h-3 w-3" />
+                Generated: {new Date(report.generatedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="flex gap-3">
@@ -220,6 +237,31 @@ export const SessionReport = () => {
               </p>
             </div>
           </div>
+          
+          {/* Actual session times from MongoDB */}
+          {(report.actualStartTime || report.actualEndTime) && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Actual Session Times</p>
+              <div className="grid grid-cols-2 gap-4">
+                {report.actualStartTime && (
+                  <div>
+                    <p className="text-sm text-gray-500">Started:</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {new Date(report.actualStartTime).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                {report.actualEndTime && (
+                  <div>
+                    <p className="text-sm text-gray-500">Ended:</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {new Date(report.actualEndTime).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

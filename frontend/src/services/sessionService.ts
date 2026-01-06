@@ -182,6 +182,31 @@ export const sessionService = {
     }
   },
 
+  // Get stored report for a session from MongoDB
+  async getStoredReportForSession(sessionId: string): Promise<StoredReportResponse | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/reports/session/${sessionId}/stored`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        // 404 means no stored report yet - not an error
+        if (res.status === 404) {
+          return null;
+        }
+        console.error("Failed to fetch stored report:", await res.text());
+        return null;
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Stored report fetch error:", err);
+      return null;
+    }
+  },
+
   // End a session (instructor only) - automatically generates report
   async endSession(sessionId: string): Promise<EndSessionResponse> {
     try {
@@ -270,15 +295,23 @@ export interface StudentReportData {
   quizDetails: QuizSummary[];
   averageConnectionQuality?: string;
   connectionIssuesDetected: boolean;
+  latencyMetrics?: {
+    avgLatency?: number;
+    minLatency?: number;
+    maxLatency?: number;
+    packetLoss?: number;
+  };
 }
 
 export interface QuizSummary {
   questionId: string;
   question: string;
+  options?: string[];
   correctAnswer: number;
   studentAnswer?: number;
   isCorrect?: boolean;
   timeTaken?: number;
+  answeredAt?: string;
 }
 
 export interface SessionReport {
@@ -292,6 +325,9 @@ export interface SessionReport {
   sessionDate: string;
   sessionTime: string;
   sessionDuration: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  sessionStatus?: string;
   totalParticipants: number;
   totalQuestionsAsked: number;
   averageQuizScore?: number;
@@ -300,5 +336,46 @@ export interface SessionReport {
   connectionQualitySummary: Record<string, number>;
   students: StudentReportData[];
   generatedAt: string;
+  savedAt?: string;
+  updatedAt?: string;
   reportType: string;
+  // Raw data (instructor only)
+  allQuestions?: Question[];
+  rawAssignments?: QuizAssignment[];
+  rawQuizAnswers?: QuizAnswer[];
+}
+
+// Stored report response from MongoDB
+export interface StoredReportResponse {
+  stored: boolean;
+  storedAt: string;
+  report: SessionReport;
+}
+
+// Additional types for raw data
+export interface Question {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export interface QuizAssignment {
+  id: string;
+  sessionId: string;
+  questionId: string;
+  studentId: string;
+  answerIndex?: number;
+  isCorrect?: boolean;
+  timeTaken?: number;
+  answeredAt?: string;
+}
+
+export interface QuizAnswer {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  questionId: string;
+  answerIndex: number;
+  timeTaken?: number;
 }

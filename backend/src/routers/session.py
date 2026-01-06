@@ -286,11 +286,11 @@ async def end_session(
             {"$set": {"participants": participant_count}}
         )
         
-        # Generate and save the full report (instructor view with all data)
-        report = await SessionReportModel.generate_and_save_report(
+        # Generate and save MASTER report with ALL data to MongoDB
+        # This stores complete session data separately in session_reports collection
+        report = await SessionReportModel.generate_master_report(
             session_id=session_id,
-            user_id=user["id"],
-            user_role="instructor"
+            instructor_id=user["id"]
         )
         
         # Send email notifications to all participants
