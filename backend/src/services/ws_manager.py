@@ -6,6 +6,7 @@ Only students who join a session will receive quiz questions for that session
 from fastapi import WebSocket
 from typing import Dict, Set, Optional, List
 from datetime import datetime
+from ..models.session_participant_model import SessionParticipantModel
 
 
 class WebSocketManager:
@@ -44,20 +45,35 @@ class WebSocketManager:
         """
         Student joins a session room - REQUIRED to receive quiz questions
         Returns participant info
+        Also saves to MongoDB for persistence
         """
         if session_id not in self.session_rooms:
             self.session_rooms[session_id] = {}
 
+        final_student_name = student_name or f"Student {student_id[:8]}"
+
         participant = {
             "websocket": websocket,
             "studentId": student_id,
-            "studentName": student_name or f"Student {student_id[:8]}",
+            "studentName": final_student_name,
             "studentEmail": student_email,
             "status": "joined",
             "joinedAt": datetime.now().isoformat()
         }
 
         self.session_rooms[session_id][student_id] = participant
+
+        # 🎯 SAVE TO MONGODB for persistence and report generation
+        try:
+            await SessionParticipantModel.join_session(
+                session_id=session_id,
+                student_id=student_id,
+                student_name=final_student_name,
+                student_email=student_email
+            )
+            print(f"✅ Participant saved to MongoDB: session={session_id}, student={student_id}")
+        except Exception as e:
+            print(f"⚠️ Failed to save participant to MongoDB: {e}")
 
         print(f"✅ Student joined session room: session={session_id}, student={student_id}")
         print(f"   Session room now has {len(self.session_rooms[session_id])} participants")
@@ -70,12 +86,19 @@ class WebSocketManager:
             "participantCount": len(self.session_rooms[session_id])
         }
 
-    def leave_session_room(self, session_id: str, student_id: str) -> bool:
+    async def leave_session_room(self, session_id: str, student_id: str) -> bool:
         """Student leaves session room - will no longer receive quizzes"""
         if session_id in self.session_rooms and student_id in self.session_rooms[session_id]:
             # Mark as left instead of removing (for tracking)
             self.session_rooms[session_id][student_id]["status"] = "left"
             self.session_rooms[session_id][student_id]["leftAt"] = datetime.now().isoformat()
+            
+            # 🎯 UPDATE MongoDB
+            try:
+                await SessionParticipantModel.leave_session(session_id, student_id)
+                print(f"✅ Participant left session in MongoDB: session={session_id}, student={student_id}")
+            except Exception as e:
+                print(f"⚠️ Failed to update participant leave in MongoDB: {e}")
             
             print(f"👋 Student left session room: session={session_id}, student={student_id}")
             return True
@@ -154,7 +177,7 @@ class WebSocketManager:
 
         # Clean up dead connections
         for student_id in dead_connections:
-            self.leave_session_room(session_id, student_id)
+            await self.leave_session_room(session_id, student_id)
 
         print(f"📢 SESSION BROADCAST [{session_id}] → Sent to {sent} students")
         return sent

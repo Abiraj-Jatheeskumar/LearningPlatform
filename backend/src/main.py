@@ -200,7 +200,7 @@ async def websocket_session(
 
     except WebSocketDisconnect:
         # Mark student as left when they disconnect
-        ws_manager.leave_session_room(session_id, student_id)
+        await ws_manager.leave_session_room(session_id, student_id)
         print(f"👋 Student {student_id} disconnected from session {session_id}")
 
 

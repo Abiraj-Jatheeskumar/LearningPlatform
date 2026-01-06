@@ -269,6 +269,7 @@ async def end_session(
             {
                 "$set": {
                     "status": "completed",
+                    "actualEndTime": datetime.utcnow(),
                     "endedAt": datetime.utcnow(),
                     "endedBy": user["id"]
                 }
@@ -366,6 +367,7 @@ async def start_session(
             {
                 "$set": {
                     "status": "live",
+                    "actualStartTime": datetime.utcnow(),
                     "startedAt": datetime.utcnow()
                 }
             }
