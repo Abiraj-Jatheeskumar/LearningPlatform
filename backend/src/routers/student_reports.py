@@ -5,10 +5,14 @@ Student Reports API
 Endpoints for students to view their personal reports.
 Students can ONLY see their own data - never other students' data.
 
+USES STORED REPORTS FROM MongoDB when available.
+Students only see their own personal data from the stored reports.
+
 Includes:
 - Attendance Report (sessions attended, join/leave times, duration)
 - Quiz Report (quizzes attempted, scores, correct/incorrect)
 - Session History (all sessions joined)
+- Stored Session Reports (from MongoDB after session ends)
 """
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -18,6 +22,7 @@ from bson import ObjectId
 
 from src.database.connection import db
 from src.middleware.auth import get_current_user
+from src.models.session_report_model import SessionReportModel
 
 router = APIRouter(prefix="/api/student/reports", tags=["Student Reports"])
 
@@ -374,4 +379,137 @@ async def get_my_dashboard_stats(user: dict = Depends(require_student)):
     except Exception as e:
         print(f"Error fetching student stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch dashboard stats")
+
+
+# ============================================================
+# 5. GET STORED REPORT FOR A SESSION (Student's own data only)
+# ============================================================
+@router.get("/sessions/{session_id}/stored-report")
+async def get_my_stored_session_report(
+    session_id: str,
+    user: dict = Depends(require_student)
+):
+    """
+    Get the STORED report from MongoDB for a session.
+    Student can ONLY see their own personal data from the report.
+    """
+    try:
+        student_id = user.get("id")
+        
+        # Verify student participated in this session
+        participant = await db.database.session_participants.find_one({
+            "sessionId": session_id,
+            "studentId": student_id
+        })
+        
+        if not participant:
+            raise HTTPException(status_code=403, detail="You did not participate in this session")
+        
+        # Get session info
+        try:
+            session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        except:
+            session = None
+        
+        # Get stored report from MongoDB
+        stored_report = await SessionReportModel.get_stored_master_report(session_id)
+        
+        if not stored_report:
+            return {
+                "success": False,
+                "stored": False,
+                "message": "No stored report found. Report is available after the session ends.",
+                "sessionStatus": session.get("status", "unknown") if session else "unknown",
+                "sessionId": session_id,
+                "report": None
+            }
+        
+        # Filter to only include THIS student's data
+        student_data = None
+        for s in stored_report.get("students", []):
+            if s.get("studentId") == student_id:
+                student_data = s
+                break
+        
+        # Create personalized report for student
+        personal_report = {
+            "sessionId": stored_report.get("sessionId"),
+            "sessionTitle": stored_report.get("sessionTitle"),
+            "courseName": stored_report.get("courseName"),
+            "courseCode": stored_report.get("courseCode"),
+            "instructorName": stored_report.get("instructorName"),
+            "sessionDate": stored_report.get("sessionDate"),
+            "sessionTime": stored_report.get("sessionTime"),
+            "sessionDuration": stored_report.get("sessionDuration"),
+            "generatedAt": stored_report.get("generatedAt"),
+            # Personal data only
+            "myData": student_data
+        }
+        
+        return {
+            "success": True,
+            "stored": True,
+            "message": "Your personal report retrieved from MongoDB",
+            "sessionId": session_id,
+            "sessionStatus": session.get("status", "completed") if session else "completed",
+            "report": personal_report
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching student stored report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stored report")
+
+
+# ============================================================
+# 6. GET ALL MY STORED REPORTS
+# ============================================================
+@router.get("/stored-reports")
+async def get_all_my_stored_reports(user: dict = Depends(require_student)):
+    """
+    Get all stored reports from MongoDB where the student participated.
+    Only shows student's own data from each report.
+    """
+    try:
+        student_id = user.get("id")
+        
+        # Get all reports where this student participated
+        reports = []
+        async for report in db.database.session_reports.find({
+            "students.studentId": student_id,
+            "reportType": "master"
+        }).sort("generatedAt", -1):
+            
+            # Find this student's data in the report
+            student_data = None
+            for s in report.get("students", []):
+                if s.get("studentId") == student_id:
+                    student_data = s
+                    break
+            
+            if student_data:
+                reports.append({
+                    "reportId": str(report["_id"]),
+                    "sessionId": report.get("sessionId"),
+                    "sessionTitle": report.get("sessionTitle"),
+                    "courseName": report.get("courseName"),
+                    "sessionDate": report.get("sessionDate"),
+                    "generatedAt": report.get("generatedAt"),
+                    # My personal summary
+                    "myTotalQuestions": student_data.get("totalQuestions", 0),
+                    "myCorrectAnswers": student_data.get("correctAnswers", 0),
+                    "myScore": student_data.get("quizScore"),
+                    "myAttendanceDuration": student_data.get("attendanceDuration")
+                })
+        
+        return {
+            "success": True,
+            "totalReports": len(reports),
+            "reports": reports
+        }
+        
+    except Exception as e:
+        print(f"Error fetching student stored reports: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stored reports")
 

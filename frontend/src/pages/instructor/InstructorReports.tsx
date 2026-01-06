@@ -69,14 +69,34 @@ interface EngagementData {
   engagementLevel: string;
 }
 
+// Type for stored reports
+interface StoredReport {
+  reportId: string;
+  sessionId: string;
+  sessionTitle: string;
+  courseName: string;
+  courseCode?: string;
+  sessionDate: string;
+  totalParticipants: number;
+  totalQuestionsAsked: number;
+  averageQuizScore: number | null;
+  generatedAt: string;
+  engagementSummary?: {
+    highEngagement?: number;
+    mediumEngagement?: number;
+    lowEngagement?: number;
+  };
+}
+
 export const InstructorReports = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'sessions' | 'attendance' | 'quiz' | 'engagement'>('sessions');
+  const [activeTab, setActiveTab] = useState<'stored' | 'sessions' | 'attendance' | 'quiz' | 'engagement'>('stored');
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   
   // Data states
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [storedReports, setStoredReports] = useState<StoredReport[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [quizData, setQuizData] = useState<QuizPerformance[]>([]);
@@ -90,6 +110,7 @@ export const InstructorReports = () => {
   useEffect(() => {
     fetchSessions();
     fetchDashboardStats();
+    fetchStoredReports();
   }, []);
 
   const getAuthHeaders = () => ({
@@ -128,6 +149,21 @@ export const InstructorReports = () => {
       toast.error('Failed to fetch sessions');
     }
     setLoading(false);
+  };
+
+  // Fetch stored reports from MongoDB
+  const fetchStoredReports = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/instructor/reports/stored-reports`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStoredReports(data.reports || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stored reports:', err);
+    }
   };
 
   const fetchAttendance = async (sessionId: string) => {
@@ -502,8 +538,9 @@ export const InstructorReports = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
         {[
+          { id: 'stored', label: 'Stored Reports', icon: FileTextIcon },
           { id: 'sessions', label: 'Session Summary', icon: BookOpenIcon },
           { id: 'attendance', label: 'Attendance', icon: ClockIcon },
           { id: 'quiz', label: 'Quiz Performance', icon: FileTextIcon },
@@ -525,72 +562,178 @@ export const InstructorReports = () => {
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Session List (Left sidebar) */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                Select Session
+      {/* STORED REPORTS TAB - Full width, shows all MongoDB stored reports */}
+      {activeTab === 'stored' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                📦 Stored Reports (MongoDB)
               </h3>
-            </CardHeader>
-            <CardContent className="max-h-[500px] overflow-y-auto">
-              {loading && sessions.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
-                </div>
-              ) : sessions.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No sessions found</p>
-              ) : (
-                <div className="space-y-2">
-                  {sessions.map((session) => (
-                    <div
-                      key={session.sessionId}
-                      className={`p-3 rounded-lg border transition-colors ${
-                        selectedSessionId === session.sessionId
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleSessionSelect(session.sessionId)}
-                        className="w-full text-left"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
-                            {session.sessionName}
-                          </span>
-                          {getStatusBadge(session.status)}
-                        </div>
-                        <p className="text-xs text-gray-500">{session.courseName}</p>
-                        <p className="text-xs text-gray-400">{session.date}</p>
-                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                          <UsersIcon className="h-3 w-3" />
-                          {session.totalStudentsJoined} students
-                        </div>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadFullSessionReport(session.sessionId, session.sessionName);
-                        }}
-                        className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 py-1 border border-emerald-200 dark:border-emerald-800 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                        disabled={downloading}
-                      >
-                        <DownloadIcon className="h-3 w-3" />
-                        Download Report
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="success">{storedReports.length} Reports</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<RefreshCwIcon className="h-4 w-4" />}
+                  onClick={fetchStoredReports}
+                >
+                  Refresh
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              These reports are automatically generated and stored in MongoDB when you end a session.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {storedReports.length === 0 ? (
+              <div className="text-center py-12">
+                <FileTextIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No stored reports yet</p>
+                <p className="text-gray-400 text-sm mt-2">
+                  Reports are automatically generated when you end a session
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Session</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Course</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Participants</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Questions</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Avg Score</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Generated</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {storedReports.map((report) => (
+                      <tr key={report.reportId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                          {report.sessionTitle}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                          {report.courseName}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                          {report.sessionDate}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <UsersIcon className="h-4 w-4 text-blue-500" />
+                            <span className="text-gray-700 dark:text-gray-300">{report.totalParticipants}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                          {report.totalQuestionsAsked}
+                        </td>
+                        <td className="px-4 py-3">
+                          {report.averageQuizScore !== null ? (
+                            <Badge variant={report.averageQuizScore >= 70 ? 'success' : report.averageQuizScore >= 50 ? 'warning' : 'destructive'}>
+                              {report.averageQuizScore}%
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          {new Date(report.generatedAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<DownloadIcon className="h-3 w-3" />}
+                              onClick={() => downloadFullSessionReport(report.sessionId, report.sessionTitle)}
+                              disabled={downloading}
+                            >
+                              Download
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Report Content (Right side) */}
-        <div className="lg:col-span-3">
-          {activeTab === 'sessions' && (
+      {/* OTHER TABS - Need session selection */}
+      {activeTab !== 'stored' && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Session List (Left sidebar) */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  Select Session
+                </h3>
+              </CardHeader>
+              <CardContent className="max-h-[500px] overflow-y-auto">
+                {loading && sessions.length === 0 ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No sessions found</p>
+                ) : (
+                  <div className="space-y-2">
+                    {sessions.map((session) => (
+                      <div
+                        key={session.sessionId}
+                        className={`p-3 rounded-lg border transition-colors ${
+                          selectedSessionId === session.sessionId
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <button
+                          onClick={() => handleSessionSelect(session.sessionId)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
+                              {session.sessionName}
+                            </span>
+                            {getStatusBadge(session.status)}
+                          </div>
+                          <p className="text-xs text-gray-500">{session.courseName}</p>
+                          <p className="text-xs text-gray-400">{session.date}</p>
+                          <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                            <UsersIcon className="h-3 w-3" />
+                            {session.totalStudentsJoined} students
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadFullSessionReport(session.sessionId, session.sessionName);
+                          }}
+                          className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 py-1 border border-emerald-200 dark:border-emerald-800 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          disabled={downloading}
+                        >
+                          <DownloadIcon className="h-3 w-3" />
+                          Download Report
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Report Content (Right side) */}
+          <div className="lg:col-span-3">
+            {activeTab === 'sessions' && (
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -888,8 +1031,9 @@ export const InstructorReports = () => {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

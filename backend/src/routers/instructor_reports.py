@@ -5,6 +5,9 @@ Instructor Reports API
 Endpoints for instructors to view reports for their sessions.
 Includes: Session Summary, Quiz Performance, Engagement Activity reports.
 
+USES STORED REPORTS FROM MongoDB when available (after session ends).
+Falls back to live data if no stored report exists.
+
 Access Control:
 - Only instructors can access these endpoints
 - Instructors can only view reports for sessions they created
@@ -17,6 +20,7 @@ from bson import ObjectId
 
 from src.database.connection import db
 from src.middleware.auth import get_current_user, require_instructor
+from src.models.session_report_model import SessionReportModel
 
 router = APIRouter(prefix="/api/instructor/reports", tags=["Instructor Reports"])
 
@@ -438,4 +442,106 @@ async def get_instructor_dashboard_stats(user: dict = Depends(require_instructor
     except Exception as e:
         print(f"Error fetching dashboard stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch dashboard stats")
+
+
+# ============================================================
+# 5. GET STORED REPORT FROM MONGODB
+# ============================================================
+@router.get("/sessions/{session_id}/stored-report")
+async def get_stored_session_report(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """
+    Get the STORED report from MongoDB for a session.
+    This report is automatically generated when the instructor ends the session.
+    Contains ALL student data: attendance, quiz performance, engagement.
+    """
+    try:
+        instructor_id = user.get("id")
+        
+        # Verify session belongs to instructor
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("instructorId") != instructor_id:
+            raise HTTPException(status_code=403, detail="You can only view reports for your own sessions")
+        
+        # Get stored report from MongoDB
+        stored_report = await SessionReportModel.get_stored_master_report(session_id)
+        
+        if not stored_report:
+            # No stored report - session may not have ended yet
+            return {
+                "success": False,
+                "stored": False,
+                "message": "No stored report found. Report is generated when you end the session.",
+                "sessionStatus": session.get("status", "unknown"),
+                "sessionId": session_id,
+                "sessionName": session.get("title", ""),
+                "report": None
+            }
+        
+        return {
+            "success": True,
+            "stored": True,
+            "message": "Report retrieved from MongoDB",
+            "sessionId": session_id,
+            "sessionName": session.get("title", ""),
+            "sessionStatus": session.get("status", "completed"),
+            "generatedAt": stored_report.get("generatedAt"),
+            "report": stored_report
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching stored report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stored report")
+
+
+# ============================================================
+# 6. GET ALL STORED REPORTS FOR INSTRUCTOR
+# ============================================================
+@router.get("/stored-reports")
+async def get_all_stored_reports(user: dict = Depends(require_instructor)):
+    """
+    Get all stored reports from MongoDB for the instructor's sessions.
+    Only returns reports for completed sessions.
+    """
+    try:
+        instructor_id = user.get("id")
+        
+        # Get all stored reports for this instructor
+        reports = []
+        async for report in db.database.session_reports.find({
+            "instructorId": instructor_id,
+            "reportType": "master"
+        }).sort("generatedAt", -1):
+            report["id"] = str(report["_id"])
+            del report["_id"]
+            reports.append({
+                "reportId": report["id"],
+                "sessionId": report.get("sessionId"),
+                "sessionTitle": report.get("sessionTitle"),
+                "courseName": report.get("courseName"),
+                "courseCode": report.get("courseCode"),
+                "sessionDate": report.get("sessionDate"),
+                "totalParticipants": report.get("totalParticipants", 0),
+                "totalQuestionsAsked": report.get("totalQuestionsAsked", 0),
+                "averageQuizScore": report.get("averageQuizScore"),
+                "generatedAt": report.get("generatedAt"),
+                "engagementSummary": report.get("engagementSummary", {})
+            })
+        
+        return {
+            "success": True,
+            "totalReports": len(reports),
+            "reports": reports
+        }
+        
+    except Exception as e:
+        print(f"Error fetching stored reports: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stored reports")
 

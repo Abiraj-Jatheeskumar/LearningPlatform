@@ -76,13 +76,28 @@ interface SessionHistory {
   };
 }
 
+// Type for stored reports
+interface MyStoredReport {
+  reportId: string;
+  sessionId: string;
+  sessionTitle: string;
+  courseName: string;
+  sessionDate: string;
+  generatedAt: string;
+  myTotalQuestions: number;
+  myCorrectAnswers: number;
+  myScore: number | null;
+  myAttendanceDuration: number | null;
+}
+
 export const StudentReports = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'attendance' | 'quiz' | 'history'>('attendance');
+  const [activeTab, setActiveTab] = useState<'stored' | 'attendance' | 'quiz' | 'history'>('stored');
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   
   // Data states
+  const [storedReports, setStoredReports] = useState<MyStoredReport[]>([]);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
   const [quizData, setQuizData] = useState<QuizSession[]>([]);
@@ -97,6 +112,7 @@ export const StudentReports = () => {
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchStoredReports();
     fetchAttendance();
   }, []);
 
@@ -117,6 +133,48 @@ export const StudentReports = () => {
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
     }
+  };
+
+  // Fetch stored reports from MongoDB
+  const fetchStoredReports = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/student/reports/stored-reports`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStoredReports(data.reports || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stored reports:', err);
+    }
+  };
+
+  // Download personal report as CSV
+  const downloadPersonalReport = (report: MyStoredReport) => {
+    const csvContent = `MY SESSION REPORT
+Session,${report.sessionTitle}
+Course,${report.courseName}
+Date,${report.sessionDate}
+Generated,${new Date(report.generatedAt).toLocaleString()}
+
+MY PERFORMANCE
+Total Questions,${report.myTotalQuestions}
+Correct Answers,${report.myCorrectAnswers}
+Score,${report.myScore !== null ? `${report.myScore}%` : 'N/A'}
+Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttendanceDuration} minutes` : 'N/A'}
+`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `my_report_${report.sessionTitle.replace(/\s+/g, '_')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Report downloaded!');
   };
 
   const fetchAttendance = async () => {
@@ -367,8 +425,9 @@ export const StudentReports = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
         {[
+          { id: 'stored', label: 'My Reports', icon: FileTextIcon },
           { id: 'attendance', label: 'My Attendance', icon: ClockIcon },
           { id: 'quiz', label: 'My Quiz Scores', icon: FileTextIcon },
           { id: 'history', label: 'Session History', icon: BookOpenIcon }
@@ -395,6 +454,107 @@ export const StudentReports = () => {
         </div>
       ) : (
         <>
+          {/* Stored Reports Tab */}
+          {activeTab === 'stored' && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    📦 My Session Reports (Stored in MongoDB)
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success">{storedReports.length} Reports</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<RefreshCwIcon className="h-4 w-4" />}
+                      onClick={fetchStoredReports}
+                    >
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  These are your personal reports from completed sessions. Shows only your own data.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {storedReports.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileTextIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No session reports yet</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Reports are generated after the instructor ends a session you participated in
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Session</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Course</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">My Questions</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">My Correct</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">My Score</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Attendance</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {storedReports.map((report) => (
+                          <tr key={report.reportId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                              {report.sessionTitle}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {report.courseName}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {report.sessionDate}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {report.myTotalQuestions}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center gap-1 text-green-600">
+                                <CheckCircleIcon className="h-4 w-4" />
+                                {report.myCorrectAnswers}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {report.myScore !== null ? (
+                                <Badge variant={report.myScore >= 70 ? 'success' : report.myScore >= 50 ? 'warning' : 'destructive'}>
+                                  {report.myScore}%
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {report.myAttendanceDuration !== null ? `${report.myAttendanceDuration} min` : '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<DownloadIcon className="h-3 w-3" />}
+                                onClick={() => downloadPersonalReport(report)}
+                              >
+                                Download
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Attendance Tab */}
           {activeTab === 'attendance' && (
             <Card>
