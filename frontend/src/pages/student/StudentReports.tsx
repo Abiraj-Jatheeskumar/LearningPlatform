@@ -11,7 +11,8 @@ import {
   RefreshCwIcon,
   BookOpenIcon,
   AwardIcon,
-  TimerIcon
+  TimerIcon,
+  DownloadIcon
 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -79,6 +80,7 @@ export const StudentReports = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'attendance' | 'quiz' | 'history'>('attendance');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   
   // Data states
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -200,6 +202,105 @@ export const StudentReports = () => {
     }
   };
 
+  // ============ DOWNLOAD FUNCTIONS ============
+  
+  const downloadCSV = (filename: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const downloadMyAttendance = () => {
+    if (attendanceData.length === 0) {
+      toast.error('No attendance data to download');
+      return;
+    }
+    
+    const headers = ['Session', 'Course', 'Instructor', 'Date', 'Join Time', 'Leave Time', 'Duration (min)', 'Status'];
+    const rows = attendanceData.map(r => [
+      r.sessionName,
+      r.courseName,
+      r.instructorName,
+      r.sessionDate,
+      r.joinTime ? new Date(r.joinTime).toLocaleString() : 'N/A',
+      r.leaveTime ? new Date(r.leaveTime).toLocaleString() : '-',
+      r.durationMinutes !== null ? r.durationMinutes.toString() : 'N/A',
+      r.sessionStatus
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    downloadCSV(`my_attendance_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Attendance report downloaded!');
+  };
+
+  const downloadMyQuizScores = () => {
+    if (quizData.length === 0) {
+      toast.error('No quiz data to download');
+      return;
+    }
+    
+    const headers = ['Session', 'Course', 'Date', 'Total Questions', 'Correct', 'Incorrect', 'Unanswered', 'Score (%)'];
+    const rows = quizData.map(r => [
+      r.sessionName,
+      r.courseName,
+      r.sessionDate,
+      r.totalQuestions.toString(),
+      r.correctAnswers.toString(),
+      r.incorrectAnswers.toString(),
+      r.unanswered.toString(),
+      r.score.toString()
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    downloadCSV(`my_quiz_scores_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Quiz scores downloaded!');
+  };
+
+  const downloadSessionHistory = () => {
+    if (sessionHistory.length === 0) {
+      toast.error('No session history to download');
+      return;
+    }
+    
+    const headers = ['Session', 'Course', 'Instructor', 'Date', 'Time', 'Duration (min)', 'Quiz Questions', 'Quiz Score (%)'];
+    const rows = sessionHistory.map(r => [
+      r.sessionName,
+      r.courseName,
+      r.instructorName,
+      r.sessionDate,
+      r.sessionTime,
+      r.durationMinutes !== null ? r.durationMinutes.toString() : 'N/A',
+      r.quizParticipation.totalQuestions.toString(),
+      r.quizParticipation.score !== null ? r.quizParticipation.score.toString() : 'N/A'
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    downloadCSV(`my_session_history_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Session history downloaded!');
+  };
+
+  const handleDownload = () => {
+    setDownloading(true);
+    try {
+      if (activeTab === 'attendance') {
+        downloadMyAttendance();
+      } else if (activeTab === 'quiz') {
+        downloadMyQuizScores();
+      } else if (activeTab === 'history') {
+        downloadSessionHistory();
+      }
+    } catch (err) {
+      toast.error('Failed to download report');
+    }
+    setDownloading(false);
+  };
+
   return (
     <div className="py-6 space-y-6">
       {/* Header */}
@@ -212,13 +313,23 @@ export const StudentReports = () => {
             View your personal attendance, quiz scores, and session history
           </p>
         </div>
-        <Button
-          variant="outline"
-          leftIcon={<RefreshCwIcon className="h-4 w-4" />}
-          onClick={refreshCurrentTab}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="primary"
+            leftIcon={downloading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <DownloadIcon className="h-4 w-4" />}
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            {downloading ? 'Downloading...' : 'Download CSV'}
+          </Button>
+          <Button
+            variant="outline"
+            leftIcon={<RefreshCwIcon className="h-4 w-4" />}
+            onClick={refreshCurrentTab}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard Stats */}

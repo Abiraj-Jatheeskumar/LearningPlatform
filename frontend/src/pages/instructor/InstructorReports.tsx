@@ -73,6 +73,7 @@ export const InstructorReports = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'sessions' | 'attendance' | 'quiz' | 'engagement'>('sessions');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   
   // Data states
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -233,6 +234,138 @@ export const InstructorReports = () => {
     }
   };
 
+  // ============ DOWNLOAD FUNCTIONS ============
+  
+  // Helper to trigger CSV download
+  const downloadCSV = (filename: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Download Session Summary as CSV
+  const downloadSessionSummary = () => {
+    if (sessions.length === 0) {
+      toast.error('No sessions to download');
+      return;
+    }
+    
+    const headers = ['Session Name', 'Course', 'Course Code', 'Date', 'Time', 'Duration', 'Status', 'Students Joined'];
+    const rows = sessions.map(s => [
+      s.sessionName,
+      s.courseName,
+      s.courseCode,
+      s.date,
+      s.time,
+      s.duration,
+      s.status,
+      s.totalStudentsJoined.toString()
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    downloadCSV(`session_summary_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Session summary downloaded!');
+  };
+
+  // Download Attendance Report as CSV
+  const downloadAttendanceReport = () => {
+    if (attendanceData.length === 0) {
+      toast.error('No attendance data to download');
+      return;
+    }
+    
+    const headers = ['#', 'Student Name', 'Email', 'Join Time', 'Leave Time', 'Duration (min)', 'Status'];
+    const rows = attendanceData.map((r, idx) => [
+      (idx + 1).toString(),
+      r.studentName,
+      r.studentEmail || 'N/A',
+      r.joinTime ? new Date(r.joinTime).toLocaleString() : 'N/A',
+      r.leaveTime ? new Date(r.leaveTime).toLocaleString() : 'Still in session',
+      r.durationMinutes !== null ? r.durationMinutes.toString() : 'N/A',
+      r.status
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const sessionName = sessionInfo?.name || 'session';
+    downloadCSV(`attendance_${sessionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Attendance report downloaded!');
+  };
+
+  // Download Quiz Performance as CSV
+  const downloadQuizPerformance = () => {
+    if (quizData.length === 0) {
+      toast.error('No quiz data to download');
+      return;
+    }
+    
+    const headers = ['#', 'Student Name', 'Email', 'Total Questions', 'Correct', 'Incorrect', 'Unanswered', 'Score (%)', 'Avg Response Time (s)'];
+    const rows = quizData.map((r, idx) => [
+      (idx + 1).toString(),
+      r.studentName,
+      r.studentEmail || 'N/A',
+      r.totalQuestions.toString(),
+      r.correctAnswers.toString(),
+      r.incorrectAnswers.toString(),
+      r.unanswered.toString(),
+      r.score.toString(),
+      r.averageResponseTime !== null ? r.averageResponseTime.toString() : 'N/A'
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const sessionName = sessionInfo?.name || 'session';
+    downloadCSV(`quiz_performance_${sessionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Quiz performance report downloaded!');
+  };
+
+  // Download Engagement Report as CSV
+  const downloadEngagementReport = () => {
+    if (engagementData.length === 0) {
+      toast.error('No engagement data to download');
+      return;
+    }
+    
+    const headers = ['#', 'Student Name', 'Email', 'Questions Answered', 'Attendance (min)', 'Connection Quality', 'Engagement Level'];
+    const rows = engagementData.map((r, idx) => [
+      (idx + 1).toString(),
+      r.studentName,
+      r.studentEmail || 'N/A',
+      r.questionsAnswered.toString(),
+      r.attendanceDuration !== null ? r.attendanceDuration.toString() : 'N/A',
+      r.connectionQuality || 'Unknown',
+      r.engagementLevel
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const sessionName = sessionInfo?.name || 'session';
+    downloadCSV(`engagement_${sessionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`, csvContent);
+    toast.success('Engagement report downloaded!');
+  };
+
+  // Download current tab's data
+  const handleDownload = () => {
+    setDownloading(true);
+    try {
+      if (activeTab === 'sessions') {
+        downloadSessionSummary();
+      } else if (activeTab === 'attendance') {
+        downloadAttendanceReport();
+      } else if (activeTab === 'quiz') {
+        downloadQuizPerformance();
+      } else if (activeTab === 'engagement') {
+        downloadEngagementReport();
+      }
+    } catch (err) {
+      toast.error('Failed to download report');
+    }
+    setDownloading(false);
+  };
+
   return (
     <div className="py-6 space-y-6">
       {/* Header */}
@@ -245,16 +378,26 @@ export const InstructorReports = () => {
             View detailed reports for your sessions
           </p>
         </div>
-        <Button
-          variant="outline"
-          leftIcon={<RefreshCwIcon className="h-4 w-4" />}
-          onClick={() => {
-            fetchSessions();
-            fetchDashboardStats();
-          }}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="primary"
+            leftIcon={downloading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <DownloadIcon className="h-4 w-4" />}
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            {downloading ? 'Downloading...' : 'Download CSV'}
+          </Button>
+          <Button
+            variant="outline"
+            leftIcon={<RefreshCwIcon className="h-4 w-4" />}
+            onClick={() => {
+              fetchSessions();
+              fetchDashboardStats();
+            }}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard Stats */}
