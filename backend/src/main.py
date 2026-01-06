@@ -112,6 +112,7 @@ app.include_router(session.router)
 app.include_router(push_notification.router)  # ⭐ ADD THIS
 app.include_router(latency.router)  # 📶 WebRTC-aware latency monitoring
 app.include_router(session_report.router)  # 📊 Session reports with download
+app.include_router(session_report.reports_router)  # 📊 All reports API
 
 
 # --------------------------------------------------------

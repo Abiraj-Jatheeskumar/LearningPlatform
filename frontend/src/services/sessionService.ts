@@ -139,6 +139,48 @@ export const sessionService = {
       return { success: false, message: "Failed to send report emails" };
     }
   },
+
+  // Get all stored reports from MongoDB
+  async getAllReports(): Promise<{ reports: SessionReport[]; total: number }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/reports`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch reports:", await res.text());
+        return { reports: [], total: 0 };
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Reports fetch error:", err);
+      return { reports: [], total: 0 };
+    }
+  },
+
+  // Get a specific stored report by ID
+  async getReportById(reportId: string): Promise<SessionReport | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch report:", await res.text());
+        return null;
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Report fetch error:", err);
+      return null;
+    }
+  },
 };
 
 // Types for session reports

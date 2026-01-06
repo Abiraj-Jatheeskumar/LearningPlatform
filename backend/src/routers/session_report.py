@@ -20,15 +20,74 @@ from src.services.email_service import email_service
 router = APIRouter(prefix="/api/sessions", tags=["Session Reports"])
 
 
+# New endpoint to get all reports for a user
+reports_router = APIRouter(prefix="/api/reports", tags=["Reports"])
+
+
+@reports_router.get("")
+async def get_all_reports(user: dict = Depends(get_current_user)):
+    """
+    Get all reports accessible by the current user.
+    - Instructors see reports for all their sessions
+    - Students see reports for sessions they participated in
+    """
+    try:
+        user_role = user.get("role", "student")
+        user_id = user.get("id")
+        
+        reports = await SessionReportModel.get_all_reports(user_id, user_role)
+        return {"reports": reports, "total": len(reports)}
+        
+    except Exception as e:
+        print(f"Error fetching reports: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch reports")
+
+
+@reports_router.get("/{report_id}")
+async def get_report_by_id(
+    report_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Get a specific saved report by ID"""
+    try:
+        report = await SessionReportModel.get_saved_report(report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        user_role = user.get("role", "student")
+        user_id = user.get("id")
+        
+        # Check access permissions
+        if user_role == "student":
+            # Students can only view their own reports
+            student_ids = [s.get("studentId") for s in report.get("students", [])]
+            if user_id not in student_ids:
+                raise HTTPException(status_code=403, detail="Access denied")
+            # Filter to only show their data
+            report["students"] = [s for s in report.get("students", []) if s.get("studentId") == user_id]
+        elif user_role == "instructor":
+            if report.get("instructorId") != user_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return report
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch report")
+
+
 @router.get("/{session_id}/report")
 async def get_session_report(
     session_id: str,
     user: dict = Depends(get_current_user)
 ):
     """
-    Generate and return session report.
+    Generate, save, and return session report.
     - Instructors get full report with all student data
     - Students get personalized report with their own data
+    - Reports are automatically saved to MongoDB
     """
     try:
         # Verify session exists
@@ -59,8 +118,8 @@ async def get_session_report(
                     detail="You can only view reports for your own sessions"
                 )
         
-        # Generate report
-        report = await SessionReportModel.generate_report(session_id, user_id, user_role)
+        # Generate and save report to MongoDB
+        report = await SessionReportModel.generate_and_save_report(session_id, user_id, user_role)
         
         if not report:
             raise HTTPException(status_code=404, detail="Could not generate report")

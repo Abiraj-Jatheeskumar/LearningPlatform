@@ -312,4 +312,109 @@ class SessionReportModel:
             del report["_id"]
             reports.append(report)
         return reports
+    
+    @staticmethod
+    async def get_all_reports(user_id: str, user_role: str) -> List[Dict]:
+        """Get all reports accessible by a user"""
+        database = get_database()
+        if database is None:
+            return []
+        
+        reports = []
+        
+        if user_role in ["instructor", "admin"]:
+            # Instructors see reports for their sessions
+            query = {"instructorId": user_id} if user_role == "instructor" else {}
+            async for report in database.session_reports.find(query).sort("generatedAt", -1):
+                report["id"] = str(report["_id"])
+                del report["_id"]
+                reports.append(report)
+        else:
+            # Students see reports where they participated
+            async for report in database.session_reports.find({
+                "students.studentId": user_id
+            }).sort("generatedAt", -1):
+                report["id"] = str(report["_id"])
+                del report["_id"]
+                # Filter student data to only show their own
+                report["students"] = [s for s in report.get("students", []) if s.get("studentId") == user_id]
+                reports.append(report)
+        
+        return reports
+    
+    @staticmethod
+    async def find_existing_report(session_id: str, user_id: str, report_type: str) -> Optional[Dict]:
+        """Find an existing report for a session and user"""
+        database = get_database()
+        if database is None:
+            return None
+        
+        query = {
+            "sessionId": session_id,
+            "reportType": report_type
+        }
+        
+        # For student reports, also match the student
+        if report_type == "student_personal":
+            query["students.studentId"] = user_id
+        
+        report = await database.session_reports.find_one(query)
+        if report:
+            report["id"] = str(report["_id"])
+            del report["_id"]
+        return report
+    
+    @staticmethod
+    async def update_report(report_id: str, report_data: Dict) -> bool:
+        """Update an existing report"""
+        database = get_database()
+        if database is None:
+            return False
+        
+        report_data["updatedAt"] = datetime.utcnow()
+        result = await database.session_reports.update_one(
+            {"_id": ObjectId(report_id)},
+            {"$set": report_data}
+        )
+        return result.modified_count > 0
+    
+    @staticmethod
+    async def delete_report(report_id: str) -> bool:
+        """Delete a report"""
+        database = get_database()
+        if database is None:
+            return False
+        
+        result = await database.session_reports.delete_one({"_id": ObjectId(report_id)})
+        return result.deleted_count > 0
+    
+    @staticmethod
+    async def generate_and_save_report(session_id: str, user_id: str, user_role: str) -> Optional[Dict]:
+        """
+        Generate a report and save it to MongoDB.
+        If a report already exists, update it with fresh data.
+        """
+        # Generate the report
+        report_data = await SessionReportModel.generate_report(session_id, user_id, user_role)
+        if not report_data:
+            return None
+        
+        database = get_database()
+        if database is None:
+            return report_data
+        
+        # Check if report already exists
+        report_type = report_data.get("reportType", "session_summary")
+        existing = await SessionReportModel.find_existing_report(session_id, user_id, report_type)
+        
+        if existing:
+            # Update existing report
+            report_data["id"] = existing["id"]
+            await SessionReportModel.update_report(existing["id"], report_data)
+        else:
+            # Save new report
+            report_id = await SessionReportModel.save_report(report_data)
+            report_data["id"] = report_id
+        
+        return report_data
 
