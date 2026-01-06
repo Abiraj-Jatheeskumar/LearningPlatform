@@ -584,3 +584,92 @@ async def get_all_stored_reports(user: dict = Depends(require_instructor)):
         print(f"Error fetching stored reports: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch stored reports")
 
+
+# ============================================================
+# 7. GET FULL STORED REPORT WITH ALL STUDENT DATA
+# ============================================================
+@router.get("/sessions/{session_id}/full-report")
+async def get_full_stored_report(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """
+    Get the COMPLETE stored report from MongoDB with ALL student data.
+    This is the full report that was generated when the session ended.
+    
+    Returns:
+    - Session info (title, course, date, time, duration)
+    - All students with their attendance, quiz scores, and engagement
+    - Summary statistics
+    """
+    try:
+        instructor_id = user.get("id")
+        
+        # Verify session belongs to instructor
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("instructorId") != instructor_id:
+            raise HTTPException(status_code=403, detail="You can only view reports for your own sessions")
+        
+        # Get stored report from MongoDB
+        stored_report = await db.database.session_reports.find_one({
+            "sessionId": session_id,
+            "reportType": "master"
+        })
+        
+        if not stored_report:
+            # No stored report - try to generate one from existing MongoDB data
+            return {
+                "success": False,
+                "stored": False,
+                "message": "No stored report found. End the session to generate a report.",
+                "sessionStatus": session.get("status", "unknown"),
+                "sessionId": session_id,
+                "sessionTitle": session.get("title", ""),
+                "courseName": session.get("course", ""),
+                "report": None
+            }
+        
+        # Format the report for frontend
+        stored_report["id"] = str(stored_report["_id"])
+        del stored_report["_id"]
+        
+        return {
+            "success": True,
+            "stored": True,
+            "message": "Full report retrieved from MongoDB",
+            "sessionId": session_id,
+            "sessionTitle": stored_report.get("sessionTitle", ""),
+            "courseName": stored_report.get("courseName", ""),
+            "courseCode": stored_report.get("courseCode", ""),
+            "instructorName": stored_report.get("instructorName", ""),
+            "sessionDate": stored_report.get("sessionDate", ""),
+            "sessionTime": stored_report.get("sessionTime", ""),
+            "sessionDuration": stored_report.get("sessionDuration", ""),
+            "sessionStatus": stored_report.get("sessionStatus", "completed"),
+            "generatedAt": stored_report.get("generatedAt"),
+            
+            # Summary stats
+            "totalParticipants": stored_report.get("totalParticipants", 0),
+            "totalQuestionsAsked": stored_report.get("totalQuestionsAsked", 0),
+            "averageQuizScore": stored_report.get("averageQuizScore"),
+            "engagementSummary": stored_report.get("engagementSummary", {}),
+            "connectionQualitySummary": stored_report.get("connectionQualitySummary", {}),
+            
+            # All student data
+            "students": stored_report.get("students", []),
+            
+            # Raw data (optional, for detailed analysis)
+            "allQuestions": stored_report.get("allQuestions", [])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching full stored report: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to fetch full stored report")
+

@@ -276,10 +276,23 @@ async def end_session(
             }
         )
         
-        # Get participant count
+        # Get zoomMeetingId for participant lookup
+        zoom_meeting_id = session.get("zoomMeetingId")
+        
+        # Get participant count - check BOTH MongoDB session_id AND zoomMeetingId
         participant_count = await db.database.session_participants.count_documents({
             "sessionId": session_id
         })
+        
+        # Also check by zoomMeetingId
+        if zoom_meeting_id:
+            zoom_count = await db.database.session_participants.count_documents({
+                "sessionId": str(zoom_meeting_id)
+            })
+            if zoom_count > participant_count:
+                participant_count = zoom_count
+        
+        print(f"📊 End Session: Found {participant_count} participants (sessionId={session_id}, zoomId={zoom_meeting_id})")
         
         # Update participant count in session
         await db.database.sessions.update_one(
@@ -288,31 +301,45 @@ async def end_session(
         )
         
         # Generate and save MASTER report with ALL data to MongoDB
-        # This stores complete session data separately in session_reports collection
+        # This retrieves ALL data from MongoDB collections and compiles into one report
         report = await SessionReportModel.generate_master_report(
             session_id=session_id,
             instructor_id=user["id"]
         )
         
+        print(f"📊 Report generated: {report.get('totalParticipants', 0)} participants, saved ID: {report.get('id')}")
+        
         # Send email notifications to all participants
+        # Get participants from BOTH sessionId and zoomMeetingId
         emails_sent = 0
         participants = []
+        seen_emails = set()
+        
         async for p in db.database.session_participants.find({"sessionId": session_id}):
-            participants.append(p)
-            if p.get("studentEmail"):
-                try:
-                    success = email_service.send_session_report_email(
-                        to_email=p.get("studentEmail"),
-                        student_name=p.get("studentName", "Student"),
-                        session_title=session.get("title", "Session"),
-                        course_name=session.get("course", "Course"),
-                        session_id=session_id,
-                        is_instructor=False
-                    )
-                    if success:
-                        emails_sent += 1
-                except Exception as e:
-                    print(f"Failed to send email to {p.get('studentEmail')}: {e}")
+            if p.get("studentEmail") and p.get("studentEmail") not in seen_emails:
+                participants.append(p)
+                seen_emails.add(p.get("studentEmail"))
+        
+        if zoom_meeting_id:
+            async for p in db.database.session_participants.find({"sessionId": str(zoom_meeting_id)}):
+                if p.get("studentEmail") and p.get("studentEmail") not in seen_emails:
+                    participants.append(p)
+                    seen_emails.add(p.get("studentEmail"))
+        
+        for p in participants:
+            try:
+                success = email_service.send_session_report_email(
+                    to_email=p.get("studentEmail"),
+                    student_name=p.get("studentName", "Student"),
+                    session_title=session.get("title", "Session"),
+                    course_name=session.get("course", "Course"),
+                    session_id=session_id,
+                    is_instructor=False
+                )
+                if success:
+                    emails_sent += 1
+            except Exception as e:
+                print(f"Failed to send email to {p.get('studentEmail')}: {e}")
         
         # Send email to instructor
         instructor_email = user.get("email")

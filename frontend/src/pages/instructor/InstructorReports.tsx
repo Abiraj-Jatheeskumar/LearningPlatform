@@ -88,6 +88,38 @@ interface StoredReport {
   };
 }
 
+// Type for full report details
+interface FullReportData {
+  sessionId: string;
+  sessionTitle: string;
+  courseName: string;
+  courseCode: string;
+  instructorName: string;
+  sessionDate: string;
+  sessionTime: string;
+  sessionDuration: string;
+  totalParticipants: number;
+  totalQuestionsAsked: number;
+  averageQuizScore: number | null;
+  engagementSummary: Record<string, number>;
+  connectionQualitySummary: Record<string, number>;
+  generatedAt: string;
+  students: {
+    studentId: string;
+    studentName: string;
+    studentEmail?: string;
+    joinedAt?: string;
+    leftAt?: string;
+    attendanceDuration?: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    incorrectAnswers: number;
+    quizScore?: number;
+    averageResponseTime?: number;
+    averageConnectionQuality?: string;
+  }[];
+}
+
 export const InstructorReports = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'stored' | 'sessions' | 'attendance' | 'quiz' | 'engagement'>('stored');
@@ -98,6 +130,7 @@ export const InstructorReports = () => {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReport[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedFullReport, setSelectedFullReport] = useState<FullReportData | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [quizData, setQuizData] = useState<QuizPerformance[]>([]);
   const [engagementData, setEngagementData] = useState<EngagementData[]>([]);
@@ -164,6 +197,34 @@ export const InstructorReports = () => {
     } catch (err) {
       console.error('Failed to fetch stored reports:', err);
     }
+  };
+
+  // Fetch FULL stored report from MongoDB for a specific session
+  const fetchFullStoredReport = async (sessionId: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/instructor/reports/sessions/${sessionId}/full-report`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.students) {
+          setSelectedFullReport(data as FullReportData);
+          toast.success(`Report loaded: ${data.totalParticipants} participants`);
+        } else {
+          setSelectedFullReport(null);
+          toast.info(data.message || 'No stored report found');
+        }
+      } else {
+        setSelectedFullReport(null);
+        toast.error('Failed to load report');
+      }
+    } catch (err) {
+      console.error('Failed to fetch full report:', err);
+      setSelectedFullReport(null);
+      toast.error('Failed to load report');
+    }
+    setLoading(false);
   };
 
   const fetchAttendance = async (sessionId: string) => {
@@ -253,7 +314,7 @@ export const InstructorReports = () => {
       case 'completed':
         return <Badge variant="success">Completed</Badge>;
       case 'live':
-        return <Badge variant="primary">Live</Badge>;
+        return <Badge variant="info">Live</Badge>;
       default:
         return <Badge variant="warning">Upcoming</Badge>;
     }
@@ -633,7 +694,7 @@ export const InstructorReports = () => {
                         </td>
                         <td className="px-4 py-3">
                           {report.averageQuizScore !== null ? (
-                            <Badge variant={report.averageQuizScore >= 70 ? 'success' : report.averageQuizScore >= 50 ? 'warning' : 'destructive'}>
+                            <Badge variant={report.averageQuizScore >= 70 ? 'success' : report.averageQuizScore >= 50 ? 'warning' : 'danger'}>
                               {report.averageQuizScore}%
                             </Badge>
                           ) : (
@@ -645,6 +706,15 @@ export const InstructorReports = () => {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              leftIcon={<FileTextIcon className="h-3 w-3" />}
+                              onClick={() => fetchFullStoredReport(report.sessionId)}
+                              disabled={loading}
+                            >
+                              View
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -660,6 +730,114 @@ export const InstructorReports = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            
+            {/* Full Report Details - Shows when a report is selected */}
+            {selectedFullReport && (
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    📊 Full Report: {selectedFullReport.sessionTitle}
+                  </h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedFullReport(null)}
+                  >
+                    Close
+                  </Button>
+                </div>
+                
+                {/* Report Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
+                    <UsersIcon className="h-6 w-6 text-blue-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{selectedFullReport.totalParticipants}</p>
+                    <p className="text-xs text-gray-500">Participants</p>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg text-center">
+                    <FileTextIcon className="h-6 w-6 text-purple-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{selectedFullReport.totalQuestionsAsked}</p>
+                    <p className="text-xs text-gray-500">Questions</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
+                    <TrendingUpIcon className="h-6 w-6 text-green-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {selectedFullReport.averageQuizScore !== null ? `${selectedFullReport.averageQuizScore}%` : '-'}
+                    </p>
+                    <p className="text-xs text-gray-500">Avg Score</p>
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg text-center">
+                    <CalendarIcon className="h-6 w-6 text-orange-500 mx-auto mb-1" />
+                    <p className="text-sm font-bold text-orange-700 dark:text-orange-300">{selectedFullReport.sessionDate}</p>
+                    <p className="text-xs text-gray-500">{selectedFullReport.sessionTime}</p>
+                  </div>
+                </div>
+
+                {/* All Students Table */}
+                <h5 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                  👥 All Students ({selectedFullReport.students?.length || 0})
+                </h5>
+                {selectedFullReport.students && selectedFullReport.students.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">#</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Name</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Email</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Join Time</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Duration</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Questions</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Correct</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Score</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Connection</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {selectedFullReport.students.map((student, idx) => (
+                          <tr key={student.studentId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
+                            <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                              {student.studentName}
+                            </td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">{student.studentEmail || '-'}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">
+                              {student.joinedAt ? new Date(student.joinedAt).toLocaleTimeString() : '-'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">
+                              {student.attendanceDuration !== undefined ? `${student.attendanceDuration} min` : '-'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">{student.totalQuestions}</td>
+                            <td className="px-3 py-2">
+                              <span className="text-green-600 font-medium">{student.correctAnswers}</span>
+                              <span className="text-gray-400"> / </span>
+                              <span className="text-red-600">{student.incorrectAnswers}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              {student.quizScore !== undefined && student.quizScore !== null ? (
+                                <Badge variant={student.quizScore >= 70 ? 'success' : student.quizScore >= 50 ? 'warning' : 'danger'}>
+                                  {student.quizScore.toFixed(1)}%
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-xs">
+                              {student.averageConnectionQuality || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <UsersIcon className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p>No student data found in this report</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -870,7 +1048,7 @@ export const InstructorReports = () => {
                     {sessionInfo && <span className="text-sm font-normal text-gray-500 ml-2">- {sessionInfo.name}</span>}
                   </h3>
                   {sessionInfo?.classAverage !== undefined && (
-                    <Badge variant="primary">Class Avg: {sessionInfo.classAverage}%</Badge>
+                    <Badge variant="info">Class Avg: {sessionInfo.classAverage}%</Badge>
                   )}
                 </div>
               </CardHeader>
