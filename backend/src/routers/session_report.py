@@ -27,17 +27,25 @@ reports_router = APIRouter(prefix="/api/reports", tags=["Reports"])
 @reports_router.get("")
 async def get_all_reports(user: dict = Depends(get_current_user)):
     """
-    Get all reports accessible by the current user.
-    - Instructors see reports for all their sessions
-    - Students see reports for sessions they participated in
+    Get all reports - ONLY for Instructors.
+    Instructors see reports for all their sessions with full student details.
     """
     try:
         user_role = user.get("role", "student")
         user_id = user.get("id")
         
+        # ONLY INSTRUCTORS CAN ACCESS REPORTS LIST
+        if user_role == "student":
+            raise HTTPException(
+                status_code=403, 
+                detail="Only instructors can view reports"
+            )
+        
         reports = await SessionReportModel.get_all_reports(user_id, user_role)
         return {"reports": reports, "total": len(reports)}
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error fetching reports: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch reports")
@@ -123,10 +131,9 @@ async def get_session_report(
     user: dict = Depends(get_current_user)
 ):
     """
-    Generate, save, and return session report.
-    - Instructors get full report with all student data
-    - Students get personalized report with their own data
-    - Reports are automatically saved to MongoDB
+    Generate and return session report.
+    - ONLY Instructors can view reports
+    - Shows ALL student details (names, scores, answers, connection quality)
     - For sessions not yet ended, generates live/preview report
     """
     try:
@@ -138,32 +145,15 @@ async def get_session_report(
         user_role = user.get("role", "student")
         user_id = user.get("id")
         
-        # Check access permissions
+        # ONLY INSTRUCTORS CAN VIEW REPORTS
         if user_role == "student":
-            # Check if student participated OR is enrolled in the course
-            participant = await db.database.session_participants.find_one({
-                "sessionId": session_id,
-                "studentId": user_id
-            })
-            
-            if not participant:
-                # Check if enrolled in the course
-                course_id = session.get("courseId")
-                if course_id:
-                    from src.models.course import CourseModel
-                    is_enrolled = await CourseModel.is_student_enrolled(course_id, user_id)
-                    if not is_enrolled:
-                        raise HTTPException(
-                            status_code=403, 
-                            detail="You are not enrolled in this course"
-                        )
-                else:
-                    raise HTTPException(
-                        status_code=403, 
-                        detail="You did not participate in this session"
-                    )
-        elif user_role == "instructor":
-            # Instructors can only view reports for their own sessions
+            raise HTTPException(
+                status_code=403, 
+                detail="Only instructors can view session reports"
+            )
+        
+        # Instructors can only view reports for their own sessions
+        if user_role == "instructor":
             if session.get("instructorId") != user_id:
                 raise HTTPException(
                     status_code=403, 
@@ -217,39 +207,34 @@ async def download_session_report(
 ):
     """
     Generate and return downloadable HTML report.
-    This can be saved as HTML or printed to PDF.
+    ONLY Instructors can download reports.
     """
     try:
-        # Get the report data
         user_role = user.get("role", "student")
         user_id = user.get("id")
         
-        # Verify access (same as get_session_report)
+        # ONLY INSTRUCTORS CAN DOWNLOAD REPORTS
+        if user_role == "student":
+            raise HTTPException(
+                status_code=403, 
+                detail="Only instructors can download session reports"
+            )
+        
         session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        if user_role == "student":
-            participant = await db.database.session_participants.find_one({
-                "sessionId": session_id,
-                "studentId": user_id
-            })
-            if not participant:
-                raise HTTPException(
-                    status_code=403, 
-                    detail="You did not participate in this session"
-                )
-        elif user_role == "instructor":
+        if user_role == "instructor":
             if session.get("instructorId") != user_id:
                 raise HTTPException(
                     status_code=403, 
                     detail="You can only download reports for your own sessions"
                 )
         
-        # Get report from MongoDB (or generate if not stored)
-        report = await SessionReportModel.get_report_for_user(session_id, user_id, user_role)
+        # Get report from MongoDB (or generate if not stored) - always full instructor view
+        report = await SessionReportModel.get_report_for_user(session_id, user_id, "instructor")
         if not report:
-            report = await SessionReportModel.generate_report(session_id, user_id, user_role)
+            report = await SessionReportModel.generate_report(session_id, user_id, "instructor")
         if not report:
             raise HTTPException(status_code=404, detail="Could not generate report")
         

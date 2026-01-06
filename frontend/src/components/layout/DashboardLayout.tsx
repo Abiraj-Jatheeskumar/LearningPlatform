@@ -88,12 +88,14 @@ export const DashboardLayout = () => {
       });
     }
 
-    // Reports available for all users (students and instructors)
-    baseItems.push({
-      name: 'Reports',
-      href: '/dashboard/reports',
-      icon: FileTextIcon
-    });
+    // Reports ONLY for instructors/admins
+    if (user?.role === 'instructor' || user?.role === 'admin') {
+      baseItems.push({
+        name: 'Reports',
+        href: '/dashboard/reports',
+        icon: FileTextIcon
+      });
+    }
 
     return baseItems;
   }, [user?.role]);

@@ -323,17 +323,19 @@ export const SessionList = () => {
                     </Button>
                   )}
 
-                  {/* VIEW REPORT (for all sessions - students and instructors) */}
-                  <Button
-                    variant="outline"
-                    leftIcon={<FileTextIcon className="h-4 w-4" />}
-                    onClick={() => navigate(`/dashboard/sessions/${session.id}/report`)}
-                  >
-                    View Report
-                  </Button>
+                  {/* VIEW REPORT - ONLY for instructors */}
+                  {isInstructor && (
+                    <Button
+                      variant="outline"
+                      leftIcon={<FileTextIcon className="h-4 w-4" />}
+                      onClick={() => navigate(`/dashboard/sessions/${session.id}/report`)}
+                    >
+                      View Report
+                    </Button>
+                  )}
 
-                  {/* Show completed indicator */}
-                  {session.status === 'completed' && (
+                  {/* Show completed indicator for instructors */}
+                  {isInstructor && session.status === 'completed' && (
                     <div className="flex items-center gap-2 text-green-600 text-sm">
                       <CheckCircleIcon className="h-4 w-4" />
                       <span>Report Available</span>
