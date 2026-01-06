@@ -366,6 +366,73 @@ export const InstructorReports = () => {
     setDownloading(false);
   };
 
+  // Download FULL report for a specific session (all data: attendance + quiz + engagement)
+  const downloadFullSessionReport = async (sessionId: string, sessionName: string) => {
+    setDownloading(true);
+    toast.info(`Generating report for ${sessionName}...`);
+    
+    try {
+      // Fetch all data for this session
+      const [attendanceRes, quizRes, engagementRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/instructor/reports/sessions/${sessionId}/attendance`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/instructor/reports/sessions/${sessionId}/quiz-performance`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/instructor/reports/sessions/${sessionId}/engagement`, { headers: getAuthHeaders() })
+      ]);
+
+      const attendanceJson = attendanceRes.ok ? await attendanceRes.json() : { attendance: [] };
+      const quizJson = quizRes.ok ? await quizRes.json() : { studentPerformance: [] };
+      const engagementJson = engagementRes.ok ? await engagementRes.json() : { studentEngagement: [] };
+
+      // Build comprehensive CSV
+      let csvContent = '';
+      
+      // Session Header
+      csvContent += `SESSION REPORT: ${sessionName}\n`;
+      csvContent += `Generated: ${new Date().toLocaleString()}\n\n`;
+      
+      // Attendance Section
+      csvContent += `=== ATTENDANCE REPORT ===\n`;
+      csvContent += `Total Students: ${attendanceJson.attendance?.length || 0}\n\n`;
+      csvContent += `#,Student Name,Email,Join Time,Leave Time,Duration (min),Status\n`;
+      (attendanceJson.attendance || []).forEach((r: any, idx: number) => {
+        csvContent += `${idx + 1},"${r.studentName}","${r.studentEmail || 'N/A'}","${r.joinTime ? new Date(r.joinTime).toLocaleString() : 'N/A'}","${r.leaveTime ? new Date(r.leaveTime).toLocaleString() : 'Still in session'}","${r.durationMinutes !== null ? r.durationMinutes : 'N/A'}","${r.status}"\n`;
+      });
+      
+      csvContent += `\n\n`;
+      
+      // Quiz Performance Section
+      csvContent += `=== QUIZ PERFORMANCE REPORT ===\n`;
+      csvContent += `Class Average: ${quizJson.classAverageScore || 'N/A'}%\n`;
+      csvContent += `Total Questions: ${quizJson.totalQuestions || 0}\n\n`;
+      csvContent += `#,Student Name,Email,Total Questions,Correct,Incorrect,Score (%),Avg Response Time (s)\n`;
+      (quizJson.studentPerformance || []).forEach((r: any, idx: number) => {
+        csvContent += `${idx + 1},"${r.studentName}","${r.studentEmail || 'N/A'}","${r.totalQuestions}","${r.correctAnswers}","${r.incorrectAnswers}","${r.score}","${r.averageResponseTime !== null ? r.averageResponseTime : 'N/A'}"\n`;
+      });
+      
+      csvContent += `\n\n`;
+      
+      // Engagement Section
+      csvContent += `=== ENGAGEMENT REPORT ===\n`;
+      const engSummary = engagementJson.engagementSummary || {};
+      csvContent += `High Engagement: ${engSummary.highEngagement || 0}, Medium: ${engSummary.mediumEngagement || 0}, Low: ${engSummary.lowEngagement || 0}\n\n`;
+      csvContent += `#,Student Name,Email,Questions Answered,Attendance (min),Connection Quality,Engagement Level\n`;
+      (engagementJson.studentEngagement || []).forEach((r: any, idx: number) => {
+        csvContent += `${idx + 1},"${r.studentName}","${r.studentEmail || 'N/A'}","${r.questionsAnswered}","${r.attendanceDuration !== null ? r.attendanceDuration : 'N/A'}","${r.connectionQuality || 'Unknown'}","${r.engagementLevel}"\n`;
+      });
+
+      // Download
+      const filename = `full_report_${sessionName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+      downloadCSV(filename, csvContent);
+      toast.success(`Report downloaded: ${filename}`);
+      
+    } catch (err) {
+      console.error('Failed to download full report:', err);
+      toast.error('Failed to download session report');
+    }
+    
+    setDownloading(false);
+  };
+
   return (
     <div className="py-6 space-y-6">
       {/* Header */}
@@ -477,28 +544,43 @@ export const InstructorReports = () => {
               ) : (
                 <div className="space-y-2">
                   {sessions.map((session) => (
-                    <button
+                    <div
                       key={session.sessionId}
-                      onClick={() => handleSessionSelect(session.sessionId)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      className={`p-3 rounded-lg border transition-colors ${
                         selectedSessionId === session.sessionId
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
-                          {session.sessionName}
-                        </span>
-                        {getStatusBadge(session.status)}
-                      </div>
-                      <p className="text-xs text-gray-500">{session.courseName}</p>
-                      <p className="text-xs text-gray-400">{session.date}</p>
-                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                        <UsersIcon className="h-3 w-3" />
-                        {session.totalStudentsJoined} students
-                      </div>
-                    </button>
+                      <button
+                        onClick={() => handleSessionSelect(session.sessionId)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
+                            {session.sessionName}
+                          </span>
+                          {getStatusBadge(session.status)}
+                        </div>
+                        <p className="text-xs text-gray-500">{session.courseName}</p>
+                        <p className="text-xs text-gray-400">{session.date}</p>
+                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                          <UsersIcon className="h-3 w-3" />
+                          {session.totalStudentsJoined} students
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadFullSessionReport(session.sessionId, session.sessionName);
+                        }}
+                        className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 py-1 border border-emerald-200 dark:border-emerald-800 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                        disabled={downloading}
+                      >
+                        <DownloadIcon className="h-3 w-3" />
+                        Download Report
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -526,6 +608,7 @@ export const InstructorReports = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Duration</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Students</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -548,6 +631,17 @@ export const InstructorReports = () => {
                           </td>
                           <td className="px-4 py-3">
                             {getStatusBadge(session.status)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<DownloadIcon className="h-3 w-3" />}
+                              onClick={() => downloadFullSessionReport(session.sessionId, session.sessionName)}
+                              disabled={downloading}
+                            >
+                              Download
+                            </Button>
                           </td>
                         </tr>
                       ))}
