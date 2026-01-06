@@ -78,4 +78,114 @@ export const sessionService = {
 
     return await res.json();
   },
+
+  // Session Report APIs
+  async getSessionReport(sessionId: string): Promise<SessionReport | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/report`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch report:", await res.text());
+        return null;
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Report fetch error:", err);
+      return null;
+    }
+  },
+
+  async downloadReport(sessionId: string): Promise<Blob | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/report/download`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to download report:", await res.text());
+        return null;
+      }
+
+      return await res.blob();
+    } catch (err) {
+      console.error("Report download error:", err);
+      return null;
+    }
+  },
+
+  async sendReportEmails(sessionId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/report/send-email`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      });
+
+      if (!res.ok) {
+        return { success: false, message: "Failed to send report emails" };
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Send report email error:", err);
+      return { success: false, message: "Failed to send report emails" };
+    }
+  },
 };
+
+// Types for session reports
+export interface StudentReportData {
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  joinedAt?: string;
+  leftAt?: string;
+  attendanceDuration?: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  averageResponseTime?: number;
+  quizScore?: number;
+  quizDetails: QuizSummary[];
+  averageConnectionQuality?: string;
+  connectionIssuesDetected: boolean;
+}
+
+export interface QuizSummary {
+  questionId: string;
+  question: string;
+  correctAnswer: number;
+  studentAnswer?: number;
+  isCorrect?: boolean;
+  timeTaken?: number;
+}
+
+export interface SessionReport {
+  id?: string;
+  sessionId: string;
+  sessionTitle: string;
+  courseName: string;
+  courseCode: string;
+  instructorName: string;
+  instructorId: string;
+  sessionDate: string;
+  sessionTime: string;
+  sessionDuration: string;
+  totalParticipants: number;
+  totalQuestionsAsked: number;
+  averageQuizScore?: number;
+  averageAttendance?: number;
+  engagementSummary: Record<string, number>;
+  connectionQualitySummary: Record<string, number>;
+  students: StudentReportData[];
+  generatedAt: string;
+  reportType: string;
+}

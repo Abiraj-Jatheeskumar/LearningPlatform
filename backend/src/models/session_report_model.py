@@ -1,0 +1,315 @@
+"""
+Session Report Model
+====================
+Model for generating and storing session reports for students and instructors.
+Reports include participation data, quiz performance, engagement metrics, etc.
+"""
+
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+from pydantic import BaseModel, Field
+from bson import ObjectId
+from ..database.connection import get_database
+
+
+class QuizSummary(BaseModel):
+    """Summary of a quiz question in the report"""
+    questionId: str
+    question: str
+    correctAnswer: int
+    studentAnswer: Optional[int] = None
+    isCorrect: Optional[bool] = None
+    timeTaken: Optional[float] = None
+
+
+class StudentReportData(BaseModel):
+    """Report data specific to a student"""
+    studentId: str
+    studentName: str
+    studentEmail: Optional[str] = None
+    
+    # Attendance
+    joinedAt: Optional[datetime] = None
+    leftAt: Optional[datetime] = None
+    attendanceDuration: Optional[int] = None  # in minutes
+    
+    # Quiz Performance
+    totalQuestions: int = 0
+    correctAnswers: int = 0
+    incorrectAnswers: int = 0
+    averageResponseTime: Optional[float] = None
+    quizScore: Optional[float] = None  # percentage
+    quizDetails: List[QuizSummary] = []
+    
+    # Network Quality
+    averageConnectionQuality: Optional[str] = None
+    connectionIssuesDetected: bool = False
+
+
+class SessionReport(BaseModel):
+    """Complete session report model"""
+    id: Optional[str] = None
+    sessionId: str
+    sessionTitle: str
+    courseName: str
+    courseCode: str
+    instructorName: str
+    instructorId: str
+    
+    # Session timing
+    sessionDate: str
+    sessionTime: str
+    sessionDuration: str
+    actualStartTime: Optional[datetime] = None
+    actualEndTime: Optional[datetime] = None
+    
+    # Overall statistics
+    totalParticipants: int = 0
+    totalQuestionsAsked: int = 0
+    averageQuizScore: Optional[float] = None
+    averageAttendance: Optional[float] = None  # percentage of session attended
+    
+    # Engagement clusters
+    engagementSummary: Dict[str, int] = {}  # {"highly_engaged": 5, "at_risk": 2}
+    
+    # Connection quality summary
+    connectionQualitySummary: Dict[str, int] = {}  # {"excellent": 10, "poor": 2}
+    
+    # Student data (for instructor view)
+    students: List[StudentReportData] = []
+    
+    # Report metadata
+    generatedAt: datetime = Field(default_factory=datetime.utcnow)
+    reportType: str = "session_summary"  # session_summary, student_detail
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "sessionId": "abc123",
+                "sessionTitle": "Machine Learning: Neural Networks",
+                "courseName": "Machine Learning Fundamentals",
+                "courseCode": "ML101",
+                "instructorName": "Dr. Jane Smith",
+                "totalParticipants": 25,
+                "averageQuizScore": 78.5
+            }
+        }
+
+
+class SessionReportModel:
+    """Database operations for session reports"""
+    
+    COLLECTION_NAME = "session_reports"
+    
+    @staticmethod
+    async def generate_report(session_id: str, user_id: str, user_role: str) -> Optional[Dict]:
+        """
+        Generate a session report.
+        - Instructors get full report with all student data
+        - Students get personalized report with their own data only
+        """
+        database = get_database()
+        if database is None:
+            raise Exception("Database not connected")
+        
+        # Get session details
+        session = await database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            return None
+        
+        # Get participants
+        participants = []
+        async for p in database.session_participants.find({"sessionId": session_id}):
+            p["id"] = str(p["_id"])
+            del p["_id"]
+            participants.append(p)
+        
+        # Get quiz answers for this session
+        quiz_answers = []
+        async for answer in database.quiz_answers.find({"sessionId": session_id}):
+            answer["id"] = str(answer["_id"])
+            del answer["_id"]
+            quiz_answers.append(answer)
+        
+        # Get question assignments
+        assignments = []
+        async for assignment in database.question_assignments.find({"sessionId": session_id}):
+            assignment["id"] = str(assignment["_id"])
+            del assignment["_id"]
+            assignments.append(assignment)
+        
+        # Get questions for details
+        question_ids = list(set([a.get("questionId") for a in assignments if a.get("questionId")]))
+        questions = {}
+        for qid in question_ids:
+            try:
+                q = await database.questions.find_one({"_id": ObjectId(qid)})
+                if q:
+                    questions[qid] = q
+            except:
+                pass
+        
+        # Get latency metrics
+        latency_data = {}
+        async for metric in database.latency_metrics.find({"session_id": session_id}):
+            student_id = metric.get("student_id")
+            if student_id:
+                latency_data[student_id] = metric
+        
+        # Build student reports
+        student_reports = []
+        for participant in participants:
+            student_id = participant.get("studentId")
+            
+            # Get student's quiz answers
+            student_answers = [a for a in quiz_answers if a.get("studentId") == student_id]
+            student_assignments = [a for a in assignments if a.get("studentId") == student_id]
+            
+            # Calculate quiz stats
+            correct_count = sum(1 for a in student_assignments if a.get("isCorrect"))
+            total_questions = len(student_assignments)
+            avg_time = None
+            if student_answers:
+                times = [a.get("timeTaken", 0) for a in student_answers if a.get("timeTaken")]
+                avg_time = sum(times) / len(times) if times else None
+            
+            quiz_score = (correct_count / total_questions * 100) if total_questions > 0 else None
+            
+            # Build quiz details
+            quiz_details = []
+            for assignment in student_assignments:
+                qid = assignment.get("questionId")
+                q = questions.get(qid, {})
+                quiz_details.append(QuizSummary(
+                    questionId=qid or "",
+                    question=q.get("question", "Unknown question"),
+                    correctAnswer=q.get("correctAnswer", -1),
+                    studentAnswer=assignment.get("answerIndex"),
+                    isCorrect=assignment.get("isCorrect"),
+                    timeTaken=assignment.get("timeTaken")
+                ))
+            
+            # Calculate attendance duration
+            joined_at = participant.get("joinedAt")
+            left_at = participant.get("leftAt")
+            duration = None
+            if joined_at and left_at:
+                duration = int((left_at - joined_at).total_seconds() / 60)
+            
+            # Get latency info
+            latency_info = latency_data.get(student_id, {})
+            
+            student_report = StudentReportData(
+                studentId=student_id,
+                studentName=participant.get("studentName", "Unknown Student"),
+                studentEmail=participant.get("studentEmail"),
+                joinedAt=joined_at,
+                leftAt=left_at,
+                attendanceDuration=duration,
+                totalQuestions=total_questions,
+                correctAnswers=correct_count,
+                incorrectAnswers=total_questions - correct_count,
+                averageResponseTime=avg_time,
+                quizScore=quiz_score,
+                quizDetails=quiz_details,
+                averageConnectionQuality=latency_info.get("overall_quality"),
+                connectionIssuesDetected=latency_info.get("overall_quality") in ["poor", "critical"]
+            )
+            student_reports.append(student_report)
+        
+        # Calculate overall stats
+        total_participants = len(participants)
+        total_questions_asked = len(set([a.get("questionId") for a in assignments]))
+        
+        avg_quiz_score = None
+        scores = [s.quizScore for s in student_reports if s.quizScore is not None]
+        if scores:
+            avg_quiz_score = sum(scores) / len(scores)
+        
+        # Engagement summary (mock for now - can be enhanced with cluster data)
+        engagement_summary = {
+            "highly_engaged": 0,
+            "moderately_engaged": 0,
+            "at_risk": 0
+        }
+        for s in student_reports:
+            if s.quizScore and s.quizScore >= 80:
+                engagement_summary["highly_engaged"] += 1
+            elif s.quizScore and s.quizScore >= 50:
+                engagement_summary["moderately_engaged"] += 1
+            else:
+                engagement_summary["at_risk"] += 1
+        
+        # Connection quality summary
+        connection_summary = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0, "unknown": 0}
+        for s in student_reports:
+            quality = s.averageConnectionQuality or "unknown"
+            connection_summary[quality] = connection_summary.get(quality, 0) + 1
+        
+        # Build report based on user role
+        if user_role == "student":
+            # Filter to only include requesting student's data
+            student_reports = [s for s in student_reports if s.studentId == user_id]
+        
+        report = SessionReport(
+            sessionId=session_id,
+            sessionTitle=session.get("title", "Unknown Session"),
+            courseName=session.get("course", "Unknown Course"),
+            courseCode=session.get("courseCode", ""),
+            instructorName=session.get("instructor", "Unknown Instructor"),
+            instructorId=session.get("instructorId", ""),
+            sessionDate=session.get("date", ""),
+            sessionTime=session.get("time", ""),
+            sessionDuration=session.get("duration", ""),
+            totalParticipants=total_participants,
+            totalQuestionsAsked=total_questions_asked,
+            averageQuizScore=round(avg_quiz_score, 1) if avg_quiz_score else None,
+            engagementSummary=engagement_summary,
+            connectionQualitySummary=connection_summary,
+            students=student_reports,
+            reportType="instructor_full" if user_role in ["instructor", "admin"] else "student_personal"
+        )
+        
+        return report.model_dump()
+    
+    @staticmethod
+    async def save_report(report_data: Dict) -> str:
+        """Save a generated report to the database"""
+        database = get_database()
+        if database is None:
+            raise Exception("Database not connected")
+        
+        report_data["savedAt"] = datetime.utcnow()
+        result = await database.session_reports.insert_one(report_data)
+        return str(result.inserted_id)
+    
+    @staticmethod
+    async def get_saved_report(report_id: str) -> Optional[Dict]:
+        """Get a previously saved report"""
+        database = get_database()
+        if database is None:
+            return None
+        
+        try:
+            report = await database.session_reports.find_one({"_id": ObjectId(report_id)})
+            if report:
+                report["id"] = str(report["_id"])
+                del report["_id"]
+            return report
+        except:
+            return None
+    
+    @staticmethod
+    async def get_reports_for_session(session_id: str) -> List[Dict]:
+        """Get all saved reports for a session"""
+        database = get_database()
+        if database is None:
+            return []
+        
+        reports = []
+        async for report in database.session_reports.find({"sessionId": session_id}):
+            report["id"] = str(report["_id"])
+            del report["_id"]
+            reports.append(report)
+        return reports
+

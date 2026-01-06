@@ -23,6 +23,7 @@ import { SessionList } from './pages/sessions/SessionList';
 import { LiveSession } from './pages/sessions/LiveSession';
 import { SessionCreate } from './pages/sessions/SessionCreate';
 import { SessionEdit } from './pages/sessions/SessionEdit';
+import { SessionReport } from './pages/sessions/SessionReport';
 import { UserManagement } from './pages/admin/UserManagement';
 
 export function App() {
@@ -70,6 +71,7 @@ export function App() {
           <Route path="courses/:courseId" element={<CourseDetail />} />
           <Route path="sessions/create" element={<SessionCreate />} />
           <Route path="sessions/:sessionId/edit" element={<SessionEdit />} />
+          <Route path="sessions/:sessionId/report" element={<SessionReport />} />
           <Route path="sessions/:sessionId" element={<LiveSession />} />
           <Route path="sessions" element={<SessionList />} />
           

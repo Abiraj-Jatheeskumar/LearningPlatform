@@ -12,7 +12,8 @@ import {
   VideoIcon,
   BookOpenIcon,
   PlusIcon,
-  EditIcon
+  EditIcon,
+  FileTextIcon
 } from 'lucide-react';
 
 import { Card } from '../../components/ui/Card';
@@ -233,6 +234,17 @@ export const SessionList = () => {
                       onClick={() => handleJoinSession(session)}
                     >
                       Join Live
+                    </Button>
+                  )}
+
+                  {/* VIEW REPORT (for completed sessions) */}
+                  {session.status === 'completed' && (
+                    <Button
+                      variant="outline"
+                      leftIcon={<FileTextIcon className="h-4 w-4" />}
+                      onClick={() => navigate(`/dashboard/sessions/${session.id}/report`)}
+                    >
+                      View Report
                     </Button>
                   )}
                 </div>

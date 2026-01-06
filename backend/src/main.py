@@ -95,7 +95,8 @@ from src.routers import (
     live,
     session,
     push_notification,  # ⭐ NEW ROUTER
-    latency  # 📶 WebRTC-aware latency monitoring
+    latency,  # 📶 WebRTC-aware latency monitoring
+    session_report  # 📊 Session reports with download
 )
 
 app.include_router(auth.router)
@@ -110,6 +111,7 @@ app.include_router(live.router)
 app.include_router(session.router)
 app.include_router(push_notification.router)  # ⭐ ADD THIS
 app.include_router(latency.router)  # 📶 WebRTC-aware latency monitoring
+app.include_router(session_report.router)  # 📊 Session reports with download
 
 
 # --------------------------------------------------------
