@@ -237,16 +237,14 @@ export const SessionList = () => {
                     </Button>
                   )}
 
-                  {/* VIEW REPORT (for completed sessions) */}
-                  {session.status === 'completed' && (
-                    <Button
-                      variant="outline"
-                      leftIcon={<FileTextIcon className="h-4 w-4" />}
-                      onClick={() => navigate(`/dashboard/sessions/${session.id}/report`)}
-                    >
-                      View Report
-                    </Button>
-                  )}
+                  {/* VIEW REPORT (for all sessions - students and instructors) */}
+                  <Button
+                    variant="outline"
+                    leftIcon={<FileTextIcon className="h-4 w-4" />}
+                    onClick={() => navigate(`/dashboard/sessions/${session.id}/report`)}
+                  >
+                    View Report
+                  </Button>
                 </div>
               </div>
 
