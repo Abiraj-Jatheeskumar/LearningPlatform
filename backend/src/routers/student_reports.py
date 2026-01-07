@@ -43,14 +43,22 @@ async def get_my_attendance_report(user: dict = Depends(require_student)):
     Get student's attendance report across all sessions.
     Shows: Sessions attended, join time, leave time, duration.
     Student can ONLY see their own attendance data.
+    Matches by studentId OR email (for Zoom webhook participants).
     """
     try:
         student_id = user.get("id")
+        student_email = user.get("email", "")
         
-        # Get all sessions this student participated in
+        # Get all sessions this student participated in (by ID or email)
         attendance_records = []
-        async for participant in db.database.session_participants.find({"studentId": student_id}):
+        seen_sessions = set()
+        
+        # Helper function to add attendance record
+        async def add_attendance_record(participant):
             session_id = participant.get("sessionId")
+            if session_id in seen_sessions:
+                return
+            seen_sessions.add(session_id)
             
             # Get session details
             try:
@@ -59,7 +67,7 @@ async def get_my_attendance_report(user: dict = Depends(require_student)):
                 session = None
             
             if not session:
-                continue
+                return
             
             joined_at = participant.get("joinedAt")
             left_at = participant.get("leftAt")
@@ -85,6 +93,15 @@ async def get_my_attendance_report(user: dict = Depends(require_student)):
                 "durationMinutes": duration_minutes,
                 "attendanceStatus": participant.get("status", "unknown")
             })
+        
+        # Search by studentId
+        async for participant in db.database.session_participants.find({"studentId": student_id}):
+            await add_attendance_record(participant)
+        
+        # Also search by email (for Zoom webhook participants)
+        if student_email:
+            async for participant in db.database.session_participants.find({"studentEmail": student_email}):
+                await add_attendance_record(participant)
         
         # Sort by date (most recent first)
         attendance_records.sort(key=lambda x: x["sessionDate"] or "", reverse=True)
@@ -470,16 +487,25 @@ async def get_all_my_stored_reports(user: dict = Depends(require_student)):
     """
     Get all stored reports from MongoDB where the student participated.
     Only shows student's own data from each report.
+    Matches by studentId OR email (since Zoom webhook uses different IDs).
     """
     try:
         student_id = user.get("id")
+        student_email = user.get("email", "")
         
-        # Get all reports where this student participated
+        # Get all reports where this student participated (by ID or email)
         reports = []
+        seen_report_ids = set()
+        
+        # Search by studentId
         async for report in db.database.session_reports.find({
             "students.studentId": student_id,
             "reportType": "master"
         }).sort("generatedAt", -1):
+            report_id = str(report["_id"])
+            if report_id in seen_report_ids:
+                continue
+            seen_report_ids.add(report_id)
             
             # Find this student's data in the report
             student_data = None
@@ -490,18 +516,52 @@ async def get_all_my_stored_reports(user: dict = Depends(require_student)):
             
             if student_data:
                 reports.append({
-                    "reportId": str(report["_id"]),
+                    "reportId": report_id,
                     "sessionId": report.get("sessionId"),
                     "sessionTitle": report.get("sessionTitle"),
                     "courseName": report.get("courseName"),
                     "sessionDate": report.get("sessionDate"),
                     "generatedAt": report.get("generatedAt"),
-                    # My personal summary
                     "myTotalQuestions": student_data.get("totalQuestions", 0),
                     "myCorrectAnswers": student_data.get("correctAnswers", 0),
                     "myScore": student_data.get("quizScore"),
                     "myAttendanceDuration": student_data.get("attendanceDuration")
                 })
+        
+        # Also search by email (for Zoom webhook participants)
+        if student_email:
+            async for report in db.database.session_reports.find({
+                "students.studentEmail": student_email,
+                "reportType": "master"
+            }).sort("generatedAt", -1):
+                report_id = str(report["_id"])
+                if report_id in seen_report_ids:
+                    continue
+                seen_report_ids.add(report_id)
+                
+                # Find this student's data by email
+                student_data = None
+                for s in report.get("students", []):
+                    if s.get("studentEmail") == student_email:
+                        student_data = s
+                        break
+                
+                if student_data:
+                    reports.append({
+                        "reportId": report_id,
+                        "sessionId": report.get("sessionId"),
+                        "sessionTitle": report.get("sessionTitle"),
+                        "courseName": report.get("courseName"),
+                        "sessionDate": report.get("sessionDate"),
+                        "generatedAt": report.get("generatedAt"),
+                        "myTotalQuestions": student_data.get("totalQuestions", 0),
+                        "myCorrectAnswers": student_data.get("correctAnswers", 0),
+                        "myScore": student_data.get("quizScore"),
+                        "myAttendanceDuration": student_data.get("attendanceDuration")
+                    })
+        
+        # Sort by date descending
+        reports.sort(key=lambda x: x.get("generatedAt", ""), reverse=True)
         
         return {
             "success": True,
