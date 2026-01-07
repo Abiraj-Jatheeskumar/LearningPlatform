@@ -545,6 +545,27 @@ async def get_all_my_stored_reports(user: dict = Depends(require_student)):
                     if s.get("studentEmail") == student_email:
                         student_data = s
                         break
+        
+        # Also search by student name (for Zoom participants without email)
+        student_name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
+        if student_name:
+            async for report in db.database.session_reports.find({
+                "reportType": "master"
+            }).sort("generatedAt", -1):
+                report_id = str(report["_id"])
+                if report_id in seen_report_ids:
+                    continue
+                
+                # Find this student's data by name (case-insensitive partial match)
+                student_data = None
+                for s in report.get("students", []):
+                    stored_name = s.get("studentName", "").lower()
+                    search_name = student_name.lower()
+                    # Match if names are similar (contains or equals)
+                    if search_name in stored_name or stored_name in search_name:
+                        student_data = s
+                        seen_report_ids.add(report_id)
+                        break
                 
                 if student_data:
                     reports.append({
