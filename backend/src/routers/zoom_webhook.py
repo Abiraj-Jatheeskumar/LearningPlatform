@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Request, Header, HTTPException
 import hmac, hashlib, base64, os, json
 from datetime import datetime
+from bson import ObjectId
 from src.database.connection import get_database
+from src.models.session_report_model import SessionReportModel
 
 router = APIRouter(prefix="/api/zoom", tags=["Zoom Webhook"])
 
@@ -105,9 +107,10 @@ async def zoom_events(
     #  EVENT: MEETING ENDED
     # -----------------------------
     if event == "meeting.ended":
-
+        zoom_meeting_id = obj.get("id")
+        
         doc = {
-            "zoom_meeting_id": obj.get("id"),
+            "zoom_meeting_id": zoom_meeting_id,
             "meeting_topic": obj.get("topic"),
             "meeting_uuid": obj.get("uuid"),
             "duration": obj.get("duration"),
@@ -118,6 +121,80 @@ async def zoom_events(
 
         await db.participation.insert_one(doc)
         print("✔ MEETING ENDED STORED:", doc)
-        return {"status": "ok", "event": "meeting_ended"}
+        
+        # ======================================
+        # 🎯 AUTO-END SESSION & GENERATE REPORT
+        # ======================================
+        try:
+            # Find session by Zoom Meeting ID
+            session = None
+            
+            # Try as integer first (Zoom IDs are usually integers)
+            if zoom_meeting_id:
+                try:
+                    session = await db.sessions.find_one({"zoomMeetingId": int(zoom_meeting_id)})
+                except:
+                    pass
+                
+                if not session:
+                    session = await db.sessions.find_one({"zoomMeetingId": str(zoom_meeting_id)})
+            
+            if session:
+                session_id = str(session["_id"])
+                instructor_id = session.get("instructorId")
+                current_status = session.get("status")
+                
+                # Only end if session is currently 'live' or 'upcoming'
+                if current_status != "completed":
+                    print(f"🎯 Auto-ending session: {session_id} (Zoom: {zoom_meeting_id})")
+                    
+                    # Get participant count from BOTH session_id and zoomMeetingId
+                    participant_count = await db.session_participants.count_documents({
+                        "sessionId": session_id
+                    })
+                    
+                    zoom_participant_count = await db.session_participants.count_documents({
+                        "sessionId": str(zoom_meeting_id)
+                    })
+                    
+                    total_participants = max(participant_count, zoom_participant_count)
+                    
+                    # Update session status to completed
+                    await db.sessions.update_one(
+                        {"_id": session["_id"]},
+                        {
+                            "$set": {
+                                "status": "completed",
+                                "actualEndTime": datetime.utcnow(),
+                                "endedAt": datetime.utcnow(),
+                                "endedBy": "zoom_webhook",
+                                "participants": total_participants
+                            }
+                        }
+                    )
+                    
+                    print(f"✅ Session marked as completed: {session_id}, {total_participants} participants")
+                    
+                    # Generate and save MASTER report
+                    report = await SessionReportModel.generate_master_report(
+                        session_id=session_id,
+                        instructor_id=instructor_id or "unknown"
+                    )
+                    
+                    if report:
+                        print(f"📊 Report generated automatically: {report.get('totalParticipants', 0)} participants")
+                    else:
+                        print(f"⚠️ Failed to generate report for session {session_id}")
+                else:
+                    print(f"ℹ️ Session {session_id} already completed, skipping auto-end")
+            else:
+                print(f"⚠️ No session found for Zoom meeting ID: {zoom_meeting_id}")
+                
+        except Exception as e:
+            print(f"❌ Error auto-ending session: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        return {"status": "ok", "event": "meeting_ended", "session_auto_ended": True}
 
     return {"status": "ignored", "event": event}
