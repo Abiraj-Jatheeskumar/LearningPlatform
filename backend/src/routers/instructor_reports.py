@@ -484,6 +484,68 @@ async def get_instructor_dashboard_stats(user: dict = Depends(require_instructor
 
 
 # ============================================================
+# DEBUG: CHECK SESSION PARTICIPANTS
+# ============================================================
+@router.get("/debug/session/{session_id}/participants")
+async def debug_session_participants(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """
+    Debug endpoint to check what participants are stored for a session.
+    Checks both MongoDB session_id and zoomMeetingId.
+    """
+    try:
+        # Get session details
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            return {"error": "Session not found", "sessionId": session_id}
+        
+        zoom_meeting_id = session.get("zoomMeetingId")
+        
+        # Get participants by MongoDB session_id
+        participants_by_mongo_id = []
+        async for p in db.database.session_participants.find({"sessionId": session_id}):
+            p["_id"] = str(p["_id"])
+            participants_by_mongo_id.append(p)
+        
+        # Get participants by zoomMeetingId
+        participants_by_zoom_id = []
+        if zoom_meeting_id:
+            async for p in db.database.session_participants.find({"sessionId": str(zoom_meeting_id)}):
+                p["_id"] = str(p["_id"])
+                participants_by_zoom_id.append(p)
+        
+        # Get ALL participants (to see what's in the collection)
+        all_participants = []
+        async for p in db.database.session_participants.find({}).limit(20):
+            p["_id"] = str(p["_id"])
+            all_participants.append(p)
+        
+        return {
+            "sessionId": session_id,
+            "zoomMeetingId": zoom_meeting_id,
+            "sessionTitle": session.get("title"),
+            "sessionStatus": session.get("status"),
+            "participantsByMongoId": {
+                "count": len(participants_by_mongo_id),
+                "data": participants_by_mongo_id
+            },
+            "participantsByZoomId": {
+                "count": len(participants_by_zoom_id),
+                "data": participants_by_zoom_id
+            },
+            "recentParticipantsInCollection": {
+                "count": len(all_participants),
+                "data": all_participants
+            }
+        }
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================
 # 5. GET STORED REPORT FROM MONGODB
 # ============================================================
 @router.get("/sessions/{session_id}/stored-report")
