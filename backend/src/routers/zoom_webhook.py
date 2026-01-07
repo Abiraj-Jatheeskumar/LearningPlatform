@@ -72,6 +72,7 @@ async def zoom_events(
     #  EVENT: PARTICIPANT JOINED
     # -----------------------------
     if event == "meeting.participant_joined":
+        zoom_meeting_id = obj.get("id")
 
         doc = {
             **base_doc,
@@ -82,6 +83,47 @@ async def zoom_events(
 
         await db.participation.insert_one(doc)
         print("✔ JOIN DATA STORED:", doc)
+        
+        # 🎯 ALSO SAVE TO session_participants for REPORT GENERATION
+        try:
+            # Find the session by zoomMeetingId
+            session = None
+            if zoom_meeting_id:
+                try:
+                    session = await db.sessions.find_one({"zoomMeetingId": int(zoom_meeting_id)})
+                except:
+                    pass
+                if not session:
+                    session = await db.sessions.find_one({"zoomMeetingId": str(zoom_meeting_id)})
+            
+            if session:
+                mongo_session_id = str(session["_id"])
+                student_id = participant.get("user_id") or participant.get("id") or participant.get("participant_user_id") or f"zoom_{participant.get('participant_uuid', 'unknown')}"
+                student_name = participant.get("user_name") or participant.get("name") or "Zoom Participant"
+                student_email = participant.get("email") or ""
+                
+                # Save to session_participants (upsert to avoid duplicates)
+                await db.session_participants.update_one(
+                    {"sessionId": mongo_session_id, "studentId": student_id},
+                    {
+                        "$set": {
+                            "sessionId": mongo_session_id,
+                            "studentId": student_id,
+                            "studentName": student_name,
+                            "studentEmail": student_email,
+                            "joinedAt": datetime.utcnow(),
+                            "status": "active",
+                            "joinedVia": "zoom_webhook"
+                        }
+                    },
+                    upsert=True
+                )
+                print(f"✅ Also saved to session_participants: session={mongo_session_id}, student={student_name}")
+            else:
+                print(f"⚠️ Could not find session for Zoom meeting ID: {zoom_meeting_id}")
+        except Exception as e:
+            print(f"⚠️ Failed to save to session_participants: {e}")
+        
         return {"status": "ok", "event": "joined"}
 
 
@@ -89,6 +131,7 @@ async def zoom_events(
     #  EVENT: PARTICIPANT LEFT
     # -----------------------------
     if event == "meeting.participant_left":
+        zoom_meeting_id = obj.get("id")
 
         doc = {
             **base_doc,
@@ -100,6 +143,37 @@ async def zoom_events(
 
         await db.participation.insert_one(doc)
         print("✔ LEAVE DATA STORED:", doc)
+        
+        # 🎯 ALSO UPDATE session_participants for REPORT GENERATION
+        try:
+            # Find the session by zoomMeetingId
+            session = None
+            if zoom_meeting_id:
+                try:
+                    session = await db.sessions.find_one({"zoomMeetingId": int(zoom_meeting_id)})
+                except:
+                    pass
+                if not session:
+                    session = await db.sessions.find_one({"zoomMeetingId": str(zoom_meeting_id)})
+            
+            if session:
+                mongo_session_id = str(session["_id"])
+                student_id = participant.get("user_id") or participant.get("id") or participant.get("participant_user_id") or f"zoom_{participant.get('participant_uuid', 'unknown')}"
+                
+                # Update session_participants with leave time
+                await db.session_participants.update_one(
+                    {"sessionId": mongo_session_id, "studentId": student_id},
+                    {
+                        "$set": {
+                            "leftAt": datetime.utcnow(),
+                            "status": "left"
+                        }
+                    }
+                )
+                print(f"✅ Updated session_participants: session={mongo_session_id}, student={student_id} LEFT")
+        except Exception as e:
+            print(f"⚠️ Failed to update session_participants: {e}")
+        
         return {"status": "ok", "event": "left"}
 
 
