@@ -560,8 +560,60 @@ async def get_all_my_stored_reports(user: dict = Depends(require_student)):
                         "myAttendanceDuration": student_data.get("attendanceDuration")
                     })
         
+        # If no reports found in session_reports, check session_participants directly
+        # This handles cases where the student joined but the report was generated before the fix
+        if len(reports) == 0:
+            # Get sessions where this student participated
+            participated_session_ids = set()
+            
+            async for participant in db.database.session_participants.find({"studentId": student_id}):
+                participated_session_ids.add(participant.get("sessionId"))
+            
+            if student_email:
+                async for participant in db.database.session_participants.find({"studentEmail": student_email}):
+                    participated_session_ids.add(participant.get("sessionId"))
+            
+            # Get completed sessions from this list
+            for session_id in participated_session_ids:
+                try:
+                    session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+                    if session and session.get("status") == "completed":
+                        # Get participant data for this student
+                        participant = await db.database.session_participants.find_one({
+                            "sessionId": session_id,
+                            "$or": [
+                                {"studentId": student_id},
+                                {"studentEmail": student_email} if student_email else {"studentId": student_id}
+                            ]
+                        })
+                        
+                        if participant:
+                            joined_at = participant.get("joinedAt")
+                            left_at = participant.get("leftAt")
+                            duration = None
+                            if joined_at and left_at:
+                                duration = int((left_at - joined_at).total_seconds() / 60)
+                            elif joined_at:
+                                duration = int((datetime.utcnow() - joined_at).total_seconds() / 60)
+                            
+                            reports.append({
+                                "reportId": f"live_{session_id}",
+                                "sessionId": session_id,
+                                "sessionTitle": session.get("title", "Unknown Session"),
+                                "courseName": session.get("course", ""),
+                                "sessionDate": session.get("date", ""),
+                                "generatedAt": session.get("endedAt") or session.get("actualEndTime"),
+                                "myTotalQuestions": 0,
+                                "myCorrectAnswers": 0,
+                                "myScore": None,
+                                "myAttendanceDuration": duration,
+                                "source": "session_participants"
+                            })
+                except:
+                    pass
+        
         # Sort by date descending
-        reports.sort(key=lambda x: x.get("generatedAt", ""), reverse=True)
+        reports.sort(key=lambda x: str(x.get("generatedAt", "") or x.get("sessionDate", "")), reverse=True)
         
         return {
             "success": True,
