@@ -122,9 +122,11 @@ interface FullReportData {
 
 export const InstructorReports = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'stored' | 'sessions' | 'attendance' | 'quiz' | 'engagement'>('stored');
+  const [activeTab, setActiveTab] = useState<'stored' | 'sessions' | 'attendance' | 'quiz' | 'engagement' | 'mysql-sync'>('stored');
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResults, setSyncResults] = useState<any>(null);
   
   // Data states
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -530,6 +532,61 @@ export const InstructorReports = () => {
     setDownloading(false);
   };
 
+  // ============================================================
+  // MYSQL SYNC FUNCTIONS
+  // ============================================================
+  const syncToMySQL = async (collection: 'all' | 'users' | 'questions' | 'quiz-answers' | 'reports') => {
+    setSyncing(true);
+    setSyncResults(null);
+    
+    const endpoints: Record<string, string> = {
+      'all': '/api/admin/mysql-sync/sync-all',
+      'users': '/api/admin/mysql-sync/sync-users',
+      'questions': '/api/admin/mysql-sync/sync-questions',
+      'quiz-answers': '/api/admin/mysql-sync/sync-quiz-answers',
+      'reports': '/api/admin/mysql-sync/sync-all-reports'
+    };
+    
+    toast.info(`Syncing ${collection} to MySQL...`);
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoints[collection]}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSyncResults(data);
+        toast.success(`✅ ${collection} synced successfully!`);
+      } else {
+        const error = await res.text();
+        toast.error(`Failed to sync: ${error}`);
+      }
+    } catch (err) {
+      console.error('Sync error:', err);
+      toast.error('Failed to sync to MySQL');
+    }
+    
+    setSyncing(false);
+  };
+
+  const checkSyncStatus = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/mysql-sync/status`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSyncResults(data);
+      }
+    } catch (err) {
+      console.error('Failed to check sync status:', err);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="py-6 space-y-6">
       {/* Header */}
@@ -605,7 +662,8 @@ export const InstructorReports = () => {
           { id: 'sessions', label: 'Session Summary', icon: BookOpenIcon },
           { id: 'attendance', label: 'Attendance', icon: ClockIcon },
           { id: 'quiz', label: 'Quiz Performance', icon: FileTextIcon },
-          { id: 'engagement', label: 'Engagement', icon: ActivityIcon }
+          { id: 'engagement', label: 'Engagement', icon: ActivityIcon },
+          { id: 'mysql-sync', label: 'MySQL Backup', icon: RefreshCwIcon }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -1211,6 +1269,143 @@ export const InstructorReports = () => {
           )}
           </div>
         </div>
+      )}
+
+      {/* MySQL SYNC TAB */}
+      {activeTab === 'mysql-sync' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                🗄️ MySQL Backup Sync
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<RefreshCwIcon className="h-4 w-4" />}
+                onClick={checkSyncStatus}
+                disabled={loading}
+              >
+                Check Status
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Sync MongoDB data to MySQL backup database for reporting and auditing.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {/* Sync All Button */}
+              <Card className="p-4 border-2 border-emerald-200 dark:border-emerald-800">
+                <div className="text-center">
+                  <RefreshCwIcon className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Sync All</h4>
+                  <p className="text-xs text-gray-500 mb-3">Users, Questions, Quiz Answers, Reports</p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => syncToMySQL('all')}
+                    disabled={syncing}
+                    leftIcon={syncing ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <RefreshCwIcon className="h-4 w-4" />}
+                  >
+                    {syncing ? 'Syncing...' : 'Sync All'}
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Sync Users */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <UsersIcon className="h-10 w-10 text-blue-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Users</h4>
+                  <p className="text-xs text-gray-500 mb-3">Students & Instructors</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncToMySQL('users')}
+                    disabled={syncing}
+                  >
+                    Sync Users
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Sync Questions */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <FileTextIcon className="h-10 w-10 text-purple-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Questions</h4>
+                  <p className="text-xs text-gray-500 mb-3">Question Bank</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncToMySQL('questions')}
+                    disabled={syncing}
+                  >
+                    Sync Questions
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Sync Quiz Answers */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <CheckCircleIcon className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Quiz Answers</h4>
+                  <p className="text-xs text-gray-500 mb-3">Student Responses</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncToMySQL('quiz-answers')}
+                    disabled={syncing}
+                  >
+                    Sync Answers
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Sync Reports */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <TrendingUpIcon className="h-10 w-10 text-orange-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Session Reports</h4>
+                  <p className="text-xs text-gray-500 mb-3">Generated Reports</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncToMySQL('reports')}
+                    disabled={syncing}
+                  >
+                    Sync Reports
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+            {/* Sync Results */}
+            {syncResults && (
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  {syncResults.message ? '✅ Sync Results' : '📊 Sync Status'}
+                </h4>
+                <pre className="text-sm text-gray-700 dark:text-gray-300 overflow-x-auto">
+                  {JSON.stringify(syncResults, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Info Box */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">ℹ️ About MySQL Backup</h4>
+              <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                <li>• MongoDB is the primary database (source of truth)</li>
+                <li>• MySQL is used for backup and structured SQL reporting</li>
+                <li>• New data is automatically backed up when created</li>
+                <li>• Use sync to backup existing data</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
