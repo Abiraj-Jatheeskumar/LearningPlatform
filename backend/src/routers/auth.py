@@ -6,8 +6,10 @@ from ..middleware.auth import get_current_user, require_instructor
 from ..database.connection import get_database
 from ..utils.jwt_utils import create_access_token
 from ..services.email_service import email_service
+from ..services.mysql_backup_service import mysql_backup_service
 from datetime import datetime
 import hashlib
+import asyncio
 
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -73,6 +75,15 @@ async def register(request_data: RegisterRequest):
         }
 
         user = await UserModel.create(user_data)
+        
+        # ============================================================
+        # MYSQL BACKUP: Backup new user to MySQL (non-blocking)
+        # ============================================================
+        try:
+            asyncio.create_task(mysql_backup_service.backup_user(user))
+            print(f"📦 MySQL backup triggered for new user: {user.get('email')}")
+        except Exception as e:
+            print(f"⚠️ MySQL user backup failed (non-fatal): {e}")
         
         # Send verification email
         email_sent = email_service.send_verification_email(
