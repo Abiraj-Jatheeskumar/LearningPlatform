@@ -216,7 +216,7 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPo
           <span>
             Time Left: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-500' : ''}`}>{timeLeft}s</span>
           </span>
-          {isSubmitting && <span className="text-green-600">Sending...</span>}
+          {isSubmitting && <span style={{ color: '#6FAF98' }}>Sending...</span>}
         </div>
 
         {/* Close button */}
@@ -545,11 +545,11 @@ export const StudentDashboard = () => {
       </div>
 
       {/* Performance Summary */}
-      <div className="mb-8 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-xl shadow-lg p-6">
+      <div className="mb-8 text-white rounded-xl shadow-lg p-6" style={{ background: 'linear-gradient(to right, #6FAF98, #5A9A82)' }}>
         <div className="flex justify-between">
           <div>
             <h2 className="text-xl font-bold">Your Learning Summary</h2>
-            <p className="text-green-100 mt-1">
+            <p className="mt-1" style={{ color: '#d1f5e8' }}>
               You are in <span className="font-semibold">Active Participants</span>
             </p>
           </div>
@@ -561,19 +561,19 @@ export const StudentDashboard = () => {
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Network Strength - Shows connection quality when in session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <WifiIcon className="h-6 w-6 text-green-300" />
+            <WifiIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
             <p className="text-sm font-medium">Network Strength</p>
             <p className="text-lg font-bold">
               {connectedSessionId ? (
-                <span className={`capitalize ${
-                  connectionQuality === 'excellent' || connectionQuality === 'good' 
-                    ? 'text-green-300' 
+                <span className="capitalize" style={{ 
+                  color: connectionQuality === 'excellent' || connectionQuality === 'good' 
+                    ? '#b8e6d4' 
                     : connectionQuality === 'fair' 
-                      ? 'text-yellow-300'
+                      ? '#fcd34d'
                       : connectionQuality === 'poor' || connectionQuality === 'critical'
-                        ? 'text-red-300'
-                        : ''
-                }`}>
+                        ? '#fca5a5'
+                        : 'inherit'
+                }}>
                   {connectionQuality}
                   {currentRtt && <span className="text-xs ml-1">({Math.round(currentRtt)}ms)</span>}
                 </span>
@@ -592,17 +592,18 @@ export const StudentDashboard = () => {
 
           {/* Quiz Stats - Correct answers / total questions for this session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <TrendingUpIcon className="h-6 w-6 text-green-300" />
+            <TrendingUpIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
             <p className="text-sm font-medium">Correct Answers</p>
             <p className="text-lg font-bold">
               {sessionQuizStats.correctAnswers}
-              <span className="text-sm font-normal text-green-200">
+              <span className="text-sm font-normal" style={{ color: '#c5edd9' }}>
                 {" "}/ {sessionQuizStats.questionsAnswered}
               </span>
             </p>
           </div>
 
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
+            <CalendarIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
             <p className="text-sm font-medium">Next Class</p>
             <p className="text-lg font-bold">7 days</p>
           </div>
@@ -616,28 +617,28 @@ export const StudentDashboard = () => {
           <div className="px-4 py-5 flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">Your Sessions</h3>
             <Link to="/dashboard/sessions">
-              <span className="text-sm text-green-600 hover:text-green-800">View All</span>
+              <span className="text-sm hover:opacity-80" style={{ color: '#6FAF98' }}>View All</span>
             </Link>
           </div>
           
           {/* 📶 Show connection status banner when connected */}
           {connectedSessionId && (
-            <div className="mx-4 mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mx-4 mb-4 p-3 rounded-lg" style={{ backgroundColor: '#e8f5f0', borderColor: '#6FAF98', borderWidth: '1px' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-green-800">
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#6FAF98' }}></div>
+                  <span className="text-sm font-medium" style={{ color: '#4a8b73' }}>
                     Connected to session
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <WifiIcon className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-green-700">
+                  <WifiIcon className="h-4 w-4" style={{ color: '#6FAF98' }} />
+                  <span className="text-xs" style={{ color: '#5a9a82' }}>
                     {currentRtt ? `${Math.round(currentRtt)}ms` : 'Measuring...'} • {connectionQuality}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-green-600 mt-1">
+              <p className="text-xs mt-1" style={{ color: '#6FAF98' }}>
                 Your network quality is being monitored for engagement analysis.
               </p>
             </div>
@@ -653,18 +654,18 @@ export const StudentDashboard = () => {
               const isConnectedToThis = connectedSessionId === sessionKey;
               
               return (
-                <div key={session.id} className={`px-4 py-4 border-t hover:bg-gray-50 ${isConnectedToThis ? 'bg-green-50' : ''}`}>
+                <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#e8f5f0' } : {}}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-green-600">
+                        <p className="text-sm font-medium" style={{ color: '#6FAF98' }}>
                           {session.title}
                         </p>
                         {session.status === 'live' && (
                           <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
                         )}
                         {isConnectedToThis && (
-                          <Badge variant="success" className="bg-green-600 text-white text-xs">CONNECTED</Badge>
+                          <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#6FAF98' }}>CONNECTED</Badge>
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
@@ -698,20 +699,20 @@ export const StudentDashboard = () => {
 
           {recentActivities.map((activity) => (
             <div key={activity.id} className="px-4 py-4 border-t">
-              <p className="text-sm font-medium text-green-600">
+              <p className="text-sm font-medium" style={{ color: '#6FAF98' }}>
                 {activity.title}
               </p>
               <p className="text-xs text-gray-500">{activity.course}</p>
               <p className="text-xs mt-1 text-gray-500">{activity.date}</p>
 
               {activity.type === "session" && (
-                <p className="text-xs mt-1 text-green-600 font-medium">
+                <p className="text-xs mt-1 font-medium" style={{ color: '#6FAF98' }}>
                   Engagement: {activity.engagement}
                 </p>
               )}
 
               {activity.type === "quiz" && (
-                <p className="text-xs mt-1 text-green-600 font-medium">
+                <p className="text-xs mt-1 font-medium" style={{ color: '#6FAF98' }}>
                   Score: {activity.score}
                 </p>
               )}
