@@ -143,8 +143,7 @@ def convert_reports_to_csv(reports):
             "moderately_engaged_count": report.get("engagementSummary", {}).get("moderately_engaged", 0),
             "at_risk_count": report.get("engagementSummary", {}).get("at_risk", 0),
             "report_type": report.get("reportType", "master"),
-            "generated_at": str(report.get("generatedAt", "")),
-            "full_document": json.dumps(report, default=str)
+            "generated_at": str(report.get("generatedAt", ""))
         }
         csv_data.append(row)
     
@@ -215,8 +214,7 @@ def convert_users_to_csv(users):
             "role": user.get("role", "student"),
             "created_at": str(user.get("createdAt", user.get("created_at", ""))),
             "last_login": str(user.get("lastLogin", user.get("last_login", ""))),
-            "is_active": user.get("isActive", True),
-            "full_document": json.dumps(user, default=str)
+            "is_active": user.get("isActive", True)
         }
         csv_data.append(row)
     
@@ -247,8 +245,7 @@ def convert_quiz_answers_to_csv(answers):
             "is_correct": answer.get("isCorrect"),
             "time_taken": answer.get("timeTaken"),
             "network_quality": network.get("quality") if isinstance(network, dict) else None,
-            "answered_at": str(answer.get("timestamp", answer.get("answeredAt", ""))),
-            "full_document": json.dumps(answer, default=str)
+            "answered_at": str(answer.get("timestamp", answer.get("answeredAt", "")))
         }
         csv_data.append(row)
     
@@ -279,8 +276,7 @@ def convert_questions_to_csv(questions):
             "correct_answer": q.get("correctAnswer", q.get("correct_answer")),
             "options": json.dumps(q.get("options", []), default=str),
             "tags": json.dumps(q.get("tags", []), default=str),
-            "created_at": str(q.get("createdAt", q.get("created_at", ""))),
-            "full_document": json.dumps(q, default=str)
+            "created_at": str(q.get("createdAt", q.get("created_at", "")))
         }
         csv_data.append(row)
     
@@ -319,7 +315,6 @@ def create_mysql_tables(cursor):
             highly_engaged_count INT DEFAULT 0,
             moderately_engaged_count INT DEFAULT 0,
             at_risk_count INT DEFAULT 0,
-            full_document JSON,
             report_type VARCHAR(50) DEFAULT 'master',
             generated_at VARCHAR(50),
             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -364,7 +359,6 @@ def create_mysql_tables(cursor):
             created_at VARCHAR(50),
             last_login VARCHAR(50),
             is_active BOOLEAN DEFAULT TRUE,
-            full_document JSON,
             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_email (email),
             INDEX idx_role (role)
@@ -384,7 +378,6 @@ def create_mysql_tables(cursor):
             time_taken DECIMAL(8,2),
             network_quality VARCHAR(50),
             answered_at VARCHAR(50),
-            full_document JSON,
             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_session_id (session_id),
             INDEX idx_student_id (student_id),
@@ -405,7 +398,6 @@ def create_mysql_tables(cursor):
             correct_answer INT,
             options JSON,
             tags JSON,
-            full_document JSON,
             created_at VARCHAR(50),
             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_course_id (course_id),

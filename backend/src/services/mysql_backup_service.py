@@ -117,10 +117,6 @@ class MySQLBackupService:
             # Extract engagement summary
             engagement = report_data.get("engagementSummary", {})
             
-            # Serialize full document to JSON
-            serialized_doc = MySQLBackupService._serialize_for_json(report_data)
-            full_json = json.dumps(serialized_doc, ensure_ascii=False)
-            
             async with mysql_backup.get_connection() as conn:
                 if conn is None:
                     return False
@@ -144,12 +140,11 @@ class MySQLBackupService:
                             highly_engaged_count,
                             moderately_engaged_count,
                             at_risk_count,
-                            full_document,
                             report_type,
                             generated_at
                         ) VALUES (
                             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s
+                            %s, %s, %s, %s, %s, %s, %s
                         )
                     """, (
                         mongo_id,
@@ -167,7 +162,6 @@ class MySQLBackupService:
                         engagement.get("highly_engaged", 0),
                         engagement.get("moderately_engaged", 0),
                         engagement.get("at_risk", 0),
-                        full_json,
                         report_data.get("reportType", "master"),
                         generated_at
                     ))
@@ -323,10 +317,6 @@ class MySQLBackupService:
                 except:
                     last_login = None
             
-            # Serialize full document
-            serialized_doc = MySQLBackupService._serialize_for_json(user_data)
-            full_json = json.dumps(serialized_doc, ensure_ascii=False)
-            
             async with mysql_backup.get_connection() as conn:
                 if conn is None:
                     return False
@@ -335,8 +325,8 @@ class MySQLBackupService:
                     await cursor.execute("""
                         INSERT IGNORE INTO users_backup (
                             mongo_id, email, first_name, last_name, role,
-                            created_at, last_login, is_active, full_document
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            created_at, last_login, is_active
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         mongo_id,
                         user_data.get("email", "")[:255],
@@ -345,8 +335,7 @@ class MySQLBackupService:
                         user_data.get("role", "student"),
                         created_at,
                         last_login,
-                        user_data.get("isActive", True),
-                        full_json
+                        user_data.get("isActive", True)
                     ))
                     
                     if cursor.rowcount > 0:
@@ -388,10 +377,6 @@ class MySQLBackupService:
             network = answer_data.get("networkStrength", {})
             network_quality = network.get("quality") if isinstance(network, dict) else None
             
-            # Serialize full document
-            serialized_doc = MySQLBackupService._serialize_for_json(answer_data)
-            full_json = json.dumps(serialized_doc, ensure_ascii=False)
-            
             async with mysql_backup.get_connection() as conn:
                 if conn is None:
                     return False
@@ -401,8 +386,8 @@ class MySQLBackupService:
                         INSERT IGNORE INTO quiz_answers_backup (
                             mongo_id, session_id, student_id, question_id,
                             answer_index, is_correct, time_taken, network_quality,
-                            answered_at, full_document
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            answered_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         mongo_id,
                         answer_data.get("sessionId", ""),
@@ -412,8 +397,7 @@ class MySQLBackupService:
                         answer_data.get("isCorrect"),
                         answer_data.get("timeTaken"),
                         network_quality,
-                        answered_at,
-                        full_json
+                        answered_at
                     ))
                     
                     if cursor.rowcount > 0:
@@ -455,10 +439,6 @@ class MySQLBackupService:
             options_json = json.dumps(options, ensure_ascii=False) if options else None
             tags_json = json.dumps(tags, ensure_ascii=False) if tags else None
             
-            # Serialize full document
-            serialized_doc = MySQLBackupService._serialize_for_json(question_data)
-            full_json = json.dumps(serialized_doc, ensure_ascii=False)
-            
             async with mysql_backup.get_connection() as conn:
                 if conn is None:
                     return False
@@ -468,8 +448,8 @@ class MySQLBackupService:
                         INSERT IGNORE INTO questions_backup (
                             mongo_id, question_text, question_type, difficulty,
                             course_id, created_by, correct_answer, options, tags,
-                            full_document, created_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         mongo_id,
                         question_data.get("question", question_data.get("text", ""))[:65535] if question_data.get("question") or question_data.get("text") else None,
@@ -480,7 +460,6 @@ class MySQLBackupService:
                         question_data.get("correctAnswer", question_data.get("correct_answer")),
                         options_json,
                         tags_json,
-                        full_json,
                         created_at
                     ))
                     

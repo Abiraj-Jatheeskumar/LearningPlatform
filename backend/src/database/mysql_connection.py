@@ -148,9 +148,6 @@ class MySQLBackupConnection:
                             moderately_engaged_count INT DEFAULT 0,
                             at_risk_count INT DEFAULT 0,
                             
-                            -- Full MongoDB Document (JSON for complete data)
-                            full_document JSON,
-                            
                             -- Metadata
                             report_type VARCHAR(50) DEFAULT 'master',
                             generated_at DATETIME,
@@ -179,7 +176,6 @@ class MySQLBackupConnection:
                             created_at DATETIME,
                             last_login DATETIME,
                             is_active BOOLEAN DEFAULT TRUE,
-                            full_document JSON,
                             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             INDEX idx_email (email),
                             INDEX idx_role (role)
@@ -202,7 +198,6 @@ class MySQLBackupConnection:
                             time_taken DECIMAL(8,2),
                             network_quality VARCHAR(50),
                             answered_at DATETIME,
-                            full_document JSON,
                             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             INDEX idx_session_id (session_id),
                             INDEX idx_student_id (student_id),
@@ -226,7 +221,6 @@ class MySQLBackupConnection:
                             correct_answer INT,
                             options JSON,
                             tags JSON,
-                            full_document JSON,
                             created_at DATETIME,
                             backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             INDEX idx_course_id (course_id),
