@@ -5,47 +5,49 @@
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL */
 @layer base {
   :root {
-    --background: 130 45% 92%;
-    --foreground: 140 60% 15%;
-    --muted: 130 40% 88%;
-    --muted-foreground: 130 25% 35%;
+    /* #006A4E - Bangladesh Green Theme */
+    --background: 164 30% 95%;
+    --foreground: 164 80% 10%;
+    --muted: 164 25% 90%;
+    --muted-foreground: 164 20% 40%;
     --popover: 0 0% 100%;
-    --popover-foreground: 140 60% 15%;
+    --popover-foreground: 164 80% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 140 60% 15%;
-    --border: 130 50% 75%;
-    --input: 130 45% 85%;
-    --primary: 142 70% 45%;
+    --card-foreground: 164 80% 10%;
+    --border: 164 30% 80%;
+    --input: 164 25% 88%;
+    --primary: 164 100% 21%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 130 50% 85%;
-    --secondary-foreground: 142 70% 30%;
-    --accent: 130 45% 90%;
-    --accent-foreground: 140 60% 20%;
+    --secondary: 164 40% 88%;
+    --secondary-foreground: 164 100% 18%;
+    --accent: 164 30% 92%;
+    --accent-foreground: 164 80% 15%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 142 70% 45%;
+    --ring: 164 100% 21%;
     --radius: 0.75rem;
   }
   .dark {
-    --background: 140 35% 8%;
-    --foreground: 130 35% 92%;
-    --muted: 140 30% 14%;
-    --muted-foreground: 130 25% 60%;
-    --popover: 140 35% 10%;
-    --popover-foreground: 130 30% 85%;
-    --card: 140 35% 12%;
-    --card-foreground: 130 35% 92%;
-    --border: 140 30% 22%;
-    --input: 140 30% 22%;
-    --primary: 142 65% 48%;
+    /* #006A4E - Bangladesh Green Theme (Dark Mode) */
+    --background: 164 40% 6%;
+    --foreground: 164 25% 92%;
+    --muted: 164 30% 12%;
+    --muted-foreground: 164 20% 60%;
+    --popover: 164 40% 8%;
+    --popover-foreground: 164 25% 88%;
+    --card: 164 35% 10%;
+    --card-foreground: 164 25% 92%;
+    --border: 164 30% 18%;
+    --input: 164 30% 18%;
+    --primary: 164 80% 35%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 140 40% 20%;
-    --secondary-foreground: 130 40% 90%;
-    --accent: 140 30% 22%;
-    --accent-foreground: 130 40% 90%;
+    --secondary: 164 35% 18%;
+    --secondary-foreground: 164 30% 90%;
+    --accent: 164 30% 16%;
+    --accent-foreground: 164 30% 90%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 142 65% 48%;
+    --ring: 164 80% 35%;
   }
 }
 /* Custom animations */
@@ -181,17 +183,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #86efac;
+    background: #4dab94;
     border-radius: 6px;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: #22c55e;
+    background: #006A4E;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #4ade80;
+    background: #008562;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: #16a34a;
+    background: #008562;
   }
 }
 
@@ -225,7 +227,7 @@
 }
 .card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.15), 0 8px 10px -6px rgba(34, 197, 94, 0.12);
+  box-shadow: 0 10px 25px -5px rgba(0, 106, 78, 0.15), 0 8px 10px -6px rgba(0, 106, 78, 0.12);
 }
 
 /* Smooth focus ring animation */
@@ -234,10 +236,10 @@
 }
 @keyframes focus-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 0 0 rgba(0, 106, 78, 0.4);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    box-shadow: 0 0 0 4px rgba(0, 106, 78, 0.15);
   }
 }
 
@@ -255,7 +257,7 @@
 
 /* Text gradient effect */
 .text-gradient {
-  background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80);
+  background: linear-gradient(135deg, #004d38, #006A4E, #008562);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

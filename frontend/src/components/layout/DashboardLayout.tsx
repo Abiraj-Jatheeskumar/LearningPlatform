@@ -134,17 +134,17 @@ export const DashboardLayout = () => {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#006A4E] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
-  return <div className="h-screen flex overflow-hidden bg-green-50">
+  return <div className="h-screen flex overflow-hidden bg-[#e8f5f1]">
       {/* Mobile sidebar */}
       <div className={`md:hidden ${sidebarOpen ? 'fixed inset-0 flex z-40' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" onClick={() => setSidebarOpen(false)} />
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-br from-green-400 via-green-500 to-green-600 transition-all duration-300 shadow-2xl">
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-br from-[#008562] via-[#006A4E] to-[#004d38] transition-all duration-300 shadow-2xl">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button className="ml-1 flex items-center justify-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors" onClick={() => setSidebarOpen(false)}>
               <XIcon className="h-6 w-6 text-white" aria-hidden="true" />
@@ -159,7 +159,7 @@ export const DashboardLayout = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">Learning Platform</h2>
-                  <p className="text-xs text-green-200">Smart Education</p>
+                  <p className="text-xs text-[#a8d5c8]">Smart Education</p>
                 </div>
               </div>
             </div>
@@ -176,11 +176,11 @@ export const DashboardLayout = () => {
                     ${
                       isActive(item.href)
                         ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/30'
-                        : 'text-green-100 hover:bg-white/10 hover:text-white'
+                        : 'text-[#c8e6dc] hover:bg-white/10 hover:text-white'
                     }
                   `}
                 >
-                  <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${isActive(item.href) ? 'text-white' : 'text-green-200'}`} aria-hidden="true" />
+                  <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${isActive(item.href) ? 'text-white' : 'text-[#a8d5c8]'}`} aria-hidden="true" />
                   <span className="font-medium">{item.name}</span>
                   {isActive(item.href) && (
                     <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
@@ -207,8 +207,8 @@ export const DashboardLayout = () => {
                   {user?.firstName} {user?.lastName}
                 </p>
                 <div className="flex items-center space-x-1 mt-0.5">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                  <p className="text-xs font-medium text-green-200 capitalize truncate">
+                  <div className="w-1.5 h-1.5 bg-[#4dab94] rounded-full"></div>
+                  <p className="text-xs font-medium text-[#a8d5c8] capitalize truncate">
                     {user?.role || 'User'}
                   </p>
                 </div>
@@ -220,7 +220,7 @@ export const DashboardLayout = () => {
       {/* Static sidebar for desktop */}
       <div className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="flex flex-col w-full relative">
-          <div className="flex flex-col h-0 flex-1 bg-gradient-to-br from-green-400 via-green-500 to-green-600 shadow-2xl">
+          <div className="flex flex-col h-0 flex-1 bg-gradient-to-br from-[#008562] via-[#006A4E] to-[#004d38] shadow-2xl">
             <div className="flex-1 flex flex-col pt-6 pb-4 overflow-y-auto">
               {/* Logo/Brand Section */}
               <div className={`flex-shrink-0 flex items-center mb-8 transition-all duration-300 ${sidebarCollapsed ? 'px-3 justify-center' : 'px-6'}`}>
@@ -248,7 +248,7 @@ export const DashboardLayout = () => {
                       ${
                         isActive(item.href)
                           ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/30'
-                          : 'text-green-100 hover:bg-white/10 hover:text-white hover:shadow-md'
+                          : 'text-[#c8e6dc] hover:bg-white/10 hover:text-white hover:shadow-md'
                       }
                       ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'}
                     `}
@@ -256,7 +256,7 @@ export const DashboardLayout = () => {
                   >
                     <item.icon
                       className={`flex-shrink-0 transition-colors ${
-                        isActive(item.href) ? 'text-white' : 'text-green-200 group-hover:text-white'
+                        isActive(item.href) ? 'text-white' : 'text-[#a8d5c8] group-hover:text-white'
                       } ${sidebarCollapsed ? 'h-6 w-6' : 'mr-3 h-5 w-5'}`}
                       aria-hidden="true"
                     />
@@ -291,8 +291,8 @@ export const DashboardLayout = () => {
                       {user?.firstName} {user?.lastName}
                     </p>
                     <div className="flex items-center space-x-1 mt-0.5">
-                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                      <p className="text-xs font-medium text-green-200 capitalize truncate">
+                      <div className="w-1.5 h-1.5 bg-[#4dab94] rounded-full"></div>
+                      <p className="text-xs font-medium text-[#a8d5c8] capitalize truncate">
                         {user?.role || 'User'}
                       </p>
                     </div>
@@ -304,13 +304,13 @@ export const DashboardLayout = () => {
             {/* Toggle Button */}
             <button
               onClick={toggleSidebar}
-              className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 p-1.5 bg-white rounded-full shadow-lg border-2 border-green-600 hover:bg-green-50 transition-colors"
+              className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 p-1.5 bg-white rounded-full shadow-lg border-2 border-[#006A4E] hover:bg-[#e8f5f1] transition-colors"
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? (
-                <ChevronRightIcon className="h-4 w-4 text-green-600" />
+                <ChevronRightIcon className="h-4 w-4 text-[#006A4E]" />
               ) : (
-                <ChevronLeftIcon className="h-4 w-4 text-green-600" />
+                <ChevronLeftIcon className="h-4 w-4 text-[#006A4E]" />
               )}
             </button>
           </div>
@@ -350,7 +350,7 @@ export const DashboardLayout = () => {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 >
-                  <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold text-sm">
+                  <div className="h-8 w-8 rounded-full bg-[#006A4E] flex items-center justify-center text-white font-semibold text-sm">
                     {userInitials}
                   </div>
                   <span className="hidden md:block text-sm font-medium text-gray-700">
