@@ -165,6 +165,77 @@ class MySQLBackupConnection:
                         COMMENT='Backup of session reports from MongoDB. READ-ONLY after insert.'
                     """)
                     
+                    # ============================================================
+                    # USERS BACKUP TABLE
+                    # ============================================================
+                    await cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS users_backup (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+                            email VARCHAR(255) NOT NULL,
+                            first_name VARCHAR(100),
+                            last_name VARCHAR(100),
+                            role VARCHAR(50) DEFAULT 'student',
+                            created_at DATETIME,
+                            last_login DATETIME,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            full_document JSON,
+                            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            INDEX idx_email (email),
+                            INDEX idx_role (role)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        COMMENT='Backup of users from MongoDB. READ-ONLY.'
+                    """)
+                    
+                    # ============================================================
+                    # QUIZ ANSWERS BACKUP TABLE
+                    # ============================================================
+                    await cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS quiz_answers_backup (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+                            session_id VARCHAR(50) NOT NULL,
+                            student_id VARCHAR(50) NOT NULL,
+                            question_id VARCHAR(50) NOT NULL,
+                            answer_index INT,
+                            is_correct BOOLEAN,
+                            time_taken DECIMAL(8,2),
+                            network_quality VARCHAR(50),
+                            answered_at DATETIME,
+                            full_document JSON,
+                            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            INDEX idx_session_id (session_id),
+                            INDEX idx_student_id (student_id),
+                            INDEX idx_question_id (question_id)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        COMMENT='Backup of quiz answers from MongoDB. READ-ONLY.'
+                    """)
+                    
+                    # ============================================================
+                    # QUESTIONS BACKUP TABLE
+                    # ============================================================
+                    await cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS questions_backup (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+                            question_text TEXT,
+                            question_type VARCHAR(50),
+                            difficulty VARCHAR(50),
+                            course_id VARCHAR(24),
+                            created_by VARCHAR(24),
+                            correct_answer INT,
+                            options JSON,
+                            tags JSON,
+                            full_document JSON,
+                            created_at DATETIME,
+                            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            INDEX idx_course_id (course_id),
+                            INDEX idx_difficulty (difficulty),
+                            INDEX idx_created_by (created_by)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        COMMENT='Backup of questions from MongoDB. READ-ONLY.'
+                    """)
+                    
                     # Student Participation Backup Table
                     await cursor.execute("""
                         CREATE TABLE IF NOT EXISTS student_participation_backup (

@@ -83,6 +83,36 @@ def export_participants(db):
     
     return participants
 
+
+def export_users(db):
+    """Export users from MongoDB"""
+    print("\n👤 Exporting users...")
+    
+    users = list(db.users.find({}))
+    print(f"   Found {len(users)} users")
+    
+    return users
+
+
+def export_quiz_answers(db):
+    """Export quiz answers from MongoDB"""
+    print("\n📝 Exporting quiz answers...")
+    
+    answers = list(db.quiz_answers.find({}))
+    print(f"   Found {len(answers)} quiz answers")
+    
+    return answers
+
+
+def export_questions(db):
+    """Export questions from MongoDB"""
+    print("\n❓ Exporting questions...")
+    
+    questions = list(db.questions.find({}))
+    print(f"   Found {len(questions)} questions")
+    
+    return questions
+
 # ============================================================
 # STEP 2: CONVERT JSON → CSV
 # ============================================================
@@ -168,6 +198,100 @@ def convert_students_to_csv(reports):
     
     return csv_path
 
+
+def convert_users_to_csv(users):
+    """Convert users to CSV"""
+    print("\n📄 Converting users to CSV...")
+    
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    
+    csv_data = []
+    for user in users:
+        row = {
+            "mongo_id": str(user.get("_id", "")),
+            "email": user.get("email", ""),
+            "first_name": user.get("firstName", user.get("first_name", "")),
+            "last_name": user.get("lastName", user.get("last_name", "")),
+            "role": user.get("role", "student"),
+            "created_at": str(user.get("createdAt", user.get("created_at", ""))),
+            "last_login": str(user.get("lastLogin", user.get("last_login", ""))),
+            "is_active": user.get("isActive", True),
+            "full_document": json.dumps(user, default=str)
+        }
+        csv_data.append(row)
+    
+    csv_path = OUTPUT_DIR / "users.csv"
+    if csv_data:
+        df = pd.DataFrame(csv_data)
+        df.to_csv(csv_path, index=False, encoding='utf-8')
+        print(f"   ✅ Saved: {csv_path}")
+    
+    return csv_path
+
+
+def convert_quiz_answers_to_csv(answers):
+    """Convert quiz answers to CSV"""
+    print("\n📄 Converting quiz answers to CSV...")
+    
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    
+    csv_data = []
+    for answer in answers:
+        network = answer.get("networkStrength", {})
+        row = {
+            "mongo_id": str(answer.get("_id", "")),
+            "session_id": answer.get("sessionId", ""),
+            "student_id": answer.get("studentId", ""),
+            "question_id": answer.get("questionId", ""),
+            "answer_index": answer.get("answerIndex"),
+            "is_correct": answer.get("isCorrect"),
+            "time_taken": answer.get("timeTaken"),
+            "network_quality": network.get("quality") if isinstance(network, dict) else None,
+            "answered_at": str(answer.get("timestamp", answer.get("answeredAt", ""))),
+            "full_document": json.dumps(answer, default=str)
+        }
+        csv_data.append(row)
+    
+    csv_path = OUTPUT_DIR / "quiz_answers.csv"
+    if csv_data:
+        df = pd.DataFrame(csv_data)
+        df.to_csv(csv_path, index=False, encoding='utf-8')
+        print(f"   ✅ Saved: {csv_path}")
+    
+    return csv_path
+
+
+def convert_questions_to_csv(questions):
+    """Convert questions to CSV"""
+    print("\n📄 Converting questions to CSV...")
+    
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    
+    csv_data = []
+    for q in questions:
+        row = {
+            "mongo_id": str(q.get("_id", "")),
+            "question_text": q.get("question", q.get("text", "")),
+            "question_type": q.get("type", q.get("questionType", "multiple_choice")),
+            "difficulty": q.get("difficulty", "medium"),
+            "course_id": q.get("courseId", q.get("course_id", "")),
+            "created_by": q.get("createdBy", q.get("created_by", "")),
+            "correct_answer": q.get("correctAnswer", q.get("correct_answer")),
+            "options": json.dumps(q.get("options", []), default=str),
+            "tags": json.dumps(q.get("tags", []), default=str),
+            "created_at": str(q.get("createdAt", q.get("created_at", ""))),
+            "full_document": json.dumps(q, default=str)
+        }
+        csv_data.append(row)
+    
+    csv_path = OUTPUT_DIR / "questions.csv"
+    if csv_data:
+        df = pd.DataFrame(csv_data)
+        df.to_csv(csv_path, index=False, encoding='utf-8')
+        print(f"   ✅ Saved: {csv_path}")
+    
+    return csv_path
+
 # ============================================================
 # STEP 3: IMPORT CSV INTO LOCAL MYSQL
 # ============================================================
@@ -228,7 +352,68 @@ def create_mysql_tables(cursor):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
     
-    print("   ✅ Tables created")
+    # Users table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users_backup (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            role VARCHAR(50) DEFAULT 'student',
+            created_at VARCHAR(50),
+            last_login VARCHAR(50),
+            is_active BOOLEAN DEFAULT TRUE,
+            full_document JSON,
+            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_email (email),
+            INDEX idx_role (role)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    
+    # Quiz Answers table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_answers_backup (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+            session_id VARCHAR(50) NOT NULL,
+            student_id VARCHAR(50) NOT NULL,
+            question_id VARCHAR(50) NOT NULL,
+            answer_index INT,
+            is_correct BOOLEAN,
+            time_taken DECIMAL(8,2),
+            network_quality VARCHAR(50),
+            answered_at VARCHAR(50),
+            full_document JSON,
+            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_session_id (session_id),
+            INDEX idx_student_id (student_id),
+            INDEX idx_question_id (question_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    
+    # Questions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS questions_backup (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+            question_text TEXT,
+            question_type VARCHAR(50),
+            difficulty VARCHAR(50),
+            course_id VARCHAR(24),
+            created_by VARCHAR(24),
+            correct_answer INT,
+            options JSON,
+            tags JSON,
+            full_document JSON,
+            created_at VARCHAR(50),
+            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_course_id (course_id),
+            INDEX idx_difficulty (difficulty)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    
+    print("   ✅ All tables created (5 tables)")
 
 def import_csv_to_mysql(cursor, csv_path, table_name):
     """Import CSV file into MySQL table"""
@@ -299,27 +484,36 @@ def main():
     print("MongoDB → Local MySQL Export Tool")
     print("=" * 60)
     
-    # Step 1: Connect to MongoDB and export
+    # Step 1: Connect to MongoDB and export ALL collections
     try:
         db = connect_mongodb()
         reports = export_session_reports(db)
+        users = export_users(db)
+        quiz_answers = export_quiz_answers(db)
+        questions = export_questions(db)
     except Exception as e:
         print(f"❌ MongoDB error: {e}")
         print("\n💡 Make sure MONGO_URI is set in your .env file or update the script")
         return
     
-    if not reports:
-        print("\n⚠️ No reports found in MongoDB")
-        return
+    # Step 2: Convert ALL to CSV
+    print("\n" + "=" * 60)
+    print("CONVERTING TO CSV...")
+    print("=" * 60)
     
-    # Step 2: Convert to CSV
-    reports_csv = convert_reports_to_csv(reports)
-    students_csv = convert_students_to_csv(reports)
+    reports_csv = convert_reports_to_csv(reports) if reports else None
+    students_csv = convert_students_to_csv(reports) if reports else None
+    users_csv = convert_users_to_csv(users) if users else None
+    quiz_answers_csv = convert_quiz_answers_to_csv(quiz_answers) if quiz_answers else None
+    questions_csv = convert_questions_to_csv(questions) if questions else None
     
     print("\n" + "=" * 60)
     print("CSV FILES CREATED:")
-    print(f"  📄 {reports_csv}")
-    print(f"  📄 {students_csv}")
+    if reports_csv: print(f"  📄 {reports_csv}")
+    if students_csv: print(f"  📄 {students_csv}")
+    if users_csv: print(f"  📄 {users_csv}")
+    if quiz_answers_csv: print(f"  📄 {quiz_answers_csv}")
+    if questions_csv: print(f"  📄 {questions_csv}")
     print("=" * 60)
     
     # Step 3: Import to local MySQL
@@ -336,12 +530,20 @@ def main():
     try:
         cursor = conn.cursor()
         
-        # Create tables
+        # Create ALL tables
         create_mysql_tables(cursor)
         
-        # Import CSVs
-        import_csv_to_mysql(cursor, reports_csv, "session_reports_backup")
-        import_csv_to_mysql(cursor, students_csv, "student_participation_backup")
+        # Import ALL CSVs
+        if reports_csv and reports_csv.exists():
+            import_csv_to_mysql(cursor, reports_csv, "session_reports_backup")
+        if students_csv and students_csv.exists():
+            import_csv_to_mysql(cursor, students_csv, "student_participation_backup")
+        if users_csv and users_csv.exists():
+            import_csv_to_mysql(cursor, users_csv, "users_backup")
+        if quiz_answers_csv and quiz_answers_csv.exists():
+            import_csv_to_mysql(cursor, quiz_answers_csv, "quiz_answers_backup")
+        if questions_csv and questions_csv.exists():
+            import_csv_to_mysql(cursor, questions_csv, "questions_backup")
         
         conn.commit()
         print("\n✅ All data imported successfully!")
@@ -356,7 +558,12 @@ def main():
     print("\n" + "=" * 60)
     print("DONE! Check your local MySQL database:")
     print(f"  Database: {MYSQL_CONFIG['database']}")
-    print("  Tables: session_reports_backup, student_participation_backup")
+    print("  Tables:")
+    print("    - session_reports_backup")
+    print("    - student_participation_backup")
+    print("    - users_backup")
+    print("    - quiz_answers_backup")
+    print("    - questions_backup")
     print("=" * 60)
 
 if __name__ == "__main__":

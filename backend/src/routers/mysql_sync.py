@@ -33,70 +33,222 @@ router = APIRouter(prefix="/api/admin/mysql-sync", tags=["MySQL Sync"])
 async def sync_all_reports_to_mysql(user: dict = Depends(require_instructor)):
     """
     Sync ALL existing session reports from MongoDB to MySQL.
-    
-    Process:
-    1. Read all reports from MongoDB session_reports collection
-    2. Transform each document to MySQL table format
-    3. Insert into MySQL (skip duplicates)
-    
-    This is idempotent - running multiple times won't create duplicates.
     """
     if not mysql_backup.is_connected:
-        raise HTTPException(
-            status_code=503, 
-            detail="MySQL backup is not connected. Please configure MySQL first."
-        )
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
     if not database:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
-    results = {
-        "total_in_mongodb": 0,
-        "synced_to_mysql": 0,
-        "already_exists": 0,
-        "failed": 0,
-        "errors": []
-    }
+    results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
     
     try:
-        # Step 1: Read ALL reports from MongoDB
         cursor = database.session_reports.find({"reportType": "master"})
         reports = await cursor.to_list(length=None)
-        results["total_in_mongodb"] = len(reports)
+        results["total"] = len(reports)
         
-        print(f"📊 Found {len(reports)} reports in MongoDB to sync")
-        
-        # Step 2 & 3: Transform and Insert each report
         for report in reports:
             try:
-                # Convert ObjectId to string
                 report["id"] = str(report["_id"])
-                
-                # Call backup service (handles transformation internally)
                 success = await mysql_backup_service.backup_session_report(report)
-                
                 if success:
-                    results["synced_to_mysql"] += 1
+                    results["synced"] += 1
                 else:
-                    results["already_exists"] += 1
-                    
+                    results["skipped"] += 1
             except Exception as e:
                 results["failed"] += 1
-                results["errors"].append(f"Report {report.get('_id')}: {str(e)}")
-                print(f"❌ Failed to sync report: {e}")
         
-        print(f"✅ Sync complete: {results['synced_to_mysql']} synced, {results['already_exists']} already existed")
-        
-        return {
-            "success": True,
-            "message": "MongoDB → MySQL sync completed",
-            "results": results
-        }
-        
+        return {"success": True, "collection": "session_reports", "results": results}
     except Exception as e:
-        print(f"❌ Sync failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-users")
+async def sync_users_to_mysql(user: dict = Depends(require_instructor)):
+    """
+    Sync ALL users from MongoDB to MySQL.
+    """
+    if not mysql_backup.is_connected:
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
+    
+    database = get_database()
+    if not database:
+        raise HTTPException(status_code=503, detail="MongoDB not connected")
+    
+    results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
+    
+    try:
+        cursor = database.users.find({})
+        users = await cursor.to_list(length=None)
+        results["total"] = len(users)
+        
+        print(f"👥 Found {len(users)} users in MongoDB to sync")
+        
+        for u in users:
+            try:
+                u["id"] = str(u["_id"])
+                success = await mysql_backup_service.backup_user(u)
+                if success:
+                    results["synced"] += 1
+                else:
+                    results["skipped"] += 1
+            except Exception as e:
+                results["failed"] += 1
+        
+        print(f"✅ Users sync complete: {results['synced']} synced")
+        return {"success": True, "collection": "users", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-quiz-answers")
+async def sync_quiz_answers_to_mysql(user: dict = Depends(require_instructor)):
+    """
+    Sync ALL quiz answers from MongoDB to MySQL.
+    """
+    if not mysql_backup.is_connected:
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
+    
+    database = get_database()
+    if not database:
+        raise HTTPException(status_code=503, detail="MongoDB not connected")
+    
+    results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
+    
+    try:
+        cursor = database.quiz_answers.find({})
+        answers = await cursor.to_list(length=None)
+        results["total"] = len(answers)
+        
+        print(f"📝 Found {len(answers)} quiz answers in MongoDB to sync")
+        
+        for answer in answers:
+            try:
+                answer["id"] = str(answer["_id"])
+                success = await mysql_backup_service.backup_quiz_answer(answer)
+                if success:
+                    results["synced"] += 1
+                else:
+                    results["skipped"] += 1
+            except Exception as e:
+                results["failed"] += 1
+        
+        print(f"✅ Quiz answers sync complete: {results['synced']} synced")
+        return {"success": True, "collection": "quiz_answers", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-questions")
+async def sync_questions_to_mysql(user: dict = Depends(require_instructor)):
+    """
+    Sync ALL questions from MongoDB to MySQL.
+    """
+    if not mysql_backup.is_connected:
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
+    
+    database = get_database()
+    if not database:
+        raise HTTPException(status_code=503, detail="MongoDB not connected")
+    
+    results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
+    
+    try:
+        cursor = database.questions.find({})
+        questions = await cursor.to_list(length=None)
+        results["total"] = len(questions)
+        
+        print(f"❓ Found {len(questions)} questions in MongoDB to sync")
+        
+        for q in questions:
+            try:
+                q["id"] = str(q["_id"])
+                success = await mysql_backup_service.backup_question(q)
+                if success:
+                    results["synced"] += 1
+                else:
+                    results["skipped"] += 1
+            except Exception as e:
+                results["failed"] += 1
+        
+        print(f"✅ Questions sync complete: {results['synced']} synced")
+        return {"success": True, "collection": "questions", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-all")
+async def sync_all_collections_to_mysql(user: dict = Depends(require_instructor)):
+    """
+    Sync ALL collections from MongoDB to MySQL:
+    - users
+    - questions
+    - quiz_answers
+    - session_reports
+    """
+    if not mysql_backup.is_connected:
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
+    
+    database = get_database()
+    if not database:
+        raise HTTPException(status_code=503, detail="MongoDB not connected")
+    
+    all_results = {}
+    
+    # Sync Users
+    try:
+        users = await database.users.find({}).to_list(length=None)
+        synced = 0
+        for u in users:
+            u["id"] = str(u["_id"])
+            if await mysql_backup_service.backup_user(u):
+                synced += 1
+        all_results["users"] = {"total": len(users), "synced": synced}
+    except Exception as e:
+        all_results["users"] = {"error": str(e)}
+    
+    # Sync Questions
+    try:
+        questions = await database.questions.find({}).to_list(length=None)
+        synced = 0
+        for q in questions:
+            q["id"] = str(q["_id"])
+            if await mysql_backup_service.backup_question(q):
+                synced += 1
+        all_results["questions"] = {"total": len(questions), "synced": synced}
+    except Exception as e:
+        all_results["questions"] = {"error": str(e)}
+    
+    # Sync Quiz Answers
+    try:
+        answers = await database.quiz_answers.find({}).to_list(length=None)
+        synced = 0
+        for a in answers:
+            a["id"] = str(a["_id"])
+            if await mysql_backup_service.backup_quiz_answer(a):
+                synced += 1
+        all_results["quiz_answers"] = {"total": len(answers), "synced": synced}
+    except Exception as e:
+        all_results["quiz_answers"] = {"error": str(e)}
+    
+    # Sync Session Reports
+    try:
+        reports = await database.session_reports.find({"reportType": "master"}).to_list(length=None)
+        synced = 0
+        for r in reports:
+            r["id"] = str(r["_id"])
+            if await mysql_backup_service.backup_session_report(r):
+                synced += 1
+        all_results["session_reports"] = {"total": len(reports), "synced": synced}
+    except Exception as e:
+        all_results["session_reports"] = {"error": str(e)}
+    
+    return {
+        "success": True,
+        "message": "All collections synced from MongoDB to MySQL",
+        "results": all_results
+    }
 
 
 @router.get("/status")

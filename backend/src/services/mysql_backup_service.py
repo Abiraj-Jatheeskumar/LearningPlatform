@@ -289,6 +289,208 @@ class MySQLBackupService:
         except Exception as e:
             # Catch-all to ensure task doesn't crash
             print(f"⚠️ Background MySQL backup failed: {e}")
+    
+    # ============================================================
+    # BACKUP USER
+    # ============================================================
+    @staticmethod
+    async def backup_user(user_data: Dict) -> bool:
+        """
+        Backup a user document to MySQL.
+        Called after user is saved to MongoDB.
+        """
+        if not mysql_backup.is_connected:
+            return False
+        
+        try:
+            mongo_id = str(user_data.get("_id", user_data.get("id", "")))
+            if not mongo_id:
+                return False
+            
+            # Parse timestamps
+            created_at = user_data.get("createdAt") or user_data.get("created_at")
+            last_login = user_data.get("lastLogin") or user_data.get("last_login")
+            
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = None
+            
+            if isinstance(last_login, str):
+                try:
+                    last_login = datetime.fromisoformat(last_login.replace('Z', '+00:00'))
+                except:
+                    last_login = None
+            
+            # Serialize full document
+            serialized_doc = MySQLBackupService._serialize_for_json(user_data)
+            full_json = json.dumps(serialized_doc, ensure_ascii=False)
+            
+            async with mysql_backup.get_connection() as conn:
+                if conn is None:
+                    return False
+                
+                async with conn.cursor() as cursor:
+                    await cursor.execute("""
+                        INSERT IGNORE INTO users_backup (
+                            mongo_id, email, first_name, last_name, role,
+                            created_at, last_login, is_active, full_document
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        mongo_id,
+                        user_data.get("email", "")[:255],
+                        user_data.get("firstName", user_data.get("first_name", ""))[:100] if user_data.get("firstName") or user_data.get("first_name") else None,
+                        user_data.get("lastName", user_data.get("last_name", ""))[:100] if user_data.get("lastName") or user_data.get("last_name") else None,
+                        user_data.get("role", "student"),
+                        created_at,
+                        last_login,
+                        user_data.get("isActive", True),
+                        full_json
+                    ))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ MySQL backup: user {mongo_id} saved")
+                    return True
+                    
+        except Exception as e:
+            print(f"⚠️ MySQL user backup failed (non-fatal): {e}")
+            return False
+    
+    # ============================================================
+    # BACKUP QUIZ ANSWER
+    # ============================================================
+    @staticmethod
+    async def backup_quiz_answer(answer_data: Dict) -> bool:
+        """
+        Backup a quiz answer to MySQL.
+        Called after quiz answer is saved to MongoDB.
+        """
+        if not mysql_backup.is_connected:
+            return False
+        
+        try:
+            mongo_id = str(answer_data.get("_id", answer_data.get("id", "")))
+            if not mongo_id:
+                return False
+            
+            # Parse timestamp
+            answered_at = answer_data.get("timestamp") or answer_data.get("answeredAt")
+            if isinstance(answered_at, str):
+                try:
+                    answered_at = datetime.fromisoformat(answered_at.replace('Z', '+00:00'))
+                except:
+                    answered_at = None
+            elif not isinstance(answered_at, datetime):
+                answered_at = datetime.utcnow()
+            
+            # Get network quality
+            network = answer_data.get("networkStrength", {})
+            network_quality = network.get("quality") if isinstance(network, dict) else None
+            
+            # Serialize full document
+            serialized_doc = MySQLBackupService._serialize_for_json(answer_data)
+            full_json = json.dumps(serialized_doc, ensure_ascii=False)
+            
+            async with mysql_backup.get_connection() as conn:
+                if conn is None:
+                    return False
+                
+                async with conn.cursor() as cursor:
+                    await cursor.execute("""
+                        INSERT IGNORE INTO quiz_answers_backup (
+                            mongo_id, session_id, student_id, question_id,
+                            answer_index, is_correct, time_taken, network_quality,
+                            answered_at, full_document
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        mongo_id,
+                        answer_data.get("sessionId", ""),
+                        answer_data.get("studentId", ""),
+                        answer_data.get("questionId", ""),
+                        answer_data.get("answerIndex"),
+                        answer_data.get("isCorrect"),
+                        answer_data.get("timeTaken"),
+                        network_quality,
+                        answered_at,
+                        full_json
+                    ))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ MySQL backup: quiz_answer {mongo_id} saved")
+                    return True
+                    
+        except Exception as e:
+            print(f"⚠️ MySQL quiz_answer backup failed (non-fatal): {e}")
+            return False
+    
+    # ============================================================
+    # BACKUP QUESTION
+    # ============================================================
+    @staticmethod
+    async def backup_question(question_data: Dict) -> bool:
+        """
+        Backup a question to MySQL.
+        Called after question is saved to MongoDB.
+        """
+        if not mysql_backup.is_connected:
+            return False
+        
+        try:
+            mongo_id = str(question_data.get("_id", question_data.get("id", "")))
+            if not mongo_id:
+                return False
+            
+            # Parse timestamp
+            created_at = question_data.get("createdAt") or question_data.get("created_at")
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = None
+            
+            # Serialize options and tags
+            options = question_data.get("options", [])
+            tags = question_data.get("tags", [])
+            options_json = json.dumps(options, ensure_ascii=False) if options else None
+            tags_json = json.dumps(tags, ensure_ascii=False) if tags else None
+            
+            # Serialize full document
+            serialized_doc = MySQLBackupService._serialize_for_json(question_data)
+            full_json = json.dumps(serialized_doc, ensure_ascii=False)
+            
+            async with mysql_backup.get_connection() as conn:
+                if conn is None:
+                    return False
+                
+                async with conn.cursor() as cursor:
+                    await cursor.execute("""
+                        INSERT IGNORE INTO questions_backup (
+                            mongo_id, question_text, question_type, difficulty,
+                            course_id, created_by, correct_answer, options, tags,
+                            full_document, created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        mongo_id,
+                        question_data.get("question", question_data.get("text", ""))[:65535] if question_data.get("question") or question_data.get("text") else None,
+                        question_data.get("type", question_data.get("questionType", "multiple_choice")),
+                        question_data.get("difficulty", "medium"),
+                        question_data.get("courseId", question_data.get("course_id", "")),
+                        question_data.get("createdBy", question_data.get("created_by", "")),
+                        question_data.get("correctAnswer", question_data.get("correct_answer")),
+                        options_json,
+                        tags_json,
+                        full_json,
+                        created_at
+                    ))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ MySQL backup: question {mongo_id} saved")
+                    return True
+                    
+        except Exception as e:
+            print(f"⚠️ MySQL question backup failed (non-fatal): {e}")
+            return False
 
 
 # Global singleton instance
