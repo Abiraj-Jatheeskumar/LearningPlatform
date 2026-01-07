@@ -38,7 +38,7 @@ async def sync_all_reports_to_mysql(user: dict = Depends(require_instructor)):
         raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
@@ -73,7 +73,7 @@ async def sync_users_to_mysql(user: dict = Depends(require_instructor)):
         raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
@@ -111,7 +111,7 @@ async def sync_quiz_answers_to_mysql(user: dict = Depends(require_instructor)):
         raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
@@ -149,7 +149,7 @@ async def sync_questions_to_mysql(user: dict = Depends(require_instructor)):
         raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
@@ -191,7 +191,7 @@ async def sync_all_collections_to_mysql(user: dict = Depends(require_instructor)
         raise HTTPException(status_code=503, detail="MySQL backup is not connected")
     
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     all_results = {}
@@ -257,7 +257,7 @@ async def get_sync_status(user: dict = Depends(require_instructor)):
     Get sync status - compare counts between MongoDB and MySQL.
     """
     database = get_database()
-    if not database:
+    if database is None:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
     
     # Count in MongoDB
