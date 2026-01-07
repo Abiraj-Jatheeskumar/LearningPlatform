@@ -484,6 +484,91 @@ async def get_instructor_dashboard_stats(user: dict = Depends(require_instructor
 
 
 # ============================================================
+# DEBUG: CHECK SESSION DATA AND ALL RELATED COLLECTIONS
+# ============================================================
+@router.get("/debug/session/{session_id}/all-data")
+async def debug_session_all_data(
+    session_id: str,
+    user: dict = Depends(require_instructor)
+):
+    """
+    Debug endpoint to check ALL data for a session.
+    Shows session details, participants, quiz answers, assignments.
+    """
+    try:
+        # Get session details
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            return {"error": "Session not found", "sessionId": session_id}
+        
+        session["_id"] = str(session["_id"])
+        zoom_meeting_id = session.get("zoomMeetingId")
+        
+        # Get participants
+        participants_mongo = []
+        async for p in db.database.session_participants.find({"sessionId": session_id}):
+            p["_id"] = str(p["_id"])
+            participants_mongo.append(p)
+        
+        participants_zoom = []
+        if zoom_meeting_id:
+            async for p in db.database.session_participants.find({"sessionId": str(zoom_meeting_id)}):
+                p["_id"] = str(p["_id"])
+                participants_zoom.append(p)
+        
+        # Get quiz answers
+        answers_mongo = []
+        async for a in db.database.quiz_answers.find({"sessionId": session_id}):
+            a["_id"] = str(a["_id"])
+            answers_mongo.append(a)
+        
+        answers_zoom = []
+        if zoom_meeting_id:
+            async for a in db.database.quiz_answers.find({"sessionId": str(zoom_meeting_id)}):
+                a["_id"] = str(a["_id"])
+                answers_zoom.append(a)
+        
+        # Get question assignments
+        assignments_mongo = []
+        async for a in db.database.question_assignments.find({"sessionId": session_id}):
+            a["_id"] = str(a["_id"])
+            assignments_mongo.append(a)
+        
+        assignments_zoom = []
+        if zoom_meeting_id:
+            async for a in db.database.question_assignments.find({"sessionId": str(zoom_meeting_id)}):
+                a["_id"] = str(a["_id"])
+                assignments_zoom.append(a)
+        
+        # Get all quiz_answers to see what sessionIds exist
+        all_answer_session_ids = set()
+        async for a in db.database.quiz_answers.find({}).limit(50):
+            all_answer_session_ids.add(a.get("sessionId"))
+        
+        return {
+            "session": session,
+            "zoomMeetingId": zoom_meeting_id,
+            "participants": {
+                "byMongoId": {"count": len(participants_mongo), "data": participants_mongo},
+                "byZoomId": {"count": len(participants_zoom), "data": participants_zoom}
+            },
+            "quizAnswers": {
+                "byMongoId": {"count": len(answers_mongo), "data": answers_mongo},
+                "byZoomId": {"count": len(answers_zoom), "data": answers_zoom}
+            },
+            "questionAssignments": {
+                "byMongoId": {"count": len(assignments_mongo), "data": assignments_mongo},
+                "byZoomId": {"count": len(assignments_zoom), "data": assignments_zoom}
+            },
+            "allSessionIdsInQuizAnswers": list(all_answer_session_ids)
+        }
+        
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+# ============================================================
 # DEBUG: CHECK SESSION PARTICIPANTS
 # ============================================================
 @router.get("/debug/session/{session_id}/participants")
