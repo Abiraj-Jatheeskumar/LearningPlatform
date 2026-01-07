@@ -460,19 +460,55 @@ class SessionReportModel:
         
         print(f"📊 Report: Found {len(participants)} participants for session {session_id} (zoomId: {zoom_meeting_id})")
         
-        # Get ALL quiz answers for this session
+        # Get ALL quiz answers for this session - check BOTH MongoDB ID and Zoom ID
         quiz_answers = []
-        async for answer in database.quiz_answers.find({"sessionId": session_id}):
-            answer["id"] = str(answer["_id"])
-            del answer["_id"]
-            quiz_answers.append(answer)
+        answer_ids_seen = set()
         
-        # Get ALL question assignments
+        # Check by MongoDB session_id
+        async for answer in database.quiz_answers.find({"sessionId": session_id}):
+            answer_id = str(answer["_id"])
+            if answer_id not in answer_ids_seen:
+                answer["id"] = answer_id
+                del answer["_id"]
+                quiz_answers.append(answer)
+                answer_ids_seen.add(answer_id)
+        
+        # Also check by zoomMeetingId
+        if zoom_meeting_id:
+            async for answer in database.quiz_answers.find({"sessionId": str(zoom_meeting_id)}):
+                answer_id = str(answer["_id"])
+                if answer_id not in answer_ids_seen:
+                    answer["id"] = answer_id
+                    del answer["_id"]
+                    quiz_answers.append(answer)
+                    answer_ids_seen.add(answer_id)
+        
+        print(f"📊 Report: Found {len(quiz_answers)} quiz answers")
+        
+        # Get ALL question assignments - check BOTH MongoDB ID and Zoom ID
         assignments = []
+        assignment_ids_seen = set()
+        
+        # Check by MongoDB session_id
         async for assignment in database.question_assignments.find({"sessionId": session_id}):
-            assignment["id"] = str(assignment["_id"])
-            del assignment["_id"]
-            assignments.append(assignment)
+            assignment_id = str(assignment["_id"])
+            if assignment_id not in assignment_ids_seen:
+                assignment["id"] = assignment_id
+                del assignment["_id"]
+                assignments.append(assignment)
+                assignment_ids_seen.add(assignment_id)
+        
+        # Also check by zoomMeetingId
+        if zoom_meeting_id:
+            async for assignment in database.question_assignments.find({"sessionId": str(zoom_meeting_id)}):
+                assignment_id = str(assignment["_id"])
+                if assignment_id not in assignment_ids_seen:
+                    assignment["id"] = assignment_id
+                    del assignment["_id"]
+                    assignments.append(assignment)
+                    assignment_ids_seen.add(assignment_id)
+        
+        print(f"📊 Report: Found {len(assignments)} question assignments")
         
         # Get questions for details
         question_ids = list(set([a.get("questionId") for a in assignments if a.get("questionId")]))
@@ -486,13 +522,21 @@ class SessionReportModel:
             except:
                 pass
         
-        # Get ALL latency metrics
+        # Get ALL latency metrics - check BOTH MongoDB ID and Zoom ID
         latency_data = {}
         async for metric in database.latency_metrics.find({"session_id": session_id}):
             student_id = metric.get("student_id")
             if student_id:
                 metric["id"] = str(metric.get("_id", ""))
                 latency_data[student_id] = metric
+        
+        # Also check by zoomMeetingId
+        if zoom_meeting_id:
+            async for metric in database.latency_metrics.find({"session_id": str(zoom_meeting_id)}):
+                student_id = metric.get("student_id")
+                if student_id and student_id not in latency_data:
+                    metric["id"] = str(metric.get("_id", ""))
+                    latency_data[student_id] = metric
         
         # Build complete student reports for ALL students
         student_reports = []
