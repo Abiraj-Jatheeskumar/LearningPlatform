@@ -73,7 +73,7 @@ class AuthMiddleware:
 # Dependency function for FastAPI
 async def get_current_user(request: Request) -> dict:
     """Get current user from request state"""
-    if not hasattr(request.state, "user"):
+    if not hasattr(request.state, "user") or request.state.user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required"

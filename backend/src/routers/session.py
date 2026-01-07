@@ -149,6 +149,10 @@ async def list_sessions(user: dict = Depends(get_current_user)):
     - Students: See only sessions from courses they're enrolled in (with join URLs)
     - Admin: See all sessions
     """
+    # Safety check - ensure user is authenticated
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     user_role = user.get("role", "student")
     user_id = user.get("id")
     
