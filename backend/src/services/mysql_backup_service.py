@@ -470,6 +470,67 @@ class MySQLBackupService:
         except Exception as e:
             print(f"⚠️ MySQL question backup failed (non-fatal): {e}")
             return False
+    
+    # ============================================================
+    # BACKUP COURSE
+    # ============================================================
+    @staticmethod
+    async def backup_course(course_data: Dict) -> bool:
+        """
+        Backup a course to MySQL.
+        Called after course is saved to MongoDB.
+        """
+        if not mysql_backup.is_connected:
+            return False
+        
+        try:
+            mongo_id = str(course_data.get("_id", course_data.get("id", "")))
+            if not mongo_id:
+                return False
+            
+            # Parse timestamp
+            created_at = course_data.get("createdAt") or course_data.get("created_at")
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = None
+            elif not isinstance(created_at, datetime):
+                created_at = None
+            
+            async with mysql_backup.get_connection() as conn:
+                if conn is None:
+                    return False
+                
+                async with conn.cursor() as cursor:
+                    await cursor.execute("""
+                        INSERT IGNORE INTO courses_backup (
+                            mongo_id, course_code, course_name, description,
+                            instructor_id, instructor_name, semester, year,
+                            credits, status, enrolled_count, created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        mongo_id,
+                        course_data.get("code", course_data.get("courseCode", ""))[:50] if course_data.get("code") or course_data.get("courseCode") else None,
+                        course_data.get("name", course_data.get("courseName", ""))[:255] if course_data.get("name") or course_data.get("courseName") else None,
+                        course_data.get("description", "")[:65535] if course_data.get("description") else None,
+                        course_data.get("instructorId", course_data.get("instructor_id", "")),
+                        course_data.get("instructorName", course_data.get("instructor", "")),
+                        course_data.get("semester", ""),
+                        course_data.get("year"),
+                        course_data.get("credits"),
+                        course_data.get("status", "active"),
+                        len(course_data.get("enrolledStudents", [])) if course_data.get("enrolledStudents") else 0,
+                        created_at
+                    ))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ MySQL backup: course {mongo_id} saved")
+                    return True
+                    
+        except Exception as e:
+            print(f"⚠️ MySQL course backup failed (non-fatal): {e}")
+            return False
 
 
 # Global singleton instance

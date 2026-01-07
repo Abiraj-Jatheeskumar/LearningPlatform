@@ -4,7 +4,9 @@ from datetime import datetime
 from bson import ObjectId
 import secrets
 import string
+import asyncio
 from ..database.connection import get_database
+from ..services.mysql_backup_service import mysql_backup_service
 
 
 def generate_enrollment_key(length: int = 8) -> str:
@@ -82,6 +84,15 @@ class CourseModel:
         
         result = await database.courses.insert_one(course_data)
         course_data["id"] = str(result.inserted_id)
+        
+        # ============================================================
+        # MYSQL BACKUP: Backup new course to MySQL (non-blocking)
+        # ============================================================
+        try:
+            asyncio.create_task(mysql_backup_service.backup_course(course_data))
+            print(f"📦 MySQL backup triggered for new course: {course_data.get('title')}")
+        except Exception as e:
+            print(f"⚠️ MySQL course backup failed (non-fatal): {e}")
         
         # Remove _id to avoid serialization issues
         if "_id" in course_data:

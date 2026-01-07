@@ -207,6 +207,32 @@ class MySQLBackupConnection:
                     """)
                     
                     # ============================================================
+                    # COURSES BACKUP TABLE
+                    # ============================================================
+                    await cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS courses_backup (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            mongo_id VARCHAR(24) UNIQUE NOT NULL,
+                            course_code VARCHAR(50),
+                            course_name VARCHAR(255),
+                            description TEXT,
+                            instructor_id VARCHAR(24),
+                            instructor_name VARCHAR(255),
+                            semester VARCHAR(50),
+                            year INT,
+                            credits INT,
+                            status VARCHAR(50) DEFAULT 'active',
+                            enrolled_count INT DEFAULT 0,
+                            created_at DATETIME,
+                            backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            INDEX idx_course_code (course_code),
+                            INDEX idx_instructor_id (instructor_id),
+                            INDEX idx_status (status)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        COMMENT='Backup of courses from MongoDB. READ-ONLY.'
+                    """)
+                    
+                    # ============================================================
                     # QUESTIONS BACKUP TABLE
                     # ============================================================
                     await cursor.execute("""

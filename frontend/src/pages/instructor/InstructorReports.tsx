@@ -542,6 +542,7 @@ export const InstructorReports = () => {
     const endpoints: Record<string, string> = {
       'all': '/api/admin/mysql-sync/sync-all',
       'users': '/api/admin/mysql-sync/sync-users',
+      'courses': '/api/admin/mysql-sync/sync-courses',
       'questions': '/api/admin/mysql-sync/sync-questions',
       'quiz-answers': '/api/admin/mysql-sync/sync-quiz-answers',
       'reports': '/api/admin/mysql-sync/sync-all-reports'
@@ -1326,6 +1327,23 @@ export const InstructorReports = () => {
                     disabled={syncing}
                   >
                     Sync Users
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Sync Courses */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <BookOpenIcon className="h-10 w-10 text-teal-500 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Courses</h4>
+                  <p className="text-xs text-gray-500 mb-3">Course Details</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncToMySQL('courses')}
+                    disabled={syncing}
+                  >
+                    Sync Courses
                   </Button>
                 </div>
               </Card>

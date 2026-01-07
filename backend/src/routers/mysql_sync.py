@@ -178,11 +178,51 @@ async def sync_questions_to_mysql(user: dict = Depends(require_instructor)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/sync-courses")
+async def sync_courses_to_mysql(user: dict = Depends(require_instructor)):
+    """
+    Sync all courses from MongoDB to MySQL backup table.
+    This endpoint handles EXISTING data migration.
+    """
+    if not mysql_backup.is_connected:
+        raise HTTPException(status_code=503, detail="MySQL backup is not connected")
+    
+    database = get_database()
+    if database is None:
+        raise HTTPException(status_code=503, detail="MongoDB not connected")
+    
+    results = {"total": 0, "synced": 0, "skipped": 0, "failed": 0}
+    
+    try:
+        cursor = database.courses.find({})
+        courses = await cursor.to_list(length=None)
+        results["total"] = len(courses)
+        
+        print(f"📚 Found {len(courses)} courses in MongoDB to sync")
+        
+        for c in courses:
+            try:
+                c["id"] = str(c["_id"])
+                success = await mysql_backup_service.backup_course(c)
+                if success:
+                    results["synced"] += 1
+                else:
+                    results["skipped"] += 1
+            except Exception as e:
+                results["failed"] += 1
+        
+        print(f"✅ Courses sync complete: {results['synced']} synced")
+        return {"success": True, "collection": "courses", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/sync-all")
 async def sync_all_collections_to_mysql(user: dict = Depends(require_instructor)):
     """
     Sync ALL collections from MongoDB to MySQL:
     - users
+    - courses
     - questions
     - quiz_answers
     - session_reports
@@ -207,6 +247,18 @@ async def sync_all_collections_to_mysql(user: dict = Depends(require_instructor)
         all_results["users"] = {"total": len(users), "synced": synced}
     except Exception as e:
         all_results["users"] = {"error": str(e)}
+    
+    # Sync Courses
+    try:
+        courses = await database.courses.find({}).to_list(length=None)
+        synced = 0
+        for c in courses:
+            c["id"] = str(c["_id"])
+            if await mysql_backup_service.backup_course(c):
+                synced += 1
+        all_results["courses"] = {"total": len(courses), "synced": synced}
+    except Exception as e:
+        all_results["courses"] = {"error": str(e)}
     
     # Sync Questions
     try:

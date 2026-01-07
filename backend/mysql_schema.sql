@@ -82,6 +82,45 @@ CREATE TABLE IF NOT EXISTS session_reports_backup (
 COMMENT='READ-ONLY backup of session reports from MongoDB. Source of truth is MongoDB.';
 
 -- ============================================================
+-- Courses Backup Table
+-- ============================================================
+-- Stores backup of courses from MongoDB
+CREATE TABLE IF NOT EXISTS courses_backup (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    
+    -- MongoDB Reference
+    mongo_id VARCHAR(24) UNIQUE NOT NULL,
+    
+    -- Course Information
+    course_code VARCHAR(50),
+    course_name VARCHAR(255),
+    description TEXT,
+    
+    -- Instructor Details
+    instructor_id VARCHAR(24),
+    instructor_name VARCHAR(255),
+    
+    -- Academic Details
+    semester VARCHAR(50),
+    year INT,
+    credits INT,
+    
+    -- Status and Enrollment
+    status VARCHAR(50) DEFAULT 'active',
+    enrolled_count INT DEFAULT 0,
+    
+    -- Metadata
+    created_at DATETIME,
+    backed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Indexes
+    INDEX idx_course_code (course_code),
+    INDEX idx_instructor_id (instructor_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='READ-ONLY backup of courses from MongoDB. Source of truth is MongoDB.';
+
+-- ============================================================
 -- Student Participation Backup Table
 -- ============================================================
 -- Stores individual student participation records
