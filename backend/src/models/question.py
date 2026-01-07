@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Any, List
 from bson import ObjectId
+import asyncio
 from ..database.connection import get_database
 
 
@@ -46,6 +47,17 @@ class Question:
         question_data["id"] = str(result.inserted_id)
         if "_id" in question_data:
             question_data["_id"] = result.inserted_id
+        
+        # ============================================================
+        # MYSQL BACKUP: Auto-backup new question (non-blocking)
+        # ============================================================
+        try:
+            from ..services.mysql_backup_service import mysql_backup_service
+            asyncio.create_task(mysql_backup_service.backup_question(question_data))
+            print(f"📦 MySQL backup triggered for question: {question_data['id']}")
+        except Exception as e:
+            print(f"⚠️ MySQL question backup failed (non-fatal): {e}")
+        
         return question_data
 
     @staticmethod

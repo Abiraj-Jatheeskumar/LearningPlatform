@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
+import asyncio
 from ..database.connection import get_database
 from .quiz_answer import QuizAnswer
 
@@ -18,6 +19,17 @@ class QuizAnswerModel:
         
         result = await database.quiz_answers.insert_one(answer_data)
         answer_data["id"] = str(result.inserted_id)
+        
+        # ============================================================
+        # MYSQL BACKUP: Auto-backup new quiz answer (non-blocking)
+        # ============================================================
+        try:
+            from ..services.mysql_backup_service import mysql_backup_service
+            asyncio.create_task(mysql_backup_service.backup_quiz_answer(answer_data))
+            print(f"📦 MySQL backup triggered for quiz_answer: {answer_data['id']}")
+        except Exception as e:
+            print(f"⚠️ MySQL quiz_answer backup failed (non-fatal): {e}")
+        
         return answer_data
 
     @staticmethod
