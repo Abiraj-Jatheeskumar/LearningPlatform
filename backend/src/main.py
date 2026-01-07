@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from src.middleware.auth import AuthMiddleware
 from src.database.connection import connect_to_mongo, close_mongo_connection
+from src.database.mysql_connection import connect_to_mysql_backup, close_mysql_backup
 
 # Correct WS manager
 from src.services.ws_manager import ws_manager
@@ -13,10 +14,23 @@ from src.services.ws_manager import ws_manager
 # --------------------------------------------------------
 # LIFESPAN
 # --------------------------------------------------------
+# HYBRID DATABASE ARCHITECTURE:
+# - MongoDB: Primary database (SOURCE OF TRUTH)
+# - MySQL: Backup database (READ-ONLY for auditing/reporting)
+# --------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Connect to MongoDB (primary - required)
     await connect_to_mongo()
+    
+    # Connect to MySQL (backup - optional, non-blocking)
+    # If MySQL is unavailable, the app continues with MongoDB only
+    await connect_to_mysql_backup()
+    
     yield
+    
+    # Cleanup connections
+    await close_mysql_backup()
     await close_mongo_connection()
 
 

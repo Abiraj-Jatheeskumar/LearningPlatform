@@ -3,8 +3,24 @@ Session Report Model
 ====================
 Model for generating and storing session reports for students and instructors.
 Reports include participation data, quiz performance, engagement metrics, etc.
+
+HYBRID DATABASE ARCHITECTURE:
+-----------------------------
+- MongoDB: Primary database (SOURCE OF TRUTH) for all session reports
+- MySQL: Backup database (READ-ONLY) for auditing and structured SQL queries
+
+Data Flow:
+1. Report generated → Saved to MongoDB (primary)
+2. MongoDB save successful → Async backup to MySQL (non-blocking)
+3. MySQL failure → Logged but doesn't affect API response
+
+This hybrid approach provides:
+- Flexible document storage (MongoDB) for nested session data
+- SQL query capability (MySQL) for reporting and analytics
+- Redundancy and backup for critical session data
 """
 
+import asyncio
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -684,6 +700,21 @@ class SessionReportModel:
             # Insert new master report
             result = await database.session_reports.insert_one(master_report)
             master_report["id"] = str(result.inserted_id)
+        
+        # ============================================================
+        # MYSQL BACKUP: Async backup to MySQL (non-blocking)
+        # ============================================================
+        # MongoDB save was successful - now trigger MySQL backup
+        # This runs in the background and doesn't block the response
+        # If MySQL fails, it's logged but doesn't affect the API
+        try:
+            from ..services.mysql_backup_service import mysql_backup_service
+            # Create background task for MySQL backup (non-blocking)
+            asyncio.create_task(mysql_backup_service.backup_report_async(master_report))
+            print(f"📦 MySQL backup triggered for report {master_report['id']}")
+        except Exception as e:
+            # MySQL backup failure is non-fatal - just log it
+            print(f"⚠️ MySQL backup trigger failed (non-fatal): {e}")
         
         return master_report
     
