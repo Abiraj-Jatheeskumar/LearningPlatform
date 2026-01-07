@@ -72,22 +72,42 @@ class WebSocketManager:
         try:
             database = get_database()
             mongo_session_id = session_id  # Default to provided ID
+            zoom_meeting_id = None
             
             if database:
-                # Try to find session by zoomMeetingId first
-                session_doc = await database.sessions.find_one({"zoomMeetingId": int(session_id) if session_id.isdigit() else session_id})
+                session_doc = None
                 
+                # Try multiple lookup methods to find the session
+                # Method 1: zoomMeetingId as integer
+                if session_id.isdigit():
+                    session_doc = await database.sessions.find_one({"zoomMeetingId": int(session_id)})
+                    if session_doc:
+                        zoom_meeting_id = int(session_id)
+                        print(f"📍 Found session by zoomMeetingId (int): {session_id}")
+                
+                # Method 2: zoomMeetingId as string
                 if not session_doc:
-                    # Maybe the session_id is already the MongoDB ObjectId string
+                    session_doc = await database.sessions.find_one({"zoomMeetingId": session_id})
+                    if session_doc:
+                        zoom_meeting_id = session_id
+                        print(f"📍 Found session by zoomMeetingId (str): {session_id}")
+                
+                # Method 3: Direct MongoDB ObjectId
+                if not session_doc:
                     from bson import ObjectId
                     try:
                         session_doc = await database.sessions.find_one({"_id": ObjectId(session_id)})
+                        if session_doc:
+                            print(f"📍 Found session by MongoDB ObjectId: {session_id}")
                     except:
                         pass
                 
                 if session_doc:
                     mongo_session_id = str(session_doc["_id"])
-                    print(f"📍 Mapped session: zoom/input={session_id} → MongoDB={mongo_session_id}")
+                    zoom_meeting_id = session_doc.get("zoomMeetingId")
+                    print(f"📍 Mapped session: input={session_id} → MongoDB={mongo_session_id}, zoom={zoom_meeting_id}")
+                else:
+                    print(f"⚠️ Could not find session for ID: {session_id}")
             
             # Save participant with the MongoDB session ID
             await SessionParticipantModel.join_session(
@@ -96,7 +116,18 @@ class WebSocketManager:
                 student_name=final_student_name,
                 student_email=student_email
             )
-            print(f"✅ Participant saved to MongoDB: session={mongo_session_id}, student={student_id}")
+            print(f"✅ Participant saved to MongoDB: session={mongo_session_id}, student={student_id}, name={final_student_name}")
+            
+            # Also save with zoom meeting ID as backup (for lookups)
+            if zoom_meeting_id and str(zoom_meeting_id) != mongo_session_id:
+                await SessionParticipantModel.join_session(
+                    session_id=str(zoom_meeting_id),
+                    student_id=student_id,
+                    student_name=final_student_name,
+                    student_email=student_email
+                )
+                print(f"✅ Also saved with zoomMeetingId: {zoom_meeting_id}")
+                
         except Exception as e:
             print(f"⚠️ Failed to save participant to MongoDB: {e}")
             import traceback

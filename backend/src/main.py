@@ -181,13 +181,14 @@ async def websocket_session(
     try:
         await websocket.accept()
         
-        # Get query parameters from URL if not provided
-        # FastAPI should parse these automatically, but let's be safe
-        if not student_name:
-            query_params = dict(websocket.query_params)
+        # Get query parameters from URL
+        query_params = dict(websocket.query_params)
+        print(f"📥 WebSocket query params: {query_params}")
+        
+        # Use query params if not provided as path params
+        if not student_name or student_name == "None":
             student_name = query_params.get("student_name", f"Student {student_id[:8]}")
-        if not student_email:
-            query_params = dict(websocket.query_params) if 'query_params' not in dir() else query_params
+        if not student_email or student_email == "None":
             student_email = query_params.get("student_email", "")
         
         print(f"📥 WebSocket join: session={session_id}, student={student_id}, name={student_name}, email={student_email}")
