@@ -133,6 +133,10 @@ from src.routers import instructor_reports, student_reports
 app.include_router(instructor_reports.router)  # 📊 Instructor reports (sessions, quiz, engagement)
 app.include_router(student_reports.router)  # 📊 Student reports (personal data only)
 
+# 🔄 MySQL Sync (MongoDB → MySQL backup)
+from src.routers import mysql_sync
+app.include_router(mysql_sync.router)  # 🔄 Sync MongoDB reports to MySQL
+
 
 # --------------------------------------------------------
 # HEALTH CHECK
