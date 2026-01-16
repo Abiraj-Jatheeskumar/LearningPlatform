@@ -5,61 +5,61 @@
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL */
 @layer base {
   :root {
-    /* #3B82F6 - Blue Theme */
-    --background: 217 100% 98%;
-    --foreground: 222 47% 11%;
-    --muted: 217 33% 92%;
-    --muted-foreground: 215 16% 47%;
+    /* #14B8A6 - Teal Theme */
+    --background: 168 76% 97%;
+    --foreground: 168 84% 10%;
+    --muted: 168 30% 92%;
+    --muted-foreground: 168 15% 45%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 168 84% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --border: 214 32% 85%;
-    --input: 214 32% 91%;
-    --primary: 217 91% 60%;
+    --card-foreground: 168 84% 10%;
+    --border: 168 30% 82%;
+    --input: 168 30% 90%;
+    --primary: 168 76% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 95% 93%;
-    --secondary-foreground: 222 47% 31%;
-    --accent: 214 95% 95%;
-    --accent-foreground: 222 47% 21%;
+    --secondary: 168 50% 92%;
+    --secondary-foreground: 168 50% 30%;
+    --accent: 168 50% 94%;
+    --accent-foreground: 168 50% 20%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 217 91% 60%;
+    --ring: 168 76% 40%;
     --radius: 0.75rem;
     
-    /* Custom color palette based on #3B82F6 */
-    --blue-50: #eff6ff;
-    --blue-100: #dbeafe;
-    --blue-200: #bfdbfe;
-    --blue-300: #93c5fd;
-    --blue-400: #60a5fa;
-    --blue-500: #3B82F6;
-    --blue-600: #2563eb;
-    --blue-700: #1d4ed8;
-    --blue-800: #1e40af;
-    --blue-900: #1e3a8a;
+    /* Custom color palette based on #14B8A6 */
+    --teal-50: #f0fdfa;
+    --teal-100: #ccfbf1;
+    --teal-200: #99f6e4;
+    --teal-300: #5eead4;
+    --teal-400: #2dd4bf;
+    --teal-500: #14B8A6;
+    --teal-600: #0d9488;
+    --teal-700: #0f766e;
+    --teal-800: #115e59;
+    --teal-900: #134e4a;
   }
   .dark {
-    /* #3B82F6 - Blue Theme (Dark Mode) */
-    --background: 222 47% 6%;
-    --foreground: 214 32% 95%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 60%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 214 32% 93%;
-    --card: 222 47% 10%;
-    --card-foreground: 214 32% 95%;
-    --border: 217 33% 20%;
-    --input: 217 33% 18%;
-    --primary: 217 91% 55%;
+    /* #14B8A6 - Teal Theme (Dark Mode) */
+    --background: 168 84% 5%;
+    --foreground: 168 30% 94%;
+    --muted: 168 30% 14%;
+    --muted-foreground: 168 20% 60%;
+    --popover: 168 84% 7%;
+    --popover-foreground: 168 30% 92%;
+    --card: 168 84% 9%;
+    --card-foreground: 168 30% 94%;
+    --border: 168 30% 20%;
+    --input: 168 30% 18%;
+    --primary: 168 76% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 214 32% 90%;
-    --accent: 217 33% 16%;
-    --accent-foreground: 214 32% 90%;
+    --secondary: 168 30% 18%;
+    --secondary-foreground: 168 30% 88%;
+    --accent: 168 30% 16%;
+    --accent-foreground: 168 30% 88%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 217 91% 55%;
+    --ring: 168 76% 38%;
   }
 }
 /* Custom animations */
@@ -195,17 +195,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #3B82F6;
+    background: #14B8A6;
     border-radius: 6px;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: #2563eb;
+    background: #0d9488;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2563eb;
+    background: #0d9488;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: #3B82F6;
+    background: #14B8A6;
   }
 }
 
@@ -239,7 +239,7 @@
 }
 .card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2), 0 8px 10px -6px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.2), 0 8px 10px -6px rgba(20, 184, 166, 0.15);
 }
 
 /* Smooth focus ring animation */
@@ -248,10 +248,10 @@
 }
 @keyframes focus-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.2);
   }
 }
 
@@ -269,7 +269,7 @@
 
 /* Text gradient effect */
 .text-gradient {
-  background: linear-gradient(135deg, #1d4ed8, #3B82F6, #60a5fa);
+  background: linear-gradient(135deg, #0f766e, #14B8A6, #2dd4bf);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
