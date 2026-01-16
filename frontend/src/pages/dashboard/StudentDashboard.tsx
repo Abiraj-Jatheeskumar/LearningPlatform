@@ -216,7 +216,7 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPo
           <span>
             Time Left: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-500' : ''}`}>{timeLeft}s</span>
           </span>
-          {isSubmitting && <span style={{ color: '#6FAF98' }}>Sending...</span>}
+          {isSubmitting && <span style={{ color: '#3B82F6' }}>Sending...</span>}
         </div>
 
         {/* Close button */}
@@ -545,7 +545,7 @@ export const StudentDashboard = () => {
       </div>
 
       {/* Performance Summary */}
-      <div className="mb-8 text-white rounded-xl shadow-lg p-6" style={{ background: 'linear-gradient(to right, #6FAF98, #5A9A82)' }}>
+      <div className="mb-8 text-white rounded-xl shadow-lg p-6" style={{ background: 'linear-gradient(to right, #3B82F6, #2563eb)' }}>
         <div className="flex justify-between">
           <div>
             <h2 className="text-xl font-bold">Your Learning Summary</h2>
@@ -617,28 +617,28 @@ export const StudentDashboard = () => {
           <div className="px-4 py-5 flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">Your Sessions</h3>
             <Link to="/dashboard/sessions">
-              <span className="text-sm hover:opacity-80" style={{ color: '#6FAF98' }}>View All</span>
+              <span className="text-sm hover:opacity-80" style={{ color: '#3B82F6' }}>View All</span>
             </Link>
           </div>
           
           {/* 📶 Show connection status banner when connected */}
           {connectedSessionId && (
-            <div className="mx-4 mb-4 p-3 rounded-lg" style={{ backgroundColor: '#e8f5f0', borderColor: '#6FAF98', borderWidth: '1px' }}>
+            <div className="mx-4 mb-4 p-3 rounded-lg" style={{ backgroundColor: '#eff6ff', borderColor: '#3B82F6', borderWidth: '1px' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#6FAF98' }}></div>
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3B82F6' }}></div>
                   <span className="text-sm font-medium" style={{ color: '#4a8b73' }}>
                     Connected to session
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <WifiIcon className="h-4 w-4" style={{ color: '#6FAF98' }} />
-                  <span className="text-xs" style={{ color: '#5a9a82' }}>
+                  <WifiIcon className="h-4 w-4" style={{ color: '#3B82F6' }} />
+                  <span className="text-xs" style={{ color: '#2563eb' }}>
                     {currentRtt ? `${Math.round(currentRtt)}ms` : 'Measuring...'} • {connectionQuality}
                   </span>
                 </div>
               </div>
-              <p className="text-xs mt-1" style={{ color: '#6FAF98' }}>
+              <p className="text-xs mt-1" style={{ color: '#3B82F6' }}>
                 Your network quality is being monitored for engagement analysis.
               </p>
             </div>
@@ -654,18 +654,18 @@ export const StudentDashboard = () => {
               const isConnectedToThis = connectedSessionId === sessionKey;
               
               return (
-                <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#e8f5f0' } : {}}>
+                <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#eff6ff' } : {}}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium" style={{ color: '#6FAF98' }}>
+                        <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
                           {session.title}
                         </p>
                         {session.status === 'live' && (
                           <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
                         )}
                         {isConnectedToThis && (
-                          <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#6FAF98' }}>CONNECTED</Badge>
+                          <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#3B82F6' }}>CONNECTED</Badge>
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
@@ -699,20 +699,20 @@ export const StudentDashboard = () => {
 
           {recentActivities.map((activity) => (
             <div key={activity.id} className="px-4 py-4 border-t">
-              <p className="text-sm font-medium" style={{ color: '#6FAF98' }}>
+              <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
                 {activity.title}
               </p>
               <p className="text-xs text-gray-500">{activity.course}</p>
               <p className="text-xs mt-1 text-gray-500">{activity.date}</p>
 
               {activity.type === "session" && (
-                <p className="text-xs mt-1 font-medium" style={{ color: '#6FAF98' }}>
+                <p className="text-xs mt-1 font-medium" style={{ color: '#3B82F6' }}>
                   Engagement: {activity.engagement}
                 </p>
               )}
 
               {activity.type === "quiz" && (
-                <p className="text-xs mt-1 font-medium" style={{ color: '#6FAF98' }}>
+                <p className="text-xs mt-1 font-medium" style={{ color: '#3B82F6' }}>
                   Score: {activity.score}
                 </p>
               )}
