@@ -180,7 +180,7 @@ export const CourseManagement = () => {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
+      case 'Beginner': return 'bg-blue-100 text-blue-800';
       case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
       case 'Advanced': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -393,7 +393,7 @@ export const CourseManagement = () => {
                   </div>
                   <div className="mt-3 flex items-center">
                     {selectedCourse.enrollmentKeyActive ? (
-                      <span className="flex items-center text-sm text-green-600">
+                      <span className="flex items-center text-sm text-blue-600">
                         <CheckCircleIcon className="h-4 w-4 mr-1" />
                         Enrollment is open - students can use this key to join
                       </span>

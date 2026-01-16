@@ -336,7 +336,7 @@ export const SessionList = () => {
 
                   {/* Show completed indicator for instructors */}
                   {isInstructor && session.status === 'completed' && (
-                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                    <div className="flex items-center gap-2 text-blue-600 text-sm">
                       <CheckCircleIcon className="h-4 w-4" />
                       <span>Report Available</span>
                     </div>

@@ -18,7 +18,7 @@ export const EngagementIndicator: React.FC<EngagementIndicatorProps> = ({
   const getColor = () => {
     switch (engagementLevel) {
       case 'high':
-        return 'bg-green-500';
+        return 'bg-blue-500';
       case 'medium':
         return 'bg-yellow-500';
       case 'low':

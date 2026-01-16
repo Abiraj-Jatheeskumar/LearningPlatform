@@ -246,8 +246,8 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
 
   const getQualityIcon = (quality: string) => {
     switch (quality) {
-      case 'excellent': return <SignalHigh className="h-4 w-4 text-green-500" />;
-      case 'good': return <Signal className="h-4 w-4 text-green-400" />;
+      case 'excellent': return <SignalHigh className="h-4 w-4 text-blue-500" />;
+      case 'good': return <Signal className="h-4 w-4 text-blue-400" />;
       case 'fair': return <SignalMedium className="h-4 w-4 text-yellow-500" />;
       case 'poor': return <SignalLow className="h-4 w-4 text-orange-500" />;
       case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500" />;
@@ -324,11 +324,11 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
         
         {/* Quick Summary */}
         <div className="p-4 grid grid-cols-5 gap-1 text-center text-xs">
-          <div className="text-green-600 dark:text-green-400">
+          <div className="text-blue-600 dark:text-blue-400">
             <div className="font-bold">{summary.excellent}</div>
             <div className="opacity-75">Excel</div>
           </div>
-          <div className="text-green-500 dark:text-green-400">
+          <div className="text-blue-500 dark:text-blue-400">
             <div className="font-bold">{summary.good}</div>
             <div className="opacity-75">Good</div>
           </div>
@@ -395,8 +395,8 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
           <div className="flex items-center space-x-2">
             {/* Auto-refresh indicator */}
             {isAutoRefreshing && !useDemoData && (
-              <div className="flex items-center space-x-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <div className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
                 <span>Auto-refresh: {nextRefreshIn}s</span>
               </div>
             )}
@@ -421,7 +421,7 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
               onClick={() => setIsAutoRefreshing(!isAutoRefreshing)}
               className={`px-2 py-1 text-xs rounded ${
                 isAutoRefreshing 
-                  ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               title={isAutoRefreshing ? 'Disable auto-refresh' : 'Enable auto-refresh'}
@@ -454,14 +454,14 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
         <div className="flex h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
           {summary.excellent > 0 && (
             <div 
-              className="bg-green-500 transition-all" 
+              className="bg-blue-500 transition-all" 
               style={{ width: `${(summary.excellent / summary.total) * 100}%` }}
               title={`Excellent: ${summary.excellent}`}
             />
           )}
           {summary.good > 0 && (
             <div 
-              className="bg-green-400 transition-all" 
+              className="bg-blue-400 transition-all" 
               style={{ width: `${(summary.good / summary.total) * 100}%` }}
               title={`Good: ${summary.good}`}
             />
@@ -489,8 +489,8 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
           )}
         </div>
         <div className="flex justify-between mt-2 text-xs">
-          <span className="text-green-600 dark:text-green-400">● Excellent: {summary.excellent}</span>
-          <span className="text-green-500 dark:text-green-400">● Good: {summary.good}</span>
+          <span className="text-blue-600 dark:text-blue-400">● Excellent: {summary.excellent}</span>
+          <span className="text-blue-500 dark:text-blue-400">● Good: {summary.good}</span>
           <span className="text-yellow-500 dark:text-yellow-400">● Fair: {summary.fair}</span>
           <span className="text-orange-500 dark:text-orange-400">● Poor: {summary.poor}</span>
           <span className="text-red-500 dark:text-red-400">● Critical: {summary.critical}</span>
@@ -594,7 +594,7 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
                       <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
                         <div 
                           className={`h-2 rounded-full ${
-                            student.stability_score >= 70 ? 'bg-green-500' :
+                            student.stability_score >= 70 ? 'bg-blue-500' :
                             student.stability_score >= 50 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${Math.min(100, student.stability_score)}%` }}
@@ -612,7 +612,7 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
                         Needs attention
                       </span>
                     ) : (
-                      <span className="inline-flex items-center text-xs text-green-600 dark:text-green-400">
+                      <span className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400">
                         <Activity className="h-3 w-3 mr-1" />
                         Stable
                       </span>

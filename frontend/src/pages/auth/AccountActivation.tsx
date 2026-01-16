@@ -44,12 +44,12 @@ export const AccountActivation = () => {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-green-100 to-green-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-500 via-green-600 to-green-600 px-8 py-10 text-center">
+          <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-600 px-8 py-10 text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4">
               {isLoading ? (
                 <Loader2 className="w-10 h-10 text-white animate-spin" />
@@ -77,16 +77,16 @@ export const AccountActivation = () => {
                 </p>
                 <div className="mt-6 flex justify-center">
                   <div className="flex space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                   </div>
                 </div>
               </div>
             ) : isSuccess ? (
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   Welcome to Class Pulse!
@@ -94,7 +94,7 @@ export const AccountActivation = () => {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Your email has been verified successfully. You can now sign in to your account and start learning!
                 </p>
-                <p className="text-sm text-green-600 dark:text-green-400 mb-6">
+                <p className="text-sm text-blue-600 dark:text-blue-400 mb-6">
                   Redirecting to login in 3 seconds...
                 </p>
                 <Link
@@ -102,11 +102,11 @@ export const AccountActivation = () => {
                   className="
                     inline-flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
                     font-semibold text-white
-                    bg-gradient-to-r from-green-500 via-green-600 to-green-600 
-                    hover:from-green-600 hover:via-green-700 hover:to-green-700
+                    bg-gradient-to-r from-blue-500 via-blue-600 to-blue-600 
+                    hover:from-blue-600 hover:via-blue-700 hover:to-blue-700
                     transform hover:scale-[1.02] active:scale-[0.98]
                     transition-all duration-200
-                    shadow-lg shadow-green-500/30
+                    shadow-lg shadow-blue-500/30
                     group
                   "
                 >
@@ -144,8 +144,8 @@ export const AccountActivation = () => {
                     to="/login"
                     className="
                       flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl
-                      font-medium text-green-600 dark:text-green-400
-                      hover:bg-green-50 dark:hover:bg-green-900/20
+                      font-medium text-blue-600 dark:text-blue-400
+                      hover:bg-blue-50 dark:hover:bg-blue-900/20
                       transition-all duration-200
                     "
                   >

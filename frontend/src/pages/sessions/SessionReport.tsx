@@ -87,7 +87,7 @@ export const SessionReport = () => {
 
   const getScoreColor = (score: number | undefined) => {
     if (score === undefined) return 'text-gray-500';
-    if (score >= 80) return 'text-green-600';
+    if (score >= 80) return 'text-blue-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
@@ -111,7 +111,7 @@ export const SessionReport = () => {
     return (
       <div className="py-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2Icon className="h-8 w-8 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-500">Loading report...</p>
         </div>
       </div>
@@ -173,7 +173,7 @@ export const SessionReport = () => {
         <div>
           <Link 
             to="/dashboard/sessions" 
-            className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1 mb-2"
+            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 mb-2"
           >
             <ArrowLeftIcon className="h-4 w-4" />
             Back to Sessions
@@ -295,7 +295,7 @@ export const SessionReport = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4 text-center">
           <div className="flex justify-center mb-2">
-            <UsersIcon className="h-8 w-8 text-emerald-500" />
+            <UsersIcon className="h-8 w-8 text-blue-500" />
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {report.totalParticipants}
@@ -305,7 +305,7 @@ export const SessionReport = () => {
         
         <Card className="p-4 text-center">
           <div className="flex justify-center mb-2">
-            <HelpCircleIcon className="h-8 w-8 text-teal-500" />
+            <HelpCircleIcon className="h-8 w-8 text-blue-500" />
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {report.totalQuestionsAsked}
@@ -327,9 +327,9 @@ export const SessionReport = () => {
         
         <Card className="p-4 text-center">
           <div className="flex justify-center mb-2">
-            <CheckCircleIcon className="h-8 w-8 text-green-500" />
+            <CheckCircleIcon className="h-8 w-8 text-blue-500" />
           </div>
-          <p className="text-3xl font-bold text-green-600">
+          <p className="text-3xl font-bold text-blue-600">
             {report.engagementSummary?.highly_engaged || 0}
           </p>
           <p className="text-sm text-gray-500">Highly Engaged</p>
@@ -345,11 +345,11 @@ export const SessionReport = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-              <p className="text-2xl font-bold text-green-600">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-600">
                 {report.engagementSummary?.highly_engaged || 0}
               </p>
-              <p className="text-sm text-green-800 dark:text-green-300">Highly Engaged</p>
+              <p className="text-sm text-blue-800 dark:text-blue-300">Highly Engaged</p>
             </div>
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
               <p className="text-2xl font-bold text-yellow-600">
@@ -428,7 +428,7 @@ export const SessionReport = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             <CheckCircleIcon className="h-3 w-3 mr-1" />
                             {student.correctAnswers}
                           </span>
@@ -463,7 +463,7 @@ export const SessionReport = () => {
                     <strong>Total:</strong> {report.students.length} students participated
                   </span>
                   <div className="flex items-center gap-4">
-                    <span className="text-green-600">
+                    <span className="text-blue-600">
                       <strong>{report.students.reduce((sum, s) => sum + s.correctAnswers, 0)}</strong> correct answers
                     </span>
                     <span className="text-red-600">
@@ -520,9 +520,9 @@ export const SessionReport = () => {
                     </p>
                     <p className="text-xs text-gray-500">Total Questions</p>
                   </div>
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-                    <p className="text-xl font-bold text-green-600">{studentData.correctAnswers}</p>
-                    <p className="text-xs text-green-700 dark:text-green-400">Correct Answers</p>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+                    <p className="text-xl font-bold text-blue-600">{studentData.correctAnswers}</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-400">Correct Answers</p>
                   </div>
                   <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
                     <p className="text-xl font-bold text-red-600">{studentData.incorrectAnswers}</p>
@@ -549,7 +549,7 @@ export const SessionReport = () => {
                         key={quiz.questionId || idx}
                         className={`p-4 rounded-lg border-l-4 ${
                           quiz.isCorrect 
-                            ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' 
                             : 'bg-red-50 dark:bg-red-900/20 border-red-500'
                         }`}
                       >
@@ -622,12 +622,12 @@ export const SessionReport = () => {
               {['excellent', 'good', 'fair', 'poor', 'critical'].map((quality) => {
                 const count = report.connectionQualitySummary?.[quality] || 0;
                 const bgColor = quality === 'excellent' || quality === 'good' 
-                  ? 'bg-green-100 dark:bg-green-900/30' 
+                  ? 'bg-blue-100 dark:bg-blue-900/30' 
                   : quality === 'fair' 
                     ? 'bg-yellow-100 dark:bg-yellow-900/30' 
                     : 'bg-red-100 dark:bg-red-900/30';
                 const textColor = quality === 'excellent' || quality === 'good' 
-                  ? 'text-green-700 dark:text-green-400' 
+                  ? 'text-blue-700 dark:text-blue-400' 
                   : quality === 'fair' 
                     ? 'text-yellow-700 dark:text-yellow-400' 
                     : 'text-red-700 dark:text-red-400';

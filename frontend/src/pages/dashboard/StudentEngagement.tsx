@@ -120,7 +120,7 @@ export const StudentEngagement = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Session Performance</h3>
-            <TrendingUp className="h-6 w-6 text-green-600" />
+            <TrendingUp className="h-6 w-6 text-blue-600" />
           </div>
           <div className="space-y-3">
             <div className="flex justify-between">
@@ -229,19 +229,19 @@ export const StudentEngagement = () => {
                   key={achievement.id}
                   className={`p-4 rounded-lg border-2 ${
                     achievement.earned
-                      ? 'bg-green-50 border-green-200'
+                      ? 'bg-blue-50 border-blue-200'
                       : 'bg-gray-50 border-gray-200 opacity-50'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <div
                       className={`p-2 rounded-lg ${
-                        achievement.earned ? 'bg-green-100' : 'bg-gray-100'
+                        achievement.earned ? 'bg-blue-100' : 'bg-gray-100'
                       }`}
                     >
                       <achievement.icon
                         className={`h-5 w-5 ${
-                          achievement.earned ? 'text-green-600' : 'text-gray-400'
+                          achievement.earned ? 'text-blue-600' : 'text-gray-400'
                         }`}
                       />
                     </div>

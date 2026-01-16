@@ -60,9 +60,9 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
 
     switch (quality) {
       case 'excellent':
-        return <SignalHigh className="h-4 w-4 text-green-500" />;
+        return <SignalHigh className="h-4 w-4 text-blue-500" />;
       case 'good':
-        return <Signal className="h-4 w-4 text-green-400" />;
+        return <Signal className="h-4 w-4 text-blue-400" />;
       case 'fair':
         return <SignalMedium className="h-4 w-4 text-yellow-500" />;
       case 'poor':
@@ -96,9 +96,9 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
   const getQualityColorClasses = () => {
     switch (quality) {
       case 'excellent':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200 dark:border-green-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800';
       case 'good':
-        return 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800';
+        return 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
       case 'fair':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
       case 'poor':
@@ -141,7 +141,7 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
 
     const getBarColor = (index: number) => {
       if (!isMonitoring || index >= activeCount) return 'bg-gray-300 dark:bg-gray-600';
-      if (activeCount >= 3) return 'bg-green-500';
+      if (activeCount >= 3) return 'bg-blue-500';
       if (activeCount === 2) return 'bg-yellow-500';
       return 'bg-red-500';
     };
@@ -233,7 +233,7 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
               <div className="font-medium flex items-center space-x-1">
                 <span>{stats.stabilityScore.toFixed(0)}%</span>
                 {stats.isStable ? (
-                  <span className="text-green-600 dark:text-green-400">✓</span>
+                  <span className="text-blue-600 dark:text-blue-400">✓</span>
                 ) : (
                   <span className="text-orange-600 dark:text-orange-400">⚠</span>
                 )}
@@ -248,7 +248,7 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
               <div
                 className={`h-2 rounded-full transition-all duration-500 ${
                   stats.stabilityScore >= 70 
-                    ? 'bg-green-500' 
+                    ? 'bg-blue-500' 
                     : stats.stabilityScore >= 50 
                     ? 'bg-yellow-500' 
                     : 'bg-red-500'
@@ -263,7 +263,7 @@ export const ConnectionQualityIndicator: React.FC<ConnectionQualityIndicatorProp
             <span>Samples: {stats.samplesCount}</span>
             {isMonitoring && (
               <span className="flex items-center space-x-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                 <span>Monitoring</span>
               </span>
             )}
@@ -300,8 +300,8 @@ export const ConnectionQualityBadge: React.FC<{
   const getColorClass = () => {
     if (!isMonitoring) return 'bg-gray-400';
     switch (quality) {
-      case 'excellent': return 'bg-green-500';
-      case 'good': return 'bg-green-400';
+      case 'excellent': return 'bg-blue-500';
+      case 'good': return 'bg-blue-400';
       case 'fair': return 'bg-yellow-500';
       case 'poor': return 'bg-orange-500';
       case 'critical': return 'bg-red-500';

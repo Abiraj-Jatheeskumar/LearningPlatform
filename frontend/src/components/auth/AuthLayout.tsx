@@ -32,7 +32,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated gradient background - Soft pastel mint green */}
-        <div className="absolute inset-0 bg-gradient-to-br from-green-300 via-green-400 to-green-500 animate-gradient" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-300 via-blue-400 to-blue-500 animate-gradient" />
         
         {/* Decorative patterns */}
         <div className="absolute inset-0 opacity-10">
@@ -110,7 +110,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
       {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
         {/* Mobile header */}
-        <div className="lg:hidden p-6 bg-gradient-to-r from-green-400 to-green-600">
+        <div className="lg:hidden p-6 bg-gradient-to-r from-blue-400 to-blue-600">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Layers className="w-6 h-6 text-white" />
@@ -120,11 +120,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
         </div>
         
         {/* Form container - Soft pastel green background */}
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-green-50 dark:bg-gray-900">
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-blue-50 dark:bg-gray-900">
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             {/* Header */}
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 tracking-tight">
+              <h2 className="text-3xl font-bold text-blue-700 dark:text-blue-400 tracking-tight">
                 {title}
               </h2>
               {subtitle && (
@@ -140,7 +140,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
         </div>
         
         {/* Footer */}
-        <div className="p-6 text-center text-sm text-green-600 dark:text-gray-400 bg-green-50 dark:bg-gray-900 border-t border-green-100 dark:border-gray-800">
+        <div className="p-6 text-center text-sm text-blue-600 dark:text-gray-400 bg-blue-50 dark:bg-gray-900 border-t border-blue-100 dark:border-gray-800">
           © {new Date().getFullYear()} Class Pulse. All rights reserved.
         </div>
       </div>

@@ -88,22 +88,22 @@ export const CourseCreate = () => {
   if (createdCourse) {
     return (
       <div className="py-6 max-w-2xl mx-auto">
-        <Card className="border-2 border-green-200 bg-green-50">
+        <Card className="border-2 border-blue-200 bg-blue-50">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BookOpenIcon className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BookOpenIcon className="h-8 w-8 text-blue-600" />
             </div>
             
-            <h2 className="text-2xl font-bold text-green-800 mb-2">
+            <h2 className="text-2xl font-bold text-blue-800 mb-2">
               Course Created Successfully!
             </h2>
             
-            <p className="text-green-700 mb-6">
+            <p className="text-blue-700 mb-6">
               "{createdCourse.title}" has been created.
             </p>
 
             {/* Enrollment Key Display */}
-            <div className="bg-white rounded-lg p-6 mb-6 border-2 border-green-300">
+            <div className="bg-white rounded-lg p-6 mb-6 border-2 border-blue-300">
               <div className="flex items-center justify-center mb-3">
                 <KeyIcon className="h-6 w-6 text-indigo-600 mr-2" />
                 <h3 className="text-lg font-semibold text-gray-900">Enrollment Key</h3>

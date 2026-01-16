@@ -385,7 +385,7 @@ export const InstructorAnalytics = () => {
               }}
               className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 selectedTimeRange === range
-                  ? 'bg-green-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
             >
@@ -428,14 +428,14 @@ export const InstructorAnalytics = () => {
               <p className="text-sm text-gray-600">Avg Engagement</p>
               <p className="text-2xl font-bold text-gray-900">{engagementMetrics.averageEngagement}%</p>
               {selectedTimeRange === 'live' && (
-                <p className="text-xs text-green-600 mt-1 flex items-center">
+                <p className="text-xs text-blue-600 mt-1 flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   +2.5%
                 </p>
               )}
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </Card>
@@ -451,8 +451,8 @@ export const InstructorAnalytics = () => {
                 </p>
               )}
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </Card>
@@ -465,14 +465,14 @@ export const InstructorAnalytics = () => {
               </p>
               <p className="text-2xl font-bold text-gray-900">{engagementMetrics.activeNow}</p>
               {selectedTimeRange === 'live' && (
-                <p className="text-xs text-green-600 mt-1 flex items-center">
+                <p className="text-xs text-blue-600 mt-1 flex items-center">
                   <Activity className="h-3 w-3 mr-1" />
                   Real-time
                 </p>
               )}
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Clock className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Clock className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </Card>
@@ -533,7 +533,7 @@ export const InstructorAnalytics = () => {
                 <div key={index} className="flex-1 flex flex-col items-center">
                   <div className="w-full relative">
                     <div
-                      className="w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer"
+                      className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer"
                       style={{ height: `${height}%`, minHeight: '20px' }}
                       title={`${point.value}% - ${point.time}`}
                     >
@@ -583,7 +583,7 @@ export const InstructorAnalytics = () => {
                       <span className="text-xs text-gray-500">{student.lastActive}</span>
                     </div>
                   </div>
-                  <button className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+                  <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
                     Intervene
                   </button>
                 </div>
@@ -596,13 +596,13 @@ export const InstructorAnalytics = () => {
         <Card>
           <div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-green-600" />
+              <Clock className="h-5 w-5 mr-2 text-blue-600" />
               Recent Activity
             </h3>
             <div className="space-y-3">
               {recentActivity.map((activity, index) => (
                 <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-shrink-0 w-2 h-2 bg-green-600 rounded-full mt-2 animate-pulse"></div>
+                  <div className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-2 animate-pulse"></div>
                   <div className="flex-1">
                     <p className="text-sm text-gray-900">
                       <span className="font-medium">{activity.student}</span> {activity.action}

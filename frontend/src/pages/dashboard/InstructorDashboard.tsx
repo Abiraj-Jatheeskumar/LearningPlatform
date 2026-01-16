@@ -189,7 +189,7 @@ export const InstructorDashboard = () => {
         {/* Upcoming Sessions */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-green-500 rounded-md p-3"></div>
+            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3"></div>
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">
@@ -211,7 +211,7 @@ export const InstructorDashboard = () => {
         {/* Total Students */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-green-500 rounded-md p-3"></div>
+            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3"></div>
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">
@@ -237,7 +237,7 @@ export const InstructorDashboard = () => {
               <div className="flex items-center">
                 <div className={`flex-shrink-0 rounded-md p-3 ${
                   connectionQuality === 'excellent' || connectionQuality === 'good' 
-                    ? 'bg-green-500' 
+                    ? 'bg-blue-500' 
                     : connectionQuality === 'fair' 
                     ? 'bg-yellow-500' 
                     : connectionQuality === 'poor' || connectionQuality === 'critical'
@@ -256,8 +256,8 @@ export const InstructorDashboard = () => {
                     </div>
                     {isLatencyMonitoring && (
                       <span className="ml-2 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                       </span>
                     )}
                   </dd>
@@ -492,14 +492,14 @@ export const InstructorDashboard = () => {
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700 mb-3">Connection Quality Guide</h4>
           <div className="grid grid-cols-5 gap-2 text-center text-xs">
-            <div className="p-2 bg-white rounded border border-green-200">
-              <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1"></div>
-              <span className="text-green-700 font-medium">Excellent</span>
+            <div className="p-2 bg-white rounded border border-blue-200">
+              <div className="w-3 h-3 rounded-full bg-blue-500 mx-auto mb-1"></div>
+              <span className="text-blue-700 font-medium">Excellent</span>
               <div className="text-gray-500">&lt;50ms</div>
             </div>
-            <div className="p-2 bg-white rounded border border-green-200">
-              <div className="w-3 h-3 rounded-full bg-green-400 mx-auto mb-1"></div>
-              <span className="text-green-600 font-medium">Good</span>
+            <div className="p-2 bg-white rounded border border-blue-200">
+              <div className="w-3 h-3 rounded-full bg-blue-400 mx-auto mb-1"></div>
+              <span className="text-blue-600 font-medium">Good</span>
               <div className="text-gray-500">&lt;100ms</div>
             </div>
             <div className="p-2 bg-white rounded border border-yellow-200">

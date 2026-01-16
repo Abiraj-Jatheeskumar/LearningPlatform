@@ -157,7 +157,7 @@ export const QuestionBank: React.FC<QuestionBankProps> = ({
                         <span className="mr-2 font-medium">
                           {String.fromCharCode(65 + index)}.
                         </span>
-                        <span className={index === question.correctAnswer ? 'text-green-600 font-medium' : ''}>
+                        <span className={index === question.correctAnswer ? 'text-blue-600 font-medium' : ''}>
                           {option}
                           {index === question.correctAnswer && ' ✓'}
                         </span>

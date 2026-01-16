@@ -53,8 +53,8 @@ export const LiveSession: React.FC<LiveSessionProps> = ({
           <p className="text-gray-400 text-sm">{course.instructor}</p>
         </div>
         <div className="flex items-center space-x-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200">
-            <span className="w-2 h-2 mr-2 bg-green-400 rounded-full animate-pulse"></span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+            <span className="w-2 h-2 mr-2 bg-blue-400 rounded-full animate-pulse"></span>
             LIVE
           </span>
           <div className="flex items-center text-gray-400 text-sm">

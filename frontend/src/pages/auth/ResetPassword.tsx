@@ -28,7 +28,7 @@ export const ResetPassword = () => {
     if (passed === 1) return { width: '25%', color: 'bg-red-500', text: 'Weak' };
     if (passed === 2) return { width: '50%', color: 'bg-orange-500', text: 'Fair' };
     if (passed === 3) return { width: '75%', color: 'bg-yellow-500', text: 'Good' };
-    return { width: '100%', color: 'bg-green-500', text: 'Strong' };
+    return { width: '100%', color: 'bg-blue-500', text: 'Strong' };
   };
 
   const validateForm = () => {
@@ -77,9 +77,9 @@ export const ResetPassword = () => {
       subtitle="Enter a strong password to secure your account"
     >
       {/* Security Badge */}
-      <div className="flex items-center gap-2 p-3 mb-6 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
-        <Shield className="w-5 h-5 text-green-600 dark:text-green-400" />
-        <span className="text-sm text-green-800 dark:text-green-300">
+      <div className="flex items-center gap-2 p-3 mb-6 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+        <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <span className="text-sm text-blue-800 dark:text-blue-300">
           Secure password reset - your connection is encrypted
         </span>
       </div>
@@ -96,7 +96,7 @@ export const ResetPassword = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-green-500'
+                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
               }`} />
             </div>
             <input
@@ -117,7 +117,7 @@ export const ResetPassword = () => {
                 focus:outline-none focus:ring-0
                 ${errors.password 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400'
                 }
               `}
               placeholder="Create a new password"
@@ -146,7 +146,7 @@ export const ResetPassword = () => {
                   />
                 </div>
                 <span className={`text-xs font-medium ${
-                  passwordStrength.color === 'bg-green-500' ? 'text-green-600' :
+                  passwordStrength.color === 'bg-blue-500' ? 'text-blue-600' :
                   passwordStrength.color === 'bg-yellow-500' ? 'text-yellow-600' :
                   passwordStrength.color === 'bg-orange-500' ? 'text-orange-600' :
                   'text-red-600'
@@ -161,7 +161,7 @@ export const ResetPassword = () => {
                     key={req.text}
                     className={`flex items-center gap-2 text-xs ${
                       req.regex.test(password) 
-                        ? 'text-green-600 dark:text-green-400' 
+                        ? 'text-blue-600 dark:text-blue-400' 
                         : 'text-gray-400'
                     }`}
                   >
@@ -194,7 +194,7 @@ export const ResetPassword = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-green-500'
+                errors.confirmPassword ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
               }`} />
             </div>
             <input
@@ -215,7 +215,7 @@ export const ResetPassword = () => {
                 focus:outline-none focus:ring-0
                 ${errors.confirmPassword 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400'
                 }
               `}
               placeholder="Confirm your new password"
@@ -233,7 +233,7 @@ export const ResetPassword = () => {
             </button>
           </div>
           {confirmPassword && password === confirmPassword && (
-            <p className="text-sm text-green-600 flex items-center gap-1">
+            <p className="text-sm text-blue-600 flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4" />
               Passwords match
             </p>
@@ -252,13 +252,13 @@ export const ResetPassword = () => {
           disabled={isLoading}
           className="
             relative w-full py-4 px-6 rounded-xl font-semibold text-white
-            bg-gradient-to-r from-green-500 via-green-600 to-green-600 
-            hover:from-green-600 hover:via-green-700 hover:to-green-700
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+            bg-gradient-to-r from-blue-500 via-blue-600 to-blue-600 
+            hover:from-blue-600 hover:via-blue-700 hover:to-blue-700
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
             disabled:opacity-70 disabled:cursor-not-allowed
             transform hover:scale-[1.02] active:scale-[0.98]
             transition-all duration-200
-            shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40
+            shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40
             group overflow-hidden
           "
         >
@@ -293,11 +293,11 @@ export const ResetPassword = () => {
           flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
           font-semibold text-gray-700 dark:text-gray-200
           bg-white dark:bg-gray-800
-          border-2 border-green-200 dark:border-green-800
-          hover:border-green-500 dark:hover:border-green-400
-          hover:text-green-600 dark:hover:text-green-400
-          hover:bg-green-50 dark:hover:bg-green-900/20
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+          border-2 border-blue-200 dark:border-blue-800
+          hover:border-blue-500 dark:hover:border-blue-400
+          hover:text-blue-600 dark:hover:text-blue-400
+          hover:bg-blue-50 dark:hover:bg-blue-900/20
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
           transform hover:scale-[1.02] active:scale-[0.98]
           transition-all duration-200
           group

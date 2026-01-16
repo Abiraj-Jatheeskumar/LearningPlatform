@@ -77,7 +77,7 @@ export const Login = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Mail className={`h-5 w-5 transition-colors duration-200 ${
-                errors.email ? 'text-red-400' : 'text-gray-400 group-focus-within:text-green-500'
+                errors.email ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
               }`} />
             </div>
             <input
@@ -99,7 +99,7 @@ export const Login = () => {
                 focus:outline-none focus:ring-0
                 ${errors.email 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400'
                 }
               `}
               placeholder="you@example.com"
@@ -124,7 +124,7 @@ export const Login = () => {
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className={`h-5 w-5 transition-colors duration-200 ${
-                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-green-500'
+                errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
               }`} />
             </div>
             <input
@@ -146,7 +146,7 @@ export const Login = () => {
                 focus:outline-none focus:ring-0
                 ${errors.password 
                   ? 'border-red-300 dark:border-red-600 focus:border-red-500' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400'
+                  : 'border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400'
                 }
               `}
               placeholder="Enter your password"
@@ -181,7 +181,7 @@ export const Login = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-md peer-checked:border-green-500 peer-checked:bg-green-500 transition-all duration-200" />
+              <div className="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-md peer-checked:border-blue-500 peer-checked:bg-blue-500 transition-all duration-200" />
               <svg 
                 className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200" 
                 fill="none" 
@@ -198,7 +198,7 @@ export const Login = () => {
 
           <Link
             to="/forgot-password"
-            className="text-sm font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
           >
             Forgot password?
           </Link>
@@ -210,13 +210,13 @@ export const Login = () => {
           disabled={isLoading}
           className="
             relative w-full py-4 px-6 rounded-xl font-semibold text-white
-            bg-gradient-to-r from-green-500 via-green-600 to-green-600 
-            hover:from-green-600 hover:via-green-700 hover:to-green-700
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+            bg-gradient-to-r from-blue-500 via-blue-600 to-blue-600 
+            hover:from-blue-600 hover:via-blue-700 hover:to-blue-700
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
             disabled:opacity-70 disabled:cursor-not-allowed
             transform hover:scale-[1.02] active:scale-[0.98]
             transition-all duration-200
-            shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40
+            shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40
             group overflow-hidden
           "
         >
@@ -251,11 +251,11 @@ export const Login = () => {
           flex items-center justify-center gap-2 w-full py-4 px-6 rounded-xl
           font-semibold text-gray-700 dark:text-gray-200
           bg-white dark:bg-gray-800
-          border-2 border-green-200 dark:border-green-800
-          hover:border-green-500 dark:hover:border-green-400
-          hover:text-green-600 dark:hover:text-green-400
-          hover:bg-green-50 dark:hover:bg-green-900/20
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+          border-2 border-blue-200 dark:border-blue-800
+          hover:border-blue-500 dark:hover:border-blue-400
+          hover:text-blue-600 dark:hover:text-blue-400
+          hover:bg-blue-50 dark:hover:bg-blue-900/20
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
           transform hover:scale-[1.02] active:scale-[0.98]
           transition-all duration-200
           group

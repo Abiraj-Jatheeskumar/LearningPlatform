@@ -51,7 +51,7 @@ export const TargetedQuiz: React.FC<TargetedQuizProps> = ({
   const getDifficultyColor = () => {
     switch (question.difficulty) {
       case 'easy':
-        return 'bg-green-100 text-green-800';
+        return 'bg-blue-100 text-blue-800';
       case 'medium':
         return 'bg-yellow-100 text-yellow-800';
       case 'hard':
@@ -109,7 +109,7 @@ export const TargetedQuiz: React.FC<TargetedQuizProps> = ({
                 className={`
                   w-full text-left p-4 rounded-lg border-2 transition-all
                   ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}
-                  ${showCorrect ? 'border-green-500 bg-green-50' : ''}
+                  ${showCorrect ? 'border-blue-500 bg-blue-50' : ''}
                   ${showIncorrect ? 'border-red-500 bg-red-50' : ''}
                   ${isAnswered ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}
                 `}
@@ -117,7 +117,7 @@ export const TargetedQuiz: React.FC<TargetedQuizProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-gray-900">{option}</span>
                   {showCorrect && (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
                   )}
                   {showIncorrect && (
                     <XCircle className="h-5 w-5 text-red-600" />
@@ -131,17 +131,17 @@ export const TargetedQuiz: React.FC<TargetedQuizProps> = ({
         {/* Feedback */}
         {isAnswered && (
           <div className={`p-4 rounded-lg ${
-            isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            isCorrect ? 'bg-blue-50 border border-blue-200' : 'bg-red-50 border border-red-200'
           }`}>
             <div className="flex items-start space-x-2">
               {isCorrect ? (
-                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
               ) : (
                 <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
               )}
               <div>
                 <p className={`font-medium ${
-                  isCorrect ? 'text-green-800' : 'text-red-800'
+                  isCorrect ? 'text-blue-800' : 'text-red-800'
                 }`}>
                   {isCorrect ? 'Correct!' : 'Incorrect'}
                 </p>

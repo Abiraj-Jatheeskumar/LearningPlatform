@@ -394,7 +394,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
       {dashboardStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4 text-center">
-            <CalendarIcon className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+            <CalendarIcon className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {dashboardStats.sessionsAttended}
             </p>
@@ -437,7 +437,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
             onClick={() => handleTabChange(tab.id as typeof activeTab)}
             className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                 : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
@@ -450,7 +450,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2Icon className="h-8 w-8 animate-spin text-emerald-600" />
+          <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       ) : (
         <>
@@ -518,7 +518,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                               {report.myTotalQuestions}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="inline-flex items-center gap-1 text-green-600">
+                              <span className="inline-flex items-center gap-1 text-blue-600">
                                 <CheckCircleIcon className="h-4 w-4" />
                                 {report.myCorrectAnswers}
                               </span>
@@ -644,14 +644,14 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                       <p className="text-sm text-gray-500">Questions Attempted</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-2xl font-bold text-blue-600">
                         {quizOverall.totalCorrectAnswers}
                       </p>
                       <p className="text-sm text-gray-500">Correct Answers</p>
                     </div>
                     <div>
                       <p className={`text-2xl font-bold ${
-                        quizOverall.overallScore >= 80 ? 'text-green-600' : 
+                        quizOverall.overallScore >= 80 ? 'text-blue-600' : 
                         quizOverall.overallScore >= 60 ? 'text-yellow-600' : 'text-red-600'
                       }`}>
                         {quizOverall.overallScore}%
@@ -689,7 +689,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className={`text-xl font-bold ${
-                              session.score >= 80 ? 'text-green-600' : 
+                              session.score >= 80 ? 'text-blue-600' : 
                               session.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
                               {session.score}%
@@ -713,7 +713,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                               key={q.questionId || idx}
                               className={`p-3 rounded-lg border-l-4 ${
                                 q.isCorrect 
-                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' 
                                   : q.yourAnswer === null
                                     ? 'bg-gray-50 dark:bg-gray-800 border-gray-300'
                                     : 'bg-red-50 dark:bg-red-900/20 border-red-500'
@@ -735,7 +735,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                                     </span>
                                   )}
                                   {q.isCorrect ? (
-                                    <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                                    <CheckCircleIcon className="h-5 w-5 text-blue-500" />
                                   ) : q.yourAnswer === null ? (
                                     <span className="text-xs text-gray-400">Not answered</span>
                                   ) : (
@@ -773,7 +773,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                     {sessionHistory.map((session) => (
                       <div 
                         key={session.sessionId}
-                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-emerald-300 transition-colors"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-300 transition-colors"
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -805,7 +805,7 @@ Attendance Duration,${report.myAttendanceDuration !== null ? `${report.myAttenda
                               <span className="text-gray-700 dark:text-gray-300">
                                 {session.quizParticipation.questionsAnswered}/{session.quizParticipation.totalQuestions} answered
                               </span>
-                              <span className="text-green-600">
+                              <span className="text-blue-600">
                                 {session.quizParticipation.correctAnswers} correct
                               </span>
                               {session.quizParticipation.score !== null && (

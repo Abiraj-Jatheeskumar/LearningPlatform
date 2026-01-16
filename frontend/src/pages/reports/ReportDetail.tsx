@@ -69,7 +69,7 @@ export const ReportDetail = () => {
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 <div className="flex items-center">
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-green-500 h-2.5 rounded-full" style={{
+                    <div className="bg-blue-500 h-2.5 rounded-full" style={{
                     width: `${report.data.completion}%`
                   }}></div>
                   </div>
@@ -84,7 +84,7 @@ export const ReportDetail = () => {
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 <div className="flex items-center">
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-green-600 h-2.5 rounded-full" style={{
+                    <div className="bg-blue-600 h-2.5 rounded-full" style={{
                     width: `${report.data.attendance}%`
                   }}></div>
                   </div>

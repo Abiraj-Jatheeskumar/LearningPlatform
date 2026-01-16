@@ -113,7 +113,7 @@ export const CourseList = () => {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
+      case 'Beginner': return 'bg-blue-100 text-blue-800';
       case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
       case 'Advanced': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -123,8 +123,8 @@ export const CourseList = () => {
   const getCourseGradient = (index: number) => {
     const gradients = [
       'bg-gradient-to-br from-indigo-500 to-purple-600',
-      'bg-gradient-to-br from-green-500 to-green-600',
-      'bg-gradient-to-br from-green-500 to-green-600',
+      'bg-gradient-to-br from-blue-500 to-blue-600',
+      'bg-gradient-to-br from-blue-500 to-blue-600',
       'bg-gradient-to-br from-orange-500 to-red-600',
       'bg-gradient-to-br from-pink-500 to-rose-600',
       'bg-gradient-to-br from-violet-500 to-purple-600',

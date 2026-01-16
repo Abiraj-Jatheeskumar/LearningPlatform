@@ -319,7 +319,7 @@ export const DashboardLayout = () => {
       <div className="flex flex-col w-0 flex-1 overflow-hidden">
         {/* Top navigation bar */}
         <div className="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
-          <button className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500 md:hidden" onClick={() => setSidebarOpen(true)}>
+          <button className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 md:hidden" onClick={() => setSidebarOpen(true)}>
             <MenuIcon className="h-6 w-6" aria-hidden="true" />
           </button>
             <div className="flex-1 px-2 sm:px-4 flex justify-between items-center">
@@ -338,7 +338,7 @@ export const DashboardLayout = () => {
                 <div className="ml-2 sm:ml-4 flex items-center md:ml-6 space-x-1 sm:space-x-2">
               {/* Notifications Button */}
               <button 
-                className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" 
+                className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" 
                 aria-label="View notifications"
               >
                 <BellIcon className="h-5 w-5" />
@@ -348,7 +348,7 @@ export const DashboardLayout = () => {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <div className="h-8 w-8 rounded-full bg-[#6FAF98] flex items-center justify-center text-white font-semibold text-sm">
                     {userInitials}
@@ -391,7 +391,7 @@ export const DashboardLayout = () => {
               {/* Logout Button (Mobile - always visible) */}
               <button
                 onClick={handleLogout}
-                className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 aria-label="Logout"
               >
                 <LogOutIcon className="h-5 w-5" />

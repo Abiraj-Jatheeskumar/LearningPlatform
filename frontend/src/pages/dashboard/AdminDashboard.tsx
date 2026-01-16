@@ -14,7 +14,7 @@ export const AdminDashboard = () => {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
+              <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
                 {/* Icon would go here */}
               </div>
               <div className="ml-5 w-0 flex-1">
@@ -33,7 +33,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-green-700 hover:text-green-900">
+              <a href="#" className="font-medium text-blue-700 hover:text-blue-900">
                 View all
               </a>
             </div>
@@ -43,7 +43,7 @@ export const AdminDashboard = () => {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
+              <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
                 {/* Icon would go here */}
               </div>
               <div className="ml-5 w-0 flex-1">
@@ -60,7 +60,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-green-700 hover:text-green-900">
+              <a href="#" className="font-medium text-blue-700 hover:text-blue-900">
                 View all
               </a>
             </div>
@@ -70,7 +70,7 @@ export const AdminDashboard = () => {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
+              <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
                 {/* Icon would go here */}
               </div>
               <div className="ml-5 w-0 flex-1">
@@ -87,7 +87,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-green-700 hover:text-green-900">
+              <a href="#" className="font-medium text-blue-700 hover:text-blue-900">
                 View all
               </a>
             </div>
@@ -114,7 +114,7 @@ export const AdminDashboard = () => {
           </div>
           <div className="bg-gray-50 px-5 py-3">
             <div className="text-sm">
-              <a href="#" className="font-medium text-green-700 hover:text-green-900">
+              <a href="#" className="font-medium text-blue-700 hover:text-blue-900">
                 View all
               </a>
             </div>
@@ -158,7 +158,7 @@ export const AdminDashboard = () => {
                     New Feature: Virtual Classroom Updates
                   </p>
                   <div className="ml-2 flex-shrink-0 flex">
-                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                       Released
                     </p>
                   </div>

@@ -626,7 +626,7 @@ export const InstructorReports = () => {
       {dashboardStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4 text-center">
-            <CalendarIcon className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+            <CalendarIcon className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {dashboardStats.totalSessions}
             </p>
@@ -671,7 +671,7 @@ export const InstructorReports = () => {
             onClick={() => handleTabChange(tab.id as typeof activeTab)}
             className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                 : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
@@ -820,9 +820,9 @@ export const InstructorReports = () => {
                     <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{selectedFullReport.totalQuestionsAsked}</p>
                     <p className="text-xs text-gray-500">Questions</p>
                   </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
-                    <TrendingUpIcon className="h-6 w-6 text-green-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
+                    <TrendingUpIcon className="h-6 w-6 text-blue-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
                       {selectedFullReport.averageQuizScore !== null ? `${selectedFullReport.averageQuizScore}%` : '-'}
                     </p>
                     <p className="text-xs text-gray-500">Avg Score</p>
@@ -870,7 +870,7 @@ export const InstructorReports = () => {
                             </td>
                             <td className="px-3 py-2 text-gray-600">{student.totalQuestions}</td>
                             <td className="px-3 py-2">
-                              <span className="text-green-600 font-medium">{student.correctAnswers}</span>
+                              <span className="text-blue-600 font-medium">{student.correctAnswers}</span>
                               <span className="text-gray-400"> / </span>
                               <span className="text-red-600">{student.incorrectAnswers}</span>
                             </td>
@@ -917,7 +917,7 @@ export const InstructorReports = () => {
               <CardContent className="max-h-[500px] overflow-y-auto">
                 {loading && sessions.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
+                    <Loader2Icon className="h-6 w-6 animate-spin text-blue-600" />
                   </div>
                 ) : sessions.length === 0 ? (
                   <p className="text-gray-500 text-center py-4">No sessions found</p>
@@ -928,7 +928,7 @@ export const InstructorReports = () => {
                         key={session.sessionId}
                         className={`p-3 rounded-lg border transition-colors ${
                           selectedSessionId === session.sessionId
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                         }`}
                       >
@@ -954,7 +954,7 @@ export const InstructorReports = () => {
                             e.stopPropagation();
                             downloadFullSessionReport(session.sessionId, session.sessionName);
                           }}
-                          className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 py-1 border border-emerald-200 dark:border-emerald-800 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-700 py-1 border border-blue-200 dark:border-blue-800 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                           disabled={downloading}
                         >
                           <DownloadIcon className="h-3 w-3" />
@@ -1051,7 +1051,7 @@ export const InstructorReports = () => {
                   </div>
                 ) : loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
+                    <Loader2Icon className="h-6 w-6 animate-spin text-blue-600" />
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1119,7 +1119,7 @@ export const InstructorReports = () => {
                   </div>
                 ) : loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
+                    <Loader2Icon className="h-6 w-6 animate-spin text-blue-600" />
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1149,7 +1149,7 @@ export const InstructorReports = () => {
                               {record.totalQuestions}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="inline-flex items-center gap-1 text-green-600">
+                              <span className="inline-flex items-center gap-1 text-blue-600">
                                 <CheckCircleIcon className="h-4 w-4" />
                                 {record.correctAnswers}
                               </span>
@@ -1162,7 +1162,7 @@ export const InstructorReports = () => {
                             </td>
                             <td className="px-4 py-3">
                               <span className={`font-semibold ${
-                                record.score >= 80 ? 'text-green-600' : 
+                                record.score >= 80 ? 'text-blue-600' : 
                                 record.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                               }`}>
                                 {record.score}%
@@ -1209,7 +1209,7 @@ export const InstructorReports = () => {
                   </div>
                 ) : loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2Icon className="h-6 w-6 animate-spin text-emerald-600" />
+                    <Loader2Icon className="h-6 w-6 animate-spin text-blue-600" />
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1297,9 +1297,9 @@ export const InstructorReports = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {/* Sync All Button */}
-              <Card className="p-4 border-2 border-emerald-200 dark:border-emerald-800">
+              <Card className="p-4 border-2 border-blue-200 dark:border-blue-800">
                 <div className="text-center">
-                  <RefreshCwIcon className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+                  <RefreshCwIcon className="h-10 w-10 text-blue-500 mx-auto mb-2" />
                   <h4 className="font-semibold text-gray-900 dark:text-gray-100">Sync All</h4>
                   <p className="text-xs text-gray-500 mb-3">Users, Questions, Quiz Answers, Reports</p>
                   <Button
@@ -1334,7 +1334,7 @@ export const InstructorReports = () => {
               {/* Sync Courses */}
               <Card className="p-4">
                 <div className="text-center">
-                  <BookOpenIcon className="h-10 w-10 text-teal-500 mx-auto mb-2" />
+                  <BookOpenIcon className="h-10 w-10 text-blue-500 mx-auto mb-2" />
                   <h4 className="font-semibold text-gray-900 dark:text-gray-100">Courses</h4>
                   <p className="text-xs text-gray-500 mb-3">Course Details</p>
                   <Button
@@ -1368,7 +1368,7 @@ export const InstructorReports = () => {
               {/* Sync Quiz Answers */}
               <Card className="p-4">
                 <div className="text-center">
-                  <CheckCircleIcon className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                  <CheckCircleIcon className="h-10 w-10 text-blue-500 mx-auto mb-2" />
                   <h4 className="font-semibold text-gray-900 dark:text-gray-100">Quiz Answers</h4>
                   <p className="text-xs text-gray-500 mb-3">Student Responses</p>
                   <Button

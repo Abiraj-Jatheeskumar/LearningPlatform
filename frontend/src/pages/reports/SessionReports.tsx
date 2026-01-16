@@ -123,7 +123,7 @@ export const SessionReports = () => {
     return (
       <div className="py-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2Icon className="h-8 w-8 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-500">Loading reports...</p>
         </div>
       </div>
@@ -184,7 +184,7 @@ export const SessionReports = () => {
                 placeholder={viewMode === 'sessions' ? "Search sessions..." : "Search reports..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -195,7 +195,7 @@ export const SessionReports = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Sessions</option>
                   <option value="completed">Completed</option>
@@ -306,7 +306,7 @@ export const SessionReports = () => {
           ) : (
             <div className="space-y-4">
               {filteredStoredReports.map((report) => (
-                <Card key={report.id || report.sessionId} className="hover:shadow-md transition-shadow border-l-4 border-emerald-500">
+                <Card key={report.id || report.sessionId} className="hover:shadow-md transition-shadow border-l-4 border-blue-500">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       {/* Report Info */}
@@ -338,7 +338,7 @@ export const SessionReports = () => {
                             <span>{report.totalParticipants} participants</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-emerald-600 font-medium">
+                            <span className="text-blue-600 font-medium">
                               {report.averageQuizScore !== null && report.averageQuizScore !== undefined 
                                 ? `${report.averageQuizScore.toFixed(1)}% avg score` 
                                 : 'No quiz data'}
@@ -393,13 +393,13 @@ export const SessionReports = () => {
               <p className="text-sm text-gray-500">Total Sessions</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="text-2xl font-bold text-blue-600">
                 {storedReports.length}
               </p>
               <p className="text-sm text-gray-500">Stored Reports</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-blue-600">
                 {sessions.filter(s => s.status === 'completed').length}
               </p>
               <p className="text-sm text-gray-500">Completed</p>

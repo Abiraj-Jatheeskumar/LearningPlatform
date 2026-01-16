@@ -236,21 +236,21 @@ export const LiveSession = () => {
         name: cluster.name,
         count: cluster.studentCount,
         percentage: (cluster.studentCount / clusters.reduce((sum, c) => sum + c.studentCount, 0)) * 100,
-        color: cluster.engagementLevel === 'high' ? 'bg-green-500' :
-               cluster.engagementLevel === 'medium' ? 'bg-green-400' : 'bg-red-500'
+        color: cluster.engagementLevel === 'high' ? 'bg-blue-500' :
+               cluster.engagementLevel === 'medium' ? 'bg-blue-400' : 'bg-red-500'
       }))
     : [
         {
     name: 'Highly Engaged',
     count: 12,
     percentage: 38,
-    color: 'bg-green-500'
+    color: 'bg-blue-500'
         },
         {
     name: 'Moderately Engaged',
     count: 14,
     percentage: 44,
-    color: 'bg-green-400'
+    color: 'bg-blue-400'
         },
         {
     name: 'Passively Engaged',
@@ -728,7 +728,7 @@ export const LiveSession = () => {
                   variant={isNotificationConnected ? 'success' : 'warning'} 
                   className="text-xs flex items-center gap-1"
                 >
-                  <span className={`w-2 h-2 rounded-full ${isNotificationConnected ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${isNotificationConnected ? 'bg-blue-400 animate-pulse' : 'bg-yellow-400'}`}></span>
                   <span className="hidden sm:inline">{isNotificationConnected ? 'Notifications ON' : 'Connecting...'}</span>
                   <span className="sm:hidden">🔔</span>
                 </Badge>
@@ -788,13 +788,13 @@ export const LiveSession = () => {
                 isPersonalized={false}
               />
               {answerSubmitted && !isInstructor && (
-                <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800">
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
                     {isCorrect 
                       ? '✅ Great job! Your answer has been recorded.' 
                       : '📝 Your answer has been recorded. Keep learning!'}
                   </p>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-blue-600 mt-1">
                     Performance statistics will be shown shortly...
                   </p>
                 </div>
@@ -838,7 +838,7 @@ export const LiveSession = () => {
             </div>
             {/* AI monitoring indicator */}
             <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center bg-black bg-opacity-50 rounded-full px-2 py-1 sm:px-3 text-xs text-white">
-              <BrainIcon className="h-3 w-3 mr-1 text-green-400" />
+              <BrainIcon className="h-3 w-3 mr-1 text-blue-400" />
               <span className="hidden sm:inline">AI monitoring ON</span>
             </div>
             {/* Participant videos */}
@@ -1104,9 +1104,9 @@ export const LiveSession = () => {
                   </div>
                   
                   {/* 📶 Connection Quality Context for Engagement */}
-                  <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-green-900 dark:text-green-100 flex items-center">
+                      <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 flex items-center">
                         <WifiIcon className="h-4 w-4 mr-2" />
                         Network Quality Context
                       </h4>
@@ -1117,28 +1117,28 @@ export const LiveSession = () => {
                         {connectionQuality.toUpperCase()}
                       </Badge>
                     </div>
-                    <p className="text-xs text-green-800 dark:text-green-200 mb-2">
+                    <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
                       Connection quality is monitored to contextualize engagement analysis.
                       Students with poor connections won't be misclassified as disengaged.
                     </p>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="text-center">
-                        <div className="text-green-600 dark:text-green-400 font-medium">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
                           {currentRtt ? `${Math.round(currentRtt)}ms` : '--'}
                         </div>
-                        <div className="text-green-500 dark:text-green-300 opacity-75">RTT</div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">RTT</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-green-600 dark:text-green-400 font-medium">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
                           {latencyStats.jitter.toFixed(1)}ms
                         </div>
-                        <div className="text-green-500 dark:text-green-300 opacity-75">Jitter</div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">Jitter</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-green-600 dark:text-green-400 font-medium">
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">
                           {latencyStats.stabilityScore.toFixed(0)}%
                         </div>
-                        <div className="text-green-500 dark:text-green-300 opacity-75">Stability</div>
+                        <div className="text-blue-500 dark:text-blue-300 opacity-75">Stability</div>
                       </div>
                     </div>
                     {shouldAdjustEngagement() && (
@@ -1153,15 +1153,15 @@ export const LiveSession = () => {
 
           {/* AI Panel (instructor only) */}
           {showAIPanel && isInstructor && (
-            <Card className="mt-4 border-2 border-green-100 dark:border-green-900">
-                <CardHeader className="bg-green-50 dark:bg-green-900">
+            <Card className="mt-4 border-2 border-blue-100 dark:border-blue-900">
+                <CardHeader className="bg-blue-50 dark:bg-blue-900">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-md font-medium text-green-900 dark:text-green-100 flex items-center">
+                    <h3 className="text-md font-medium text-blue-900 dark:text-blue-100 flex items-center">
                       <BrainIcon className="h-4 w-4 mr-2" />
                       AI Teaching Assistant
                     </h3>
-                    <button className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-800">
-                      <Settings2Icon className="h-4 w-4 text-green-600 dark:text-green-300" />
+                    <button className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800">
+                      <Settings2Icon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                     </button>
                   </div>
                 </CardHeader>
@@ -1193,9 +1193,9 @@ export const LiveSession = () => {
                   <input
                     type="text"
                     placeholder="Ask AI for teaching suggestions..."
-                    className="flex-1 rounded-l-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-green-500 focus:border-green-500"
+                    className="flex-1 rounded-l-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
                   />
-                    <button className="inline-flex items-center px-3 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                    <button className="inline-flex items-center px-3 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                       <ZapIcon className="h-4 w-4" />
                     </button>
                   </div>

@@ -38,7 +38,7 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
   onClose
 }) => {
   const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600';
+    if (percentage >= 80) return 'text-blue-600';
     if (percentage >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
@@ -56,7 +56,7 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
           <div>
             <div className="flex items-center space-x-2 mb-2">
-              <Target className="h-5 w-5 text-green-600" />
+              <Target className="h-5 w-5 text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-900">Quiz Performance</h3>
               <Badge variant={getPerformanceBadge(performance.correctPercentage) as any}>
                 {performance.correctPercentage.toFixed(0)}% Correct
@@ -76,28 +76,28 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
 
         {/* Overall Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <Users className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold text-green-900">
+              <Users className="h-5 w-5 text-blue-600" />
+              <span className="text-2xl font-bold text-blue-900">
                 {performance.answeredStudents}/{performance.totalStudents}
               </span>
             </div>
-            <p className="text-xs text-green-700">Students Answered</p>
-            <p className="text-xs text-green-600 mt-1">
+            <p className="text-xs text-blue-700">Students Answered</p>
+            <p className="text-xs text-blue-600 mt-1">
               {((performance.answeredStudents / performance.totalStudents) * 100).toFixed(0)}% participation
             </p>
           </div>
 
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold text-green-900">
+              <CheckCircle className="h-5 w-5 text-blue-600" />
+              <span className="text-2xl font-bold text-blue-900">
                 {performance.correctAnswers}
               </span>
             </div>
-            <p className="text-xs text-green-700">Correct Answers</p>
-            <p className="text-xs text-green-600 mt-1">
+            <p className="text-xs text-blue-700">Correct Answers</p>
+            <p className="text-xs text-blue-600 mt-1">
               {performance.correctPercentage.toFixed(1)}% accuracy
             </p>
           </div>
@@ -115,15 +115,15 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
             </p>
           </div>
 
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <Clock className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold text-green-900">
+              <Clock className="h-5 w-5 text-blue-600" />
+              <span className="text-2xl font-bold text-blue-900">
                 {performance.averageTime.toFixed(1)}s
               </span>
             </div>
-            <p className="text-xs text-green-700">Average Time</p>
-            <p className="text-xs text-green-600 mt-1">Response speed</p>
+            <p className="text-xs text-blue-700">Average Time</p>
+            <p className="text-xs text-blue-600 mt-1">Response speed</p>
           </div>
         </div>
 
@@ -148,7 +148,7 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
                     <div className="w-32 bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full ${
-                          cluster.percentage >= 80 ? 'bg-green-500' :
+                          cluster.percentage >= 80 ? 'bg-blue-500' :
                           cluster.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
                         }`}
                         style={{ width: `${cluster.percentage}%` }}
@@ -173,12 +173,12 @@ export const QuizPerformance: React.FC<QuizPerformanceProps> = ({
                 <div
                   key={index}
                   className={`flex items-center justify-between p-3 rounded-lg ${
-                    performer.isCorrect ? 'bg-green-50' : 'bg-red-50'
+                    performer.isCorrect ? 'bg-blue-50' : 'bg-red-50'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
                     {performer.isCorrect ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-600" />
                     )}

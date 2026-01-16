@@ -85,7 +85,7 @@ export const StudentEnrollment = () => {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
+      case 'Beginner': return 'bg-blue-100 text-blue-800';
       case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
       case 'Advanced': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -145,18 +145,18 @@ export const StudentEnrollment = () => {
 
       {/* Recently Enrolled Success */}
       {recentlyEnrolled && (
-        <Card className="mb-8 border-2 border-green-200 bg-green-50">
+        <Card className="mb-8 border-2 border-blue-200 bg-blue-50">
           <CardContent className="p-6">
             <div className="flex items-start">
-              <CheckCircleIcon className="h-8 w-8 text-green-500 mr-4 flex-shrink-0" />
+              <CheckCircleIcon className="h-8 w-8 text-blue-500 mr-4 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-green-800 mb-1">
+                <h3 className="text-lg font-semibold text-blue-800 mb-1">
                   Successfully Enrolled!
                 </h3>
-                <p className="text-green-700 mb-3">
+                <p className="text-blue-700 mb-3">
                   You are now enrolled in <strong>{recentlyEnrolled.title}</strong>
                 </p>
-                <p className="text-sm text-green-600 mb-4">
+                <p className="text-sm text-blue-600 mb-4">
                   Instructor: {recentlyEnrolled.instructorName}
                 </p>
                 <div className="flex gap-3">

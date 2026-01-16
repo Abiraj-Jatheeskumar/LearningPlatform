@@ -205,8 +205,8 @@ export const QuestionManagement = () => {
               <p className="text-sm text-gray-600">Easy</p>
               <p className="text-2xl font-bold text-gray-900">{stats.byDifficulty.easy}</p>
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <BookOpenIcon className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <BookOpenIcon className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </Card>

@@ -87,13 +87,13 @@ export const UserManagement = () => {
               <p className="text-sm text-gray-600">Total Users</p>
               <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
-            <UsersIcon className="h-8 w-8 text-green-600" />
+            <UsersIcon className="h-8 w-8 text-blue-600" />
           </div>
         </Card>
         <Card className="p-4">
           <div>
             <p className="text-sm text-gray-600">Students</p>
-            <p className="text-2xl font-bold text-green-600">{stats.students}</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.students}</p>
           </div>
         </Card>
         <Card className="p-4">
@@ -112,9 +112,9 @@ export const UserManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
             </div>
-            <UserCheckIcon className="h-6 w-6 text-green-600" />
+            <UserCheckIcon className="h-6 w-6 text-blue-600" />
           </div>
         </Card>
         <Card className="p-4">

@@ -36,7 +36,7 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
     if (!prediction) return null;
     switch (prediction) {
       case 'improving':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
+        return <TrendingUp className="h-4 w-4 text-blue-600" />;
       case 'declining':
         return <TrendingDown className="h-4 w-4 text-red-600" />;
       default:
@@ -87,7 +87,7 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
                   </span>
                 </div>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  cluster.engagementLevel === 'high' ? 'bg-green-100 text-green-800' :
+                  cluster.engagementLevel === 'high' ? 'bg-blue-100 text-blue-800' :
                   cluster.engagementLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-red-100 text-red-800'
                 }`}>
