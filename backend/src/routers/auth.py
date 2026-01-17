@@ -58,20 +58,20 @@ async def register(request_data: RegisterRequest):
                 detail="Email already exists"
             )
 
-        # Generate verification token
-        verification_token = email_service.generate_verification_token()
-        token_expiry = email_service.get_token_expiry(hours=24)
+        # Generate verification token (disabled for now)
+        # verification_token = email_service.generate_verification_token()
+        # token_expiry = email_service.get_token_expiry(hours=24)
 
-        # Create new user with pending status
+        # Create new user with active status (email verification disabled)
         user_data = {
             "firstName": request_data.firstName,
             "lastName": request_data.lastName,
             "email": request_data.email,
             "password": hash_password(request_data.password),
             "role": request_data.role,
-            "status": 0,  # Pending - requires email verification
-            "verificationToken": verification_token,
-            "verificationTokenExpiry": token_expiry,
+            "status": 1,  # Active - email verification disabled
+            # "verificationToken": verification_token,
+            # "verificationTokenExpiry": token_expiry,
         }
 
         user = await UserModel.create(user_data)
@@ -85,18 +85,18 @@ async def register(request_data: RegisterRequest):
         except Exception as e:
             print(f"⚠️ MySQL user backup failed (non-fatal): {e}")
         
-        # Send verification email
-        email_sent = email_service.send_verification_email(
-            to_email=request_data.email,
-            first_name=request_data.firstName,
-            token=verification_token
-        )
+        # Send verification email (disabled for now)
+        # email_sent = email_service.send_verification_email(
+        #     to_email=request_data.email,
+        #     first_name=request_data.firstName,
+        #     token=verification_token
+        # )
         
         # Remove sensitive data from response
         user.pop("password", None)
         user.pop("_id", None)
-        user.pop("verificationToken", None)
-        user.pop("verificationTokenExpiry", None)
+        # user.pop("verificationToken", None)
+        # user.pop("verificationTokenExpiry", None)
         
         # Ensure all datetime objects are converted to ISO format strings
         if "createdAt" in user and hasattr(user["createdAt"], "isoformat"):
@@ -106,8 +106,8 @@ async def register(request_data: RegisterRequest):
         
         return {
             "success": True,
-            "message": "Registration successful! Please check your email to verify your account.",
-            "emailSent": email_sent,
+            "message": "Registration successful! You can now login.",
+            "emailSent": False,
             "user": {
                 "email": user.get("email"),
                 "firstName": user.get("firstName"),
