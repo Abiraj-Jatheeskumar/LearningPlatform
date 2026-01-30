@@ -116,19 +116,10 @@ export const SessionList = () => {
           (s.zoomMeetingId === storedSessionId || s.id === storedSessionId)
         );
         
-        // Clear connection if session ended or doesn't exist
-        if (!connectedSession || connectedSession.status === 'completed') {
-          localStorage.removeItem('connectedSessionId');
-          setConnectedSessionId(null);
-          if (sessionWs) {
-            sessionWs.close();
-            setSessionWs(null);
-          }
-          // Stop network monitoring if session ended
-          if (networkMonitoringEnabled) {
-            stopMonitoring();
-            setNetworkMonitoringEnabled(false);
-          }
+        // 🛡️ FIX: DO NOT auto-close WebSocket! Let it stay connected.
+        // The WebSocket's onclose handler will naturally clean up when student leaves
+        if (connectedSession) {
+          setConnectedSessionId(storedSessionId);
         }
         // NOTE: We do NOT auto-restore WebSocket connections
         // Students must explicitly click "Join Now" to start monitoring
