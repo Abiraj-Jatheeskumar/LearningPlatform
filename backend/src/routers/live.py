@@ -106,10 +106,19 @@ async def trigger_question(meeting_id: str):
 
         # Debug: Show session room stats before sending
         all_stats = ws_manager.get_all_stats()
-        print(f"📊 WebSocket Stats BEFORE broadcast:")
-        print(f"   Session rooms: {all_stats.get('session_rooms', {})}")
-        print(f"   Target session: {meeting_id}")
-        print(f"   Participants: {len(participants)} students")
+        print(f"\n{'='*60}")
+        print(f"📊 QUIZ TRIGGER DEBUG INFO")
+        print(f"{'='*60}")
+        print(f"   Request meeting_id: {meeting_id}")
+        print(f"   Effective meeting_id: {effective_meeting_id}")
+        print(f"   Session IDs checked: {session_ids_to_check}")
+        print(f"   Total session rooms: {list(all_stats.get('session_rooms', {}).keys())}")
+        print(f"   Target session room: {meeting_id}")
+        print(f"   Participants found: {len(participants)}")
+        print(f"   Participant details:")
+        for p in participants:
+            print(f"      - {p.get('studentName', 'Unknown')} (ID: {p.get('studentId', 'N/A')}, Session: {p.get('sessionId', meeting_id)})")
+        print(f"{'='*60}\n")
         
         # 3) Send DIFFERENT random question to EACH student
         # Filter out instructor connections - instructors have studentId starting with "instructor_" or have role="instructor"
@@ -210,6 +219,55 @@ async def trigger_question(meeting_id: str):
 async def get_meeting_stats(meeting_id: str):
     stats = ws_manager.get_meeting_stats(meeting_id)
     return {"success": True, "stats": stats}
+
+
+# ================================================================
+# 🔍 DIAGNOSTIC ENDPOINT - Check Session Connections
+# ================================================================
+@router.get("/debug/session/{session_id}")
+async def debug_session_connections(session_id: str):
+    """
+    Diagnostic endpoint to check what students are connected to a session.
+    Useful for debugging quiz trigger issues.
+    """
+    all_stats = ws_manager.get_all_stats()
+    participants = ws_manager.get_session_participants(session_id)
+    
+    # Try to find session in database
+    session_doc = None
+    try:
+        if session_id.isdigit():
+            session_doc = await db.database.sessions.find_one({"zoomMeetingId": int(session_id)})
+        if not session_doc:
+            session_doc = await db.database.sessions.find_one({"zoomMeetingId": session_id})
+        if not session_doc and len(session_id) == 24:
+            session_doc = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+    except:
+        pass
+    
+    return {
+        "success": True,
+        "debug_info": {
+            "requested_session_id": session_id,
+            "session_exists_in_db": session_doc is not None,
+            "session_title": session_doc.get("title") if session_doc else None,
+            "zoom_meeting_id": session_doc.get("zoomMeetingId") if session_doc else None,
+            "mongo_session_id": str(session_doc["_id"]) if session_doc else None,
+            "all_active_session_rooms": list(all_stats.get("session_rooms", {}).keys()),
+            "participants_in_this_session": len(participants),
+            "participant_details": [
+                {
+                    "studentId": p.get("studentId"),
+                    "studentName": p.get("studentName"),
+                    "joinedAt": p.get("joinedAt"),
+                    "status": p.get("status")
+                }
+                for p in participants
+            ],
+            "total_websocket_connections": all_stats.get("total_session_participants", 0),
+            "help": "If participants_in_this_session is 0, students need to click 'Join Now' in the web browser"
+        }
+    }
 
 
 # ================================================================

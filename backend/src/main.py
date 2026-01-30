@@ -110,7 +110,8 @@ from src.routers import (
     session,
     push_notification,  # ⭐ NEW ROUTER
     latency,  # 📶 WebRTC-aware latency monitoring
-    session_report  # 📊 Session reports with download
+    session_report,  # 📊 Session reports with download
+    engagement  # 🎯 ML-based engagement prediction
 )
 
 app.include_router(auth.router)
@@ -127,6 +128,7 @@ app.include_router(push_notification.router)  # ⭐ ADD THIS
 app.include_router(latency.router)  # 📶 WebRTC-aware latency monitoring
 app.include_router(session_report.router)  # 📊 Session reports with download
 app.include_router(session_report.reports_router)  # 📊 All reports API
+app.include_router(engagement.router)  # 🎯 ML-based engagement prediction
 
 # 📊 Role-based Reports
 from src.routers import instructor_reports, student_reports

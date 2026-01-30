@@ -77,9 +77,10 @@ export const InstructorDashboard = () => {
     if (!sessionKey) return;
 
     // Connect to WebSocket to receive real-time participant updates
-    const wsBase = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'ws://localhost:8000';
+    const wsBase = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL?.replace('http', 'ws').replace('/api', '') || 'ws://localhost:3001';
     const wsUrl = `${wsBase}/ws/session/${sessionKey}/instructor_${user?.id || 'monitor'}`;
     
+    console.log('🔌 Connecting to WebSocket:', wsUrl);
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
@@ -153,14 +154,16 @@ export const InstructorDashboard = () => {
       console.error("Instructor WS error:", err);
     };
     
-    ws.onclose = () => {
-      console.log('🔌 Instructor WebSocket closed');
+    ws.onclose = (event) => {
+      console.log('🔌 Instructor WebSocket closed', event.code, event.reason);
     };
     
     return () => {
-      ws.close();
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
     };
-  }, [selectedSession, user?.id]);
+  }, [selectedSession?.id, selectedSession?.zoomMeetingId, user?.id]);
 
   // ================================
   // ⭐ START/JOIN ZOOM MEETING (INSTRUCTOR)

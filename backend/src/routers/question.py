@@ -1,9 +1,11 @@
 from typing import Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from pydantic import BaseModel
 from datetime import datetime
 from ..models.question import Question
 from ..middleware.auth import get_current_user, require_instructor
+from ..services.file_extractor import extract_text_from_file
+from ..services.ai_question_generator import generate_questions_from_slides
 
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
@@ -209,4 +211,81 @@ async def delete_question(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete question: {str(e)}"
         )
+
+
+@router.post("/generate-from-file")
+async def generate_questions_from_file(
+    file: UploadFile = File(...),
+    category: str = Form("General"),
+    user: dict = Depends(require_instructor)
+):
+    """
+    Upload PDF/PPTX and automatically generate questions using AI
+    """
+    try:
+        print(f"🤖 AI Question Generation started by: {user.get('email')}")
+        print(f"📄 File: {file.filename}, Category: {category}")
+        
+        # Extract text from file
+        print("📄 Extracting text from file...")
+        slides_text = await extract_text_from_file(file)
+        print(f"✅ Extracted {len(slides_text)} slides/pages")
+        
+        if not slides_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No text content found in the file"
+            )
+        
+        # Generate questions using AI
+        print("🤖 Generating questions using Azure OpenAI...")
+        generated_questions = await generate_questions_from_slides(slides_text, category)
+        print(f"✅ Generated {len(generated_questions)} questions")
+        
+        if not generated_questions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not generate questions from the file content"
+            )
+        
+        # Save questions to database
+        saved_questions = []
+        for question_data in generated_questions:
+            question_data["createdAt"] = datetime.now().isoformat()
+            question_data["createdBy"] = user.get("id", "")
+            question_data["createdByEmail"] = user.get("email", "")
+            question_data["tags"] = question_data.get("tags", []) + ["AI Generated"]
+            
+            created_question = await Question.create(question_data)
+            saved_questions.append(QuestionResponse(
+                id=created_question.get("id", ""),
+                question=created_question.get("question", ""),
+                options=created_question.get("options", []),
+                correctAnswer=created_question.get("correctAnswer", 0),
+                difficulty=created_question.get("difficulty", "medium"),
+                category=created_question.get("category", ""),
+                tags=created_question.get("tags", []),
+                timeLimit=created_question.get("timeLimit", 30),
+                createdAt=created_question.get("createdAt")
+            ))
+        
+        print(f"✅ Saved {len(saved_questions)} questions to database")
+        
+        return {
+            "success": True,
+            "message": f"Successfully generated and saved {len(saved_questions)} questions",
+            "questions": saved_questions,
+            "totalSlides": len(slides_text),
+            "totalQuestions": len(saved_questions)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error in AI question generation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate questions: {str(e)}"
+        )
+
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { QuestionBank, Question } from '../../components/questions/QuestionBank';
 import { QuestionForm } from '../../components/questions/QuestionForm';
+import { AIQuestionGenerator } from '../../components/questions/AIQuestionGenerator';
 import { Card } from '../../components/ui/Card';
 import { BookOpenIcon, TargetIcon, LayersIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -245,23 +246,31 @@ export const QuestionManagement = () => {
           onCancel={handleCancel}
         />
       ) : (
-        isLoading ? (
-          <Card className="p-12 text-center">
-            <p className="text-gray-500">Loading questions...</p>
-          </Card>
-        ) : (
-          <QuestionBank
-            questions={questions}
-            onAddQuestion={handleAddQuestion}
-            onEditQuestion={handleEditQuestion}
-            onDeleteQuestion={handleDeleteQuestion}
-            onTriggerQuestion={() => {
-              // Could navigate to a live session with this question pre-loaded
-              toast.info('Navigate to a live session to trigger questions');
-            }}
-            showTriggerButton={false}
-          />
-        )
+        <>
+          {/* AI Question Generator */}
+          <div className="mb-6">
+            <AIQuestionGenerator onQuestionsGenerated={loadQuestions} />
+          </div>
+
+          {/* Question Bank */}
+          {isLoading ? (
+            <Card className="p-12 text-center">
+              <p className="text-gray-500">Loading questions...</p>
+            </Card>
+          ) : (
+            <QuestionBank
+              questions={questions}
+              onAddQuestion={handleAddQuestion}
+              onEditQuestion={handleEditQuestion}
+              onDeleteQuestion={handleDeleteQuestion}
+              onTriggerQuestion={() => {
+                // Could navigate to a live session with this question pre-loaded
+                toast.info('Navigate to a live session to trigger questions');
+              }}
+              showTriggerButton={false}
+            />
+          )}
+        </>
       )}
     </div>
   );

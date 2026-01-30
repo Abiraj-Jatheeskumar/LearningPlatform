@@ -62,14 +62,14 @@ async def register(request_data: RegisterRequest):
         verification_token = email_service.generate_verification_token()
         token_expiry = email_service.get_token_expiry(hours=24)
 
-        # Create new user with pending status
+        # Create new user - AUTO-VERIFIED for testing (no email needed)
         user_data = {
             "firstName": request_data.firstName,
             "lastName": request_data.lastName,
             "email": request_data.email,
             "password": hash_password(request_data.password),
             "role": request_data.role,
-            "status": 0,  # Pending - requires email verification
+            "status": 1,  # Active - AUTO-VERIFIED (email system not configured)
             "verificationToken": verification_token,
             "verificationTokenExpiry": token_expiry,
         }
@@ -106,7 +106,7 @@ async def register(request_data: RegisterRequest):
         
         return {
             "success": True,
-            "message": "Registration successful! Please check your email to verify your account.",
+            "message": "Registration successful! Account is ready to use (auto-verified).",
             "emailSent": email_sent,
             "user": {
                 "email": user.get("email"),
