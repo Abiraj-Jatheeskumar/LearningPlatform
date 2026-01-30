@@ -36,67 +36,75 @@ async def trigger_question(meeting_id: str):
 
         # 2) Get all participants in this session
         # Students might be connected using either zoomMeetingId or MongoDB sessionId
-        # Check both to find all connected students
-        participants = ws_manager.get_session_participants(meeting_id)
-        session_ids_to_check = [meeting_id]
+        # ALWAYS check both IDs to find all connected students
+        
+        # First, try to find the session document to get both IDs
+        session_doc = None
+        session_ids_to_check = [meeting_id]  # Start with the provided meeting_id
         effective_meeting_id = meeting_id
         
-        # If no participants found with meeting_id, try to find the session and check both IDs
-        if not participants:
-            try:
-                # Try to find the session document to get both IDs
-                session_doc = None
+        try:
+            # Try to find the session document to get both IDs
+            # Try as integer first (Zoom IDs are usually integers)
+            if meeting_id.isdigit():
+                try:
+                    session_doc = await db.database.sessions.find_one({"zoomMeetingId": int(meeting_id)})
+                except:
+                    pass
+            
+            # Try as string
+            if not session_doc:
+                session_doc = await db.database.sessions.find_one({"zoomMeetingId": meeting_id})
+            
+            # Try as MongoDB ObjectId
+            if not session_doc:
+                try:
+                    if len(meeting_id) == 24:
+                        session_doc = await db.database.sessions.find_one({"_id": ObjectId(meeting_id)})
+                except:
+                    pass
+            
+            # If we found the session document, get both IDs
+            if session_doc:
+                zoom_id = str(session_doc.get("zoomMeetingId", "")) if session_doc.get("zoomMeetingId") else None
+                mongo_id = str(session_doc["_id"])
                 
-                # Try as integer first (Zoom IDs are usually integers)
-                if meeting_id.isdigit():
-                    try:
-                        session_doc = await db.database.sessions.find_one({"zoomMeetingId": int(meeting_id)})
-                    except:
-                        pass
+                # Add both IDs to check list (avoid duplicates)
+                if zoom_id and zoom_id not in session_ids_to_check:
+                    session_ids_to_check.append(zoom_id)
+                if mongo_id and mongo_id not in session_ids_to_check:
+                    session_ids_to_check.append(mongo_id)
                 
-                # Try as string
-                if not session_doc:
-                    session_doc = await db.database.sessions.find_one({"zoomMeetingId": meeting_id})
-                
-                # Try as MongoDB ObjectId
-                if not session_doc:
-                    try:
-                        if len(meeting_id) == 24:
-                            session_doc = await db.database.sessions.find_one({"_id": ObjectId(meeting_id)})
-                    except:
-                        pass
-                
-                if session_doc:
-                    # Get both zoomMeetingId and MongoDB sessionId
-                    zoom_id = str(session_doc.get("zoomMeetingId", "")) if session_doc.get("zoomMeetingId") else None
-                    mongo_id = str(session_doc["_id"])
-                    
-                    # Add both IDs to check list
-                    if zoom_id and zoom_id not in session_ids_to_check:
-                        session_ids_to_check.append(zoom_id)
-                    if mongo_id and mongo_id not in session_ids_to_check:
-                        session_ids_to_check.append(mongo_id)
-                    
-                    # Get participants from all possible session IDs
-                    participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
-                    
-                    if participants:
-                        # Use the session ID that has the most participants
-                        participant_counts = {}
-                        for p in participants:
-                            sid = p.get("sessionId", meeting_id)
-                            participant_counts[sid] = participant_counts.get(sid, 0) + 1
-                        
-                        if participant_counts:
-                            effective_meeting_id = max(participant_counts.items(), key=lambda x: x[1])[0]
-                            print(f"📍 Found {len(participants)} participants across multiple session IDs")
-                            print(f"   Using session ID: {effective_meeting_id} (has {participant_counts[effective_meeting_id]} participants)")
-                    else:
-                        print(f"⚠️ No participants found in any session room: {session_ids_to_check}")
-            except Exception as lookup_error:
-                print(f"⚠️ Error looking up session: {lookup_error}")
-                import traceback
-                traceback.print_exc()
+                print(f"📍 Found session document: title='{session_doc.get('title', 'N/A')}'")
+                print(f"   zoomMeetingId: {zoom_id}")
+                print(f"   mongoSessionId: {mongo_id}")
+                print(f"   Checking session IDs: {session_ids_to_check}")
+        except Exception as lookup_error:
+            print(f"⚠️ Error looking up session: {lookup_error}")
+            import traceback
+            traceback.print_exc()
+        
+        # Now check participants using ALL possible session IDs
+        # This ensures we find students regardless of which ID they used to join
+        participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
+        
+        if participants:
+            # Use the session ID that has the most participants
+            participant_counts = {}
+            for p in participants:
+                sid = p.get("sessionId", meeting_id)
+                participant_counts[sid] = participant_counts.get(sid, 0) + 1
+            
+            if participant_counts:
+                effective_meeting_id = max(participant_counts.items(), key=lambda x: x[1])[0]
+                print(f"📍 Found {len(participants)} participants across multiple session IDs")
+                print(f"   Using session ID: {effective_meeting_id} (has {participant_counts[effective_meeting_id]} participants)")
+        else:
+            print(f"⚠️ No participants found in any session room: {session_ids_to_check}")
+            # Show all active session rooms for debugging
+            all_stats = ws_manager.get_all_stats()
+            all_rooms = list(all_stats.get('session_rooms', {}).keys())
+            print(f"   All active session rooms: {all_rooms}")
         
         if not participants:
             return {"success": False, "message": "No students connected to this session. Make sure students have joined the meeting from the dashboard."}
@@ -106,18 +114,23 @@ async def trigger_question(meeting_id: str):
 
         # Debug: Show session room stats before sending
         all_stats = ws_manager.get_all_stats()
+        all_rooms = list(all_stats.get('session_rooms', {}).keys())
         print(f"\n{'='*60}")
         print(f"📊 QUIZ TRIGGER DEBUG INFO")
         print(f"{'='*60}")
         print(f"   Request meeting_id: {meeting_id}")
         print(f"   Effective meeting_id: {effective_meeting_id}")
         print(f"   Session IDs checked: {session_ids_to_check}")
-        print(f"   Total session rooms: {list(all_stats.get('session_rooms', {}).keys())}")
+        print(f"   All active session rooms: {all_rooms}")
         print(f"   Target session room: {meeting_id}")
         print(f"   Participants found: {len(participants)}")
-        print(f"   Participant details:")
-        for p in participants:
-            print(f"      - {p.get('studentName', 'Unknown')} (ID: {p.get('studentId', 'N/A')}, Session: {p.get('sessionId', meeting_id)})")
+        if participants:
+            print(f"   Participant details:")
+            for p in participants:
+                print(f"      - {p.get('studentName', 'Unknown')} (ID: {p.get('studentId', 'N/A')}, Session: {p.get('sessionId', meeting_id)})")
+        else:
+            print(f"   ⚠️ No participants found!")
+            print(f"   💡 Students must connect via WebSocket: /ws/session/<sessionId>/<studentId>")
         print(f"{'='*60}\n")
         
         # 3) Send DIFFERENT random question to EACH student
@@ -141,7 +154,18 @@ async def trigger_question(meeting_id: str):
         print(f"\n📊 Filter results: {len(participants)} total → {len(student_participants)} students")
         
         if not student_participants:
-            return {"success": False, "message": "No students found in session (only instructor connected)"}
+            # Provide more helpful error message
+            if participants:
+                instructor_count = len(participants) - len(student_participants)
+                return {
+                    "success": False, 
+                    "message": f"No students found in session (only {instructor_count} instructor(s) connected). Students must click 'Join' button on the session to receive quiz questions."
+                }
+            else:
+                return {
+                    "success": False, 
+                    "message": f"No participants found in session. Students must click 'Join' button on the session before you trigger questions. Session IDs checked: {session_ids_to_check}"
+                }
         
         ws_sent_count = 0
         sent_questions = []
