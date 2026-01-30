@@ -282,51 +282,41 @@ export const StudentDashboard = () => {
     correctAnswers: 0,       // Correct answers count
   });
 
-  // 📶 WebRTC-aware Connection Latency Monitoring
-  // This monitors network quality when student joins a session
-  const handleConnectionQualityChange = useCallback((quality: ConnectionQuality) => {
-    if (quality === 'poor' || quality === 'critical') {
-      toast.warning(`⚠️ Your connection quality is ${quality}. This may affect your session.`);
-    }
-  }, []);
-
-  // Build display name with fallbacks
-  const studentDisplayName = user 
-    ? (user.firstName && user.lastName 
-        ? `${user.firstName} ${user.lastName}`.trim()
-        : user.firstName || user.lastName || user.email?.split('@')[0] || 'Student')
-    : 'Student';
-
-  // 📶 Network monitoring state - only enabled when student actually joins Zoom meeting
-  const [networkMonitoringEnabled, setNetworkMonitoringEnabled] = useState(false);
-  
-  const {
-    isMonitoring: isLatencyMonitoring,
-    currentRtt,
-    quality: connectionQuality,
-    stats: latencyStats,
-    stopMonitoring,
-  } = useLatencyMonitor({
-    sessionId: connectedSessionId, // Only monitor when connected to a session
-    studentId: user?.id,
-    studentName: studentDisplayName, // Use proper display name
-    userRole: 'student', // Only student data is stored in database
-    enabled: networkMonitoringEnabled && !!connectedSessionId && !!user?.id, // Enable ONLY when explicitly enabled AND in a session
-    pingInterval: 3000, // Ping every 3 seconds for faster updates
-    reportInterval: 5000, // Report to server every 5 seconds
-    onQualityChange: handleConnectionQualityChange
-  });
-  
-  // Notify when monitoring starts (only when explicitly enabled)
+  // � POLLING FALLBACK - Check for new quizzes every 5 seconds
+  // More reliable than WebSocket alone, works through any network
   useEffect(() => {
-    if (isLatencyMonitoring && connectedSessionId && networkMonitoringEnabled) {
-      console.log('📶 Network monitoring ACTIVE:', {
-        sessionId: connectedSessionId,
-        studentId: user?.id,
-        studentName: studentDisplayName
-      });
-    }
-  }, [isLatencyMonitoring, networkMonitoringEnabled]); // Only trigger when monitoring status changes
+    if (!connectedSessionId || !user?.id) return;
+
+    const checkForNewQuiz = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/live/poll-quiz/${connectedSessionId}?studentId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.hasNewQuiz && data.quiz) {
+            console.log('📥 [POLLING] New quiz found:', data.quiz);
+            setIncomingQuiz(data.quiz);
+            setSessionQuizStats(prev => ({
+              ...prev,
+              questionsReceived: prev.questionsReceived + 1
+            }));
+            playNotificationSound();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    };
+
+    // Check every 5 seconds
+    const pollInterval = setInterval(checkForNewQuiz, 5000);
+    console.log('🔄 Polling started for session:', connectedSessionId);
+
+    return () => {
+      clearInterval(pollInterval);
+      console.log('🔄 Polling stopped');
+    };
+  }, [connectedSessionId, user?.id]);
 
   // ===========================================================
   // ⭐ LOAD SESSIONS AND AUTO-CONNECT TO LIVE SESSIONS
@@ -471,9 +461,8 @@ export const StudentDashboard = () => {
   };
 
   // ===========================================================
-  // 🎯 OPEN ZOOM MEETING AND START NETWORK MONITORING
-  // WebSocket connection happens automatically for live sessions
-  // But network quality monitoring only starts when student opens Zoom
+  // 🎯 OPEN ZOOM MEETING (SIMPLE VERSION)
+  // WebSocket + Polling handles quiz delivery automatically
   // ===========================================================
   const handleJoinSession = (session: Session) => {
     if (!session.join_url) {
@@ -489,35 +478,25 @@ export const StudentDashboard = () => {
       autoConnectToSession(session);
     }
     
-    // 📶 NOW enable network monitoring (student is joining real Zoom meeting)
-    if (!networkMonitoringEnabled) {
-      console.log('📶 Starting network monitoring - student joining Zoom');
-      setNetworkMonitoringEnabled(true);
-      toast.info('📶 Network monitoring started', {
-        description: 'Your connection quality is being tracked',
-        duration: 3000,
-      });
-    }
-    
     // Open Zoom meeting
     console.log('🎥 Opening Zoom meeting:', session.title);
     window.open(session.join_url, '_blank');
+    
+    toast.success('🎥 Zoom meeting opened', {
+      description: 'You\'ll receive quizzes automatically',
+      duration: 3000,
+    });
   };
 
-  // Cleanup session WebSocket and network monitoring on unmount or when leaving
+  // Cleanup session WebSocket on unmount
   useEffect(() => {
     return () => {
-      // Stop network monitoring when component unmounts
-      if (networkMonitoringEnabled) {
-        stopMonitoring();
-        setNetworkMonitoringEnabled(false);
-      }
       // Close WebSocket connection
       if (sessionWs) {
         sessionWs.close();
       }
     };
-  }, [sessionWs, networkMonitoringEnabled, stopMonitoring]);
+  }, [sessionWs]);
 
   // ===========================================================
   // ⭐ GLOBAL WebSocket — Receive Notifications (fallback)
@@ -574,11 +553,7 @@ export const StudentDashboard = () => {
               correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
             }));
           }}
-          networkStrength={{
-            quality: connectionQuality,
-            rttMs: currentRtt,
-            jitterMs: latencyStats?.jitter,
-          }}
+          networkStrength={null}
         />
       )}
 
@@ -593,18 +568,6 @@ export const StudentDashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* 📶 Connection Quality Badge - shows when connected to session */}
-          {connectedSessionId && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border">
-              <WifiIcon className="h-4 w-4 text-gray-500" />
-              <ConnectionQualityBadge
-                quality={connectionQuality}
-                rtt={currentRtt}
-                isMonitoring={isLatencyMonitoring}
-              />
-            </div>
-          )}
-          
           <Link to="/dashboard/student/engagement" className="w-full sm:w-auto">
             <Button
               variant="primary"
@@ -628,26 +591,15 @@ export const StudentDashboard = () => {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Network Strength - Shows connection quality when in session */}
+          {/* Connection Status - Simple indicator */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
             <WifiIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
-            <p className="text-sm font-medium">Network Strength</p>
+            <p className="text-sm font-medium">Connection</p>
             <p className="text-lg font-bold">
               {connectedSessionId ? (
-                <span className="capitalize" style={{ 
-                  color: connectionQuality === 'excellent' || connectionQuality === 'good' 
-                    ? '#b8e6d4' 
-                    : connectionQuality === 'fair' 
-                      ? '#fcd34d'
-                      : connectionQuality === 'poor' || connectionQuality === 'critical'
-                        ? '#fca5a5'
-                        : 'inherit'
-                }}>
-                  {connectionQuality}
-                  {currentRtt && <span className="text-xs ml-1">({Math.round(currentRtt)}ms)</span>}
-                </span>
+                <span style={{ color: '#b8e6d4' }}>Connected ✓</span>
               ) : (
-                <span className="text-gray-300">Not in session</span>
+                <span className="text-gray-300">Waiting...</span>
               )}
             </p>
           </div>
@@ -685,26 +637,15 @@ export const StudentDashboard = () => {
             </Link>
           </div>
 
-          {/* 📶 Show connection status banner when connected */}
+          {/* � Show simple connection status when connected */}
           {connectedSessionId && (
-            <div className="p-3 rounded-lg bg-white shadow" style={{ borderColor: '#3B82F6', borderWidth: '1px' }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3B82F6' }}></div>
-                  <span className="text-sm font-medium" style={{ color: '#4a8b73' }}>
-                    Connected to session
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <WifiIcon className="h-4 w-4" style={{ color: '#3B82F6' }} />
-                  <span className="text-xs" style={{ color: '#2563eb' }}>
-                    {currentRtt ? `${Math.round(currentRtt)}ms` : 'Measuring...'} • {connectionQuality}
-                  </span>
-                </div>
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full animate-pulse bg-green-500"></div>
+                <span className="text-sm font-medium text-green-800">
+                  ✓ Connected - You'll receive quizzes automatically
+                </span>
               </div>
-              <p className="text-xs mt-1" style={{ color: '#3B82F6' }}>
-                Your network quality is being monitored for engagement analysis.
-              </p>
             </div>
           )}
 
