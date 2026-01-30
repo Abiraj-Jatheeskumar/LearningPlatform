@@ -225,7 +225,7 @@ export const InstructorDashboard = () => {
     const targetSession = session || selectedSession;
     
     if (!targetSession) {
-      alert("❌ Please select a session first or click 'Trigger' on a specific session");
+      toast.error("❌ Please select a session first or click 'Trigger' on a specific session");
       return;
     }
     
@@ -233,31 +233,65 @@ export const InstructorDashboard = () => {
     const meetingId = targetSession.zoomMeetingId || targetSession.id;
     
     if (!meetingId) {
-      alert("❌ Session has no meeting ID");
+      toast.error("❌ Session has no meeting ID");
       return;
     }
+    
+    // Show loading toast
+    const loadingToast = toast.loading(`📤 Sending quiz to "${targetSession.title}"...`);
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
 
-      console.log(` Triggering question to session: ${meetingId} (${targetSession.title})`);
+      console.log(`🎯 Triggering question to session: ${meetingId} (${targetSession.title})`);
       
       const res = await axios.post(
         `${apiUrl}/api/live/trigger/${meetingId}`
       );
 
-      console.log("Trigger Response:", res.data);
+      console.log("✅ Trigger Response:", res.data);
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       
       if (res.data.success) {
         const sentCount = res.data.websocketSent || 0;
         const participants = res.data.participants || [];
-        alert(` Question sent to ${sentCount} students in "${targetSession.title}"!\n\nParticipants: ${participants.map((p: any) => p.studentId || p.studentName).join(', ') || 'None connected yet'}`);
+        const studentNames = participants
+          .filter((p: any) => !p.studentId?.startsWith('instructor_'))
+          .map((p: any) => p.studentName || p.studentId)
+          .join(', ');
+        
+        if (sentCount > 0) {
+          toast.success(
+            `✅ Question sent to ${sentCount} student${sentCount > 1 ? 's' : ''}!`,
+            {
+              description: studentNames || 'Students will receive the quiz',
+              duration: 5000,
+            }
+          );
+        } else {
+          toast.warning(
+            `⚠️ No students connected to "${targetSession.title}"`,
+            {
+              description: 'Make sure students have joined the meeting first',
+              duration: 5000,
+            }
+          );
+        }
       } else {
-        alert(`⚠️ ${res.data.message || 'Failed to send question'}`);
+        toast.error(`⚠️ ${res.data.message || 'Failed to send question'}`);
       }
-    } catch (error) {
-      console.error("Trigger Error:", error);
-      alert("❌ Failed to send question");
+    } catch (error: any) {
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
+      console.error("❌ Trigger Error:", error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to send question';
+      toast.error(`❌ Error: ${errorMessage}`, {
+        description: 'Please check your connection and try again',
+        duration: 5000,
+      });
     }
   };
 
