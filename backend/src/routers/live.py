@@ -215,6 +215,32 @@ async def trigger_question(meeting_id: str):
         print(f"✅ Questions sent to SESSION {meeting_id}: {ws_sent_count} students (each got a different random question)")
         print(f"   Participants: {[p.get('studentName', p.get('studentId', 'unknown')) for p in student_participants]}")
 
+        # 🔄 STORE QUIZ IN SESSION for polling fallback
+        # Store the first question as current_quiz (or pick one representative question)
+        if sent_questions and session_doc:
+            try:
+                # Pick the first question sent (they're all random anyway)
+                first_question = sent_questions[0]
+                quiz_data = {
+                    "questionId": first_question["questionId"],
+                    "question": first_question["question"],
+                    "options": questions[0]["options"],  # Get full options from original question
+                    "timeLimit": questions[0].get("timeLimit", 30),
+                    "difficulty": questions[0].get("difficulty", "medium"),
+                    "category": questions[0].get("category", "General"),
+                    "triggeredAt": datetime.now().isoformat(),
+                    "type": "quiz"
+                }
+                
+                # Update session document with current quiz
+                await db.database.sessions.update_one(
+                    {"_id": session_doc["_id"]},
+                    {"$set": {"current_quiz": quiz_data}}
+                )
+                print(f"📝 Stored quiz in session document for polling fallback")
+            except Exception as store_error:
+                print(f"⚠️ Failed to store quiz for polling: {store_error}")
+
         # 5) Optionally send Web Push Notifications to subscribed students in this session
         # (For now, push is still global - can be made session-specific later)
         push_sent_count = 0
@@ -310,3 +336,61 @@ async def debug_session_connections(session_id: str):
 async def get_all_stats():
     stats = ws_manager.get_all_stats()
     return {"success": True, "stats": stats}
+
+
+# ================================================================
+# 🔄 POLLING ENDPOINT - Students check for new quizzes
+# Backup delivery method when WebSocket registration fails
+# ================================================================
+@router.get("/poll-quiz/{session_id}")
+async def poll_quiz(session_id: str, studentId: str):
+    """
+    Students poll this endpoint every 5 seconds to check for new quizzes.
+    Returns the latest triggered quiz if one exists for this session.
+    This is a BACKUP to WebSocket delivery - more reliable on poor networks.
+    """
+    try:
+        # Check if there's a pending quiz for this session
+        # We'll store triggered quizzes in a simple in-memory cache
+        # (In production, you'd use Redis with TTL)
+        
+        # Get the latest triggered quiz from the session document
+        session_doc = None
+        try:
+            if session_id.isdigit():
+                session_doc = await db.database.sessions.find_one({"zoomMeetingId": int(session_id)})
+            if not session_doc:
+                session_doc = await db.database.sessions.find_one({"zoomMeetingId": session_id})
+            if not session_doc and len(session_id) == 24:
+                session_doc = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        except:
+            pass
+        
+        if not session_doc:
+            return {"hasNewQuiz": False, "message": "Session not found"}
+        
+        # Check if there's a current_quiz in the session (we'll add this field when triggering)
+        current_quiz = session_doc.get("current_quiz")
+        if not current_quiz:
+            return {"hasNewQuiz": False}
+        
+        # Check if student has already answered this quiz
+        quiz_id = current_quiz.get("questionId")
+        already_answered = await db.database.quiz_responses.find_one({
+            "studentId": studentId,
+            "questionId": quiz_id,
+            "sessionId": str(session_doc["_id"])
+        })
+        
+        if already_answered:
+            return {"hasNewQuiz": False, "message": "Already answered"}
+        
+        # Return the quiz
+        return {
+            "hasNewQuiz": True,
+            "quiz": current_quiz
+        }
+        
+    except Exception as e:
+        print(f"❌ Polling error: {e}")
+        return {"hasNewQuiz": False, "error": str(e)}
