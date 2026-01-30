@@ -6,10 +6,18 @@ Based on quiz performance and network quality metrics
 
 import os
 import joblib
-import pandas as pd
-import numpy as np
 from typing import Dict, Optional, Tuple
 from pathlib import Path
+
+# Optional ML dependencies (for Heroku deployment without ML)
+try:
+    import pandas as pd
+    import numpy as np
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    pd = None
+    np = None
 
 class EngagementPredictor:
     """
@@ -37,6 +45,10 @@ class EngagementPredictor:
     def load_model(self, model_path: str) -> bool:
         """Load the pre-trained model bundle"""
         try:
+            if not ML_AVAILABLE:
+                print("⚠️  ML libraries not available (pandas/numpy). Engagement prediction disabled.")
+                return False
+                
             if not os.path.exists(model_path):
                 print(f"⚠️  Model file not found: {model_path}")
                 print("   Engagement prediction will be disabled until model is added")
