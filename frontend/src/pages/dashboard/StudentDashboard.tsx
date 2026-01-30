@@ -282,6 +282,9 @@ export const StudentDashboard = () => {
     correctAnswers: 0,       // Correct answers count
   });
 
+  // 🎯 Track shown quizzes to prevent duplicates
+  const [shownQuizIds, setShownQuizIds] = useState<Set<string>>(new Set());
+
   // � POLLING FALLBACK - Check for new quizzes every 5 seconds
   // More reliable than WebSocket alone, works through any network
   useEffect(() => {
@@ -293,8 +296,17 @@ export const StudentDashboard = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.hasNewQuiz && data.quiz) {
+            const quizId = data.quiz.questionId;
+            
+            // ⚠️ PREVENT DUPLICATE: Don't show same quiz twice
+            if (shownQuizIds.has(quizId)) {
+              console.log('⏭️ [POLLING] Quiz already shown, skipping:', quizId);
+              return;
+            }
+            
             console.log('📥 [POLLING] New quiz found:', data.quiz);
             setIncomingQuiz(data.quiz);
+            setShownQuizIds(prev => new Set([...prev, quizId])); // Mark as shown
             setSessionQuizStats(prev => ({
               ...prev,
               questionsReceived: prev.questionsReceived + 1
@@ -316,7 +328,7 @@ export const StudentDashboard = () => {
       clearInterval(pollInterval);
       console.log('🔄 Polling stopped');
     };
-  }, [connectedSessionId, user?.id]);
+  }, [connectedSessionId, user?.id, shownQuizIds]);
 
   // ===========================================================
   // ⭐ LOAD SESSIONS AND AUTO-CONNECT TO LIVE SESSIONS
@@ -395,8 +407,17 @@ export const StudentDashboard = () => {
           if (data.type === "quiz") {
             console.log("📝 [AUTO-CONNECT] QUIZ RECEIVED:", data);
             
+            const quizId = data.questionId;
+            
+            // ⚠️ PREVENT DUPLICATE: Don't show same quiz twice
+            if (shownQuizIds.has(quizId)) {
+              console.log('⏭️ [WEBSOCKET] Quiz already shown, skipping:', quizId);
+              return;
+            }
+            
             // Set the quiz data immediately
             setIncomingQuiz(data);
+            setShownQuizIds(prev => new Set([...prev, quizId])); // Mark as shown
             
             // Update stats
             setSessionQuizStats(prev => ({
