@@ -24,32 +24,11 @@ export const ThemeProvider: React.FC<{
   useEffect(() => {
     const root = document.documentElement;
     
-    // Determine the actual theme to apply
-    let actualTheme: ResolvedTheme;
-    if (theme === 'system') {
-      actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } else {
-      actualTheme = theme as ResolvedTheme;
-    }
-
-    // Apply theme
+    // Force light mode always - ignore theme setting
     root.classList.remove('light', 'dark');
-    root.classList.add(actualTheme);
-    setResolvedTheme(actualTheme);
-    localStorage.setItem('theme', theme);
-
-    // Listen for system theme changes
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = (e: MediaQueryListEvent) => {
-        const newTheme = e.matches ? 'dark' : 'light';
-        root.classList.remove('light', 'dark');
-        root.classList.add(newTheme);
-        setResolvedTheme(newTheme);
-      };
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
+    root.classList.add('light');
+    setResolvedTheme('light');
+    localStorage.setItem('theme', 'light');
   }, [theme]);
 
   return <ThemeContext.Provider value={{

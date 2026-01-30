@@ -3,6 +3,13 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL */
+
+/* Force light theme globally */
+body {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+}
+
 @layer base {
   :root {
     /* #3B82F6 - Blue Theme */
