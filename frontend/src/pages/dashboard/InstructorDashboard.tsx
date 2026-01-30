@@ -167,15 +167,34 @@ export const InstructorDashboard = () => {
 
   // ================================
   // ⭐ START/JOIN ZOOM MEETING (INSTRUCTOR)
-  // Opens Zoom directly and starts network monitoring
+  // Marks session as live in backend, then opens Zoom
   // ================================
-  const handleJoinSession = (session: Session) => {
+  const handleJoinSession = async (session: Session) => {
     if (!session.start_url) {
       toast.error("❌ Zoom host start URL missing");
       return;
     }
     
-    // Open Zoom meeting directly
+    // If session is not already live, mark it as live first
+    if (session.status !== 'live') {
+      const result = await sessionService.startSession(session.id);
+      if (result.success) {
+        toast.success('✅ Session marked as live');
+        
+        // Update sessions list to reflect new status
+        const allSessions = await sessionService.getAllSessions();
+        const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
+        setSessions(filtered.slice(0, 5));
+        
+        // Update the session object with new status
+        session.status = 'live';
+      } else {
+        toast.error(result.message || 'Failed to start session');
+        return;
+      }
+    }
+    
+    // Open Zoom meeting
     window.open(session.start_url, '_blank');
     
     // Auto-select this session for triggering questions and network monitoring
@@ -183,7 +202,7 @@ export const InstructorDashboard = () => {
     
     // Show notifications
     toast.success(`🚀 Opening Zoom meeting: ${session.title}`);
-    toast.info(`📶 Network monitoring started for this session`);
+    toast.info(`📶 Network monitoring active for this session`);
     
     console.log('🎯 Instructor started meeting:', {
       sessionTitle: session.title,
@@ -407,12 +426,27 @@ export const InstructorDashboard = () => {
                             {/* Start Meeting button - Only show when meeting is NOT live */}
                             {session.status !== 'live' && (
                               <Button
-                                variant="outline"
+                                variant="primary"
                                 size="sm"
                                 leftIcon={<PlayIcon className="h-4 w-4" />}
                                 onClick={() => handleJoinSession(session)}
                               >
-                                Start Meeting
+                                Start & Join
+                              </Button>
+                            )}
+                            {/* Join Meeting button - Show when meeting IS live */}
+                            {session.status === 'live' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<PlayIcon className="h-4 w-4" />}
+                                onClick={() => {
+                                  window.open(session.start_url, '_blank');
+                                  setSelectedSession(session);
+                                  toast.success(`🚀 Rejoining: ${session.title}`);
+                                }}
+                              >
+                                Rejoin Meeting
                               </Button>
                             )}
                           </div>
@@ -478,12 +512,27 @@ export const InstructorDashboard = () => {
                             {/* Start Meeting button - Only show when meeting is NOT live */}
                             {session.status !== 'live' && (
                               <Button
-                                variant="outline"
+                                variant="primary"
                                 size="sm"
                                 leftIcon={<PlayIcon className="h-4 w-4" />}
                                 onClick={() => handleJoinSession(session)}
                               >
-                                Start Meeting
+                                Start & Join
+                              </Button>
+                            )}
+                            {/* Join Meeting button - Show when meeting IS live */}
+                            {session.status === 'live' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<PlayIcon className="h-4 w-4" />}
+                                onClick={() => {
+                                  window.open(session.start_url, '_blank');
+                                  setSelectedSession(session);
+                                  toast.success(`🚀 Rejoining: ${session.title}`);
+                                }}
+                              >
+                                Rejoin Meeting
                               </Button>
                             )}
                           </div>
