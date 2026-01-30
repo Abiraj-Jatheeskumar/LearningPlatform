@@ -227,7 +227,10 @@ export const SessionList = () => {
     const studentId = user?.id || `STUDENT_${Date.now()}`;
     const studentName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Unknown Student';
     const studentEmail = user?.email || '';
-    const wsBase = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'ws://localhost:8000';
+    
+    // Build WebSocket URL - convert https:// to wss://, http:// to ws://
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const wsBase = apiUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
     
     // Open Zoom meeting in new tab
     const zoomWindow = window.open(session.join_url, '_blank');
