@@ -329,13 +329,9 @@ export const StudentDashboard = () => {
   }, [isLatencyMonitoring, networkMonitoringEnabled]); // Only trigger when monitoring status changes
 
   // ===========================================================
-  // 🎯 REMOVED: AUTO-CONNECT TO LIVE SESSION
-  // Network monitoring must start ONLY when student clicks "Join Now"
-  // Students must explicitly join meetings - no automatic connections
-  // ===========================================================
-
-  // ===========================================================
-  // ⭐ LOAD REAL SESSIONS FROM BACKEND - Event-driven updates via WebSocket
+  // ⭐ LOAD SESSIONS AND AUTO-CONNECT TO LIVE SESSIONS
+  // Students automatically receive quizzes from any live session they're enrolled in
+  // No need to click "Join" button - connection is automatic
   // ===========================================================
   useEffect(() => {
     const loadSessions = async () => {
@@ -343,6 +339,13 @@ export const StudentDashboard = () => {
       // Show only upcoming and live sessions
       const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
       setSessions(filtered.slice(0, 5)); // Show max 5
+      
+      // 🎯 AUTO-CONNECT to the first LIVE session (if any)
+      const liveSession = filtered.find(s => s.status === 'live');
+      if (liveSession && !connectedSessionId) {
+        console.log('🎯 Auto-connecting to live session:', liveSession.title);
+        autoConnectToSession(liveSession);
+      }
     };
     
     // Initial load only - no polling
@@ -351,34 +354,21 @@ export const StudentDashboard = () => {
     // Sessions will be updated via WebSocket events (session_started, meeting_ended, etc.)
     // No polling interval - updates are event-driven
   }, []); // Only load once on mount
-
+  
   // ===========================================================
-  // 🎯 JOIN ZOOM MEETING + CONNECT TO SESSION WEBSOCKET
-  // Only students who click Join will receive quiz questions
-  // Uses shared WebSocket service to prevent duplicate connections
+  // 🔄 AUTO-CONNECT TO SESSION (NO ZOOM REQUIRED)
+  // Student receives quizzes without opening Zoom
   // ===========================================================
-  const handleJoinSession = (session: Session) => {
-    if (!session.join_url) {
-      alert("❌ Zoom join URL missing");
-      return;
-    }
-    
-    // Open Zoom meeting
-    window.open(session.join_url, '_blank');
-    
-    // 🎯 Connect to session-specific WebSocket using shared service
+  const autoConnectToSession = (session: Session) => {
     const studentId = user?.id || `STUDENT_${Date.now()}`;
     const studentName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Unknown Student';
     const studentEmail = user?.email || '';
     const sessionKey = session.zoomMeetingId || session.id;
     
-    console.log('🎯 [StudentDashboard] Joining session:', {
+    console.log('🔄 [AUTO-CONNECT] Connecting to session:', {
       sessionTitle: session.title,
       sessionKey: sessionKey,
-      zoomMeetingId: session.zoomMeetingId,
-      sessionId: session.id,
-      studentId: studentId,
-      studentName: studentName
+      studentId: studentId
     });
     
     // Use shared service to join session (prevents duplicate connections)
@@ -396,20 +386,23 @@ export const StudentDashboard = () => {
           correctAnswers: 0,
         });
         
+        // Request notification permission if not already granted
         if ("Notification" in window && Notification.permission === "default") {
           Notification.requestPermission();
         }
         
-        playNotificationSound();
-        toast.success(`✅ Joined "${session.title}" - Network monitoring started`);
+        toast.success(`✅ Connected to "${session.title}"`, {
+          description: "You'll receive quizzes automatically. Click 'Join' to open Zoom.",
+          duration: 5000,
+        });
       },
       onMessage: (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("📬 [StudentDashboard] Session WS message:", data);
+          console.log("📬 [AUTO-CONNECT] Session WS message:", data);
           
           if (data.type === "quiz") {
-            console.log("📝 [StudentDashboard] QUIZ RECEIVED:", data);
+            console.log("📝 [AUTO-CONNECT] QUIZ RECEIVED:", data);
             
             // Set the quiz data immediately
             setIncomingQuiz(data);
@@ -432,11 +425,10 @@ export const StudentDashboard = () => {
             // 🎉 Show toast with vibration on mobile
             toast.success("📝 New Quiz Question!", {
               description: data.question?.substring(0, 100) || "Answer the quiz now!",
-              duration: 15000, // Show for 15 seconds
+              duration: 15000,
               action: {
                 label: "Answer Now",
                 onClick: () => {
-                  // Quiz is already showing, just vibrate again
                   if (navigator.vibrate) {
                     navigator.vibrate([200, 100, 200]);
                   }
@@ -446,70 +438,64 @@ export const StudentDashboard = () => {
             
             // 📳 Vibrate mobile device if supported
             if (navigator.vibrate) {
-              // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
               navigator.vibrate([200, 100, 200]);
             }
-            
-            // 🎯 Try to bring app to foreground on mobile
-            if (document.hidden) {
-              console.log("⚠️ App is in background - quiz popup may not be visible");
-            }
           } else if (data.type === "session_joined") {
-            console.log("✅ Session join confirmed:", data);
+            console.log("✅ Auto-connect session join confirmed:", data);
           } else if (data.type === "meeting_ended") {
-            console.log("🔴 [StudentDashboard] Meeting ended event received:", data);
-            toast.info("🔴 Meeting has ended", {
-              description: "The host has ended the meeting",
-              duration: 5000,
-            });
-            if (networkMonitoringEnabled) {
-              stopMonitoring();
-              setNetworkMonitoringEnabled(false);
-            }
+            console.log("🔴 [AUTO-CONNECT] Meeting ended:", data);
+            toast.info("🔴 Meeting has ended");
             setConnectedSessionId(null);
-            if (sessionWs) {
-              sessionWs.close();
-              setSessionWs(null);
-            }
-            setSessions(prev => prev.map(s => 
-              (s.id === data.sessionId || s.zoomMeetingId === data.zoomMeetingId) 
-                ? { ...s, status: 'completed' as const }
-                : s
-            ).filter(s => s.status === 'upcoming' || s.status === 'live').slice(0, 5));
-          } else if (data.type === "session_started") {
-            console.log("🟢 [StudentDashboard] Session started event received:", data);
-            setSessions(prev => prev.map(s => 
-              (s.id === data.sessionId || s.zoomMeetingId === data.zoomMeetingId) 
-                ? { ...s, status: 'live' as const }
-                : s
-            ));
-          } else if (data.type === "participant_joined" || data.type === "participant_left") {
-            console.log(`👥 Participant ${data.type === 'participant_joined' ? 'joined' : 'left'}:`, data.studentName || data.studentId);
+            setNetworkMonitoringEnabled(false);
           }
         } catch (e) {
-          console.error("Error parsing WebSocket message:", e);
-        }
-      },
-      onClose: () => {
-        if (networkMonitoringEnabled) {
-          stopMonitoring();
-          setNetworkMonitoringEnabled(false);
-          console.log('📶 Network monitoring stopped - student left meeting');
-        }
-        
-        if (connectedSessionId === sessionKey) {
-          setConnectedSessionId(null);
+          console.error("Session WS message parse error:", e);
         }
       },
       onError: (error) => {
-        console.error("[StudentDashboard] Session WS ERROR:", error);
-        toast.error("Failed to connect to session");
+        console.error('❌ [AUTO-CONNECT] WebSocket error:', error);
+      },
+      onClose: () => {
+        console.log('🔴 [AUTO-CONNECT] WebSocket closed');
+        if (connectedSessionId === sessionKey) {
+          setConnectedSessionId(null);
+          setNetworkMonitoringEnabled(false);
+        }
       }
     });
     
     if (ws) {
       setSessionWs(ws);
     }
+  };
+
+  // ===========================================================
+  // 🎯 OPEN ZOOM MEETING (WebSocket Already Connected)
+  // WebSocket connection happens automatically for live sessions
+  // This button only opens Zoom - student already receives quizzes
+  // ===========================================================
+  const handleJoinSession = (session: Session) => {
+    if (!session.join_url) {
+      toast.error("❌ Zoom join URL missing");
+      return;
+    }
+    
+    const sessionKey = session.zoomMeetingId || session.id;
+    
+    // If not already connected, connect now
+    if (!connectedSessionId || connectedSessionId !== sessionKey) {
+      console.log('🎯 Connecting to session via Join button');
+      autoConnectToSession(session);
+    }
+    
+    // Open Zoom meeting
+    console.log('🎥 Opening Zoom meeting:', session.title);
+    window.open(session.join_url, '_blank');
+    
+    toast.success(`🎥 Opening Zoom for "${session.title}"`, {
+      description: "You're already connected and will receive quizzes",
+      duration: 3000,
+    });
   };
 
   // Cleanup session WebSocket and network monitoring on unmount or when leaving
