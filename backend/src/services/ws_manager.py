@@ -51,8 +51,18 @@ class WebSocketManager:
         NOTE: session_id here might be Zoom meeting ID or MongoDB ObjectId
         We look up the MongoDB session ID for proper persistence
         """
+        print(f"\n🎯 ==================== JOIN SESSION ROOM ====================")
+        print(f"📍 Session: {session_id}")
+        print(f"👤 Student: {student_id}")
+        print(f"📛 Name: {student_name}")
+        print(f"📧 Email: {student_email}")
+        print(f"🔌 WebSocket client: {websocket.client}")
+        
         if session_id not in self.session_rooms:
             self.session_rooms[session_id] = {}
+            print(f"✨ Created new session room: {session_id}")
+        else:
+            print(f"📦 Existing room has {len(self.session_rooms[session_id])} participants")
 
         final_student_name = student_name or f"Student {student_id[:8]}"
 

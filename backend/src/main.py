@@ -228,8 +228,14 @@ async def websocket_session(
       - student_name: Student's display name (for reports)
       - student_email: Student's email (for reports)
     """
+    print(f"\n🔌 ==================== WEBSOCKET CONNECTION ATTEMPT ====================")
+    print(f"📍 Path: /ws/session/{session_id}/{student_id}")
+    print(f"🌐 Client: {websocket.client}")
+    print(f"📋 Headers: {dict(websocket.headers)}")
+    
     try:
         await websocket.accept()
+        print(f"✅ WebSocket accepted for student {student_id}")
         
         # Get query parameters from URL
         query_params = dict(websocket.query_params)
