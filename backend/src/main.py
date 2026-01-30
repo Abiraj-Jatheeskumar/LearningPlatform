@@ -42,7 +42,13 @@ app = FastAPI(lifespan=lifespan)
 # --------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5175",
+        "http://localhost:3000",
+        "http://192.168.8.187:5175",
+        "https://learningplatform.me",
+        "https://www.learningplatform.me"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
