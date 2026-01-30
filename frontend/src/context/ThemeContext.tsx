@@ -11,10 +11,10 @@ export const ThemeProvider: React.FC<{
   children
 }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Check for saved theme preference or system preference
+    // Always default to light mode for consistency
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) return savedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return 'light';
   });
   useEffect(() => {
     // Apply theme class to document
