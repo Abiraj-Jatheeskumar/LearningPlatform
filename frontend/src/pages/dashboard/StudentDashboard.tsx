@@ -379,7 +379,8 @@ export const StudentDashboard = () => {
       studentEmail,
       onOpen: () => {
         setConnectedSessionId(sessionKey);
-        setNetworkMonitoringEnabled(true);
+        // ⚠️ DON'T enable network monitoring for auto-connect
+        // Only monitor network when student actually joins Zoom
         setSessionQuizStats({
           questionsReceived: 0,
           questionsAnswered: 0,
@@ -446,7 +447,7 @@ export const StudentDashboard = () => {
             console.log("🔴 [AUTO-CONNECT] Meeting ended:", data);
             toast.info("🔴 Meeting has ended");
             setConnectedSessionId(null);
-            setNetworkMonitoringEnabled(false);
+            // Network monitoring already disabled for auto-connect
           }
         } catch (e) {
           console.error("Session WS message parse error:", e);
@@ -459,7 +460,7 @@ export const StudentDashboard = () => {
         console.log('🔴 [AUTO-CONNECT] WebSocket closed');
         if (connectedSessionId === sessionKey) {
           setConnectedSessionId(null);
-          setNetworkMonitoringEnabled(false);
+          // Network monitoring already disabled for auto-connect
         }
       }
     });
@@ -470,9 +471,9 @@ export const StudentDashboard = () => {
   };
 
   // ===========================================================
-  // 🎯 OPEN ZOOM MEETING (WebSocket Already Connected)
+  // 🎯 OPEN ZOOM MEETING AND START NETWORK MONITORING
   // WebSocket connection happens automatically for live sessions
-  // This button only opens Zoom - student already receives quizzes
+  // But network quality monitoring only starts when student opens Zoom
   // ===========================================================
   const handleJoinSession = (session: Session) => {
     if (!session.join_url) {
@@ -488,14 +489,19 @@ export const StudentDashboard = () => {
       autoConnectToSession(session);
     }
     
+    // 📶 NOW enable network monitoring (student is joining real Zoom meeting)
+    if (!networkMonitoringEnabled) {
+      console.log('📶 Starting network monitoring - student joining Zoom');
+      setNetworkMonitoringEnabled(true);
+      toast.info('📶 Network monitoring started', {
+        description: 'Your connection quality is being tracked',
+        duration: 3000,
+      });
+    }
+    
     // Open Zoom meeting
     console.log('🎥 Opening Zoom meeting:', session.title);
     window.open(session.join_url, '_blank');
-    
-    toast.success(`🎥 Opening Zoom for "${session.title}"`, {
-      description: "You're already connected and will receive quizzes",
-      duration: 3000,
-    });
   };
 
   // Cleanup session WebSocket and network monitoring on unmount or when leaving
