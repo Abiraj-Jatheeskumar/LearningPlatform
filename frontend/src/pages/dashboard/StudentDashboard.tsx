@@ -186,47 +186,75 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPo
   const questionText = quiz.question || quiz.text || "No question text";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-96 max-w-[90vw] shadow-lg">
-        <h2 className="text-lg font-bold mb-3">📝 New Quiz</h2>
-
-        {/* Question Text */}
-        <p className="font-medium mb-4 text-gray-800">{questionText}</p>
-
-        {/* Options */}
-        <div className="space-y-2">
-          {options.length > 0 ? (
-            options.map((op: string, i: number) => (
-              <button
-                key={i}
-                className="w-full p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left"
-                disabled={isSubmitting || hasSubmitted}
-                onClick={() => handleAnswerClick(i)}
-              >
-                <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
-                {op}
-              </button>
-            ))
-          ) : (
-            <p className="text-red-500 text-sm">⚠️ No options available</p>
-          )}
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[9999] p-4 sm:p-6">
+      <div className="bg-white rounded-lg w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        {/* Header with Timer */}
+        <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 p-4 sm:p-5 rounded-t-lg shadow-md">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+              📝 New Quiz Question!
+            </h2>
+            <div className="flex items-center gap-2 bg-white bg-opacity-20 px-3 py-1.5 rounded-full">
+              <span className="text-xs sm:text-sm font-medium text-white">⏱️</span>
+              <span className={`text-sm sm:text-base font-bold ${timeLeft <= 10 ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
+                {timeLeft}s
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Timer and Status */}
-        <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
-          <span>
-            Time Left: <span className={`font-bold ${timeLeft <= 10 ? 'text-red-500' : ''}`}>{timeLeft}s</span>
-          </span>
-          {isSubmitting && <span style={{ color: '#3B82F6' }}>Sending...</span>}
-        </div>
+        {/* Question Content */}
+        <div className="p-4 sm:p-6">
+          {/* Question Text */}
+          <div className="mb-5 p-4 bg-gray-50 rounded-lg border-l-4 border-indigo-500">
+            <p className="text-base sm:text-lg font-semibold text-gray-900 leading-relaxed">
+              {questionText}
+            </p>
+          </div>
 
-        {/* Close button */}
-        <button
-          className="mt-4 w-full p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-          onClick={onClose}
-        >
-          Close
-        </button>
+          {/* Options */}
+          <div className="space-y-3">
+            {options.length > 0 ? (
+              options.map((op: string, i: number) => (
+                <button
+                  key={i}
+                  className="w-full p-4 bg-white border-2 border-gray-200 text-gray-900 rounded-xl hover:border-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-left shadow-sm hover:shadow-md active:scale-[0.98]"
+                  disabled={isSubmitting || hasSubmitted}
+                  onClick={() => handleAnswerClick(i)}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 bg-indigo-600 text-white rounded-full font-bold text-sm">
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="flex-1 pt-0.5 text-sm sm:text-base">{op}</span>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm font-medium">⚠️ No options available</p>
+              </div>
+            )}
+          </div>
+
+          {/* Status Footer */}
+          <div className="mt-5 pt-4 border-t border-gray-200">
+            {isSubmitting && (
+              <div className="flex items-center justify-center gap-2 text-indigo-600">
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm font-medium">Submitting answer...</span>
+              </div>
+            )}
+          </div>
+
+          {/* Close button */}
+          <button
+            className="mt-4 w-full p-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 text-sm font-medium"
+            onClick={onClose}
+          >
+            Skip Question
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -381,18 +409,51 @@ export const StudentDashboard = () => {
           console.log("📬 [StudentDashboard] Session WS message:", data);
           
           if (data.type === "quiz") {
+            console.log("📝 [StudentDashboard] QUIZ RECEIVED:", data);
+            
+            // Set the quiz data immediately
             setIncomingQuiz(data);
+            
+            // Update stats
             setSessionQuizStats(prev => ({
               ...prev,
               questionsReceived: prev.questionsReceived + 1
             }));
             
+            // 🔊 Play sound notification
+            playNotificationSound();
+            
+            // 📱 Show browser notification
+            showBrowserNotification(
+              "📝 New Quiz Question!",
+              data.question || "Open the app to answer now!"
+            );
+            
+            // 🎉 Show toast with vibration on mobile
             toast.success("📝 New Quiz Question!", {
-              description: data.question || "Answer the quiz now!",
-              duration: 10000,
+              description: data.question?.substring(0, 100) || "Answer the quiz now!",
+              duration: 15000, // Show for 15 seconds
+              action: {
+                label: "Answer Now",
+                onClick: () => {
+                  // Quiz is already showing, just vibrate again
+                  if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                  }
+                }
+              }
             });
             
-            playNotificationSound();
+            // 📳 Vibrate mobile device if supported
+            if (navigator.vibrate) {
+              // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
+              navigator.vibrate([200, 100, 200]);
+            }
+            
+            // 🎯 Try to bring app to foreground on mobile
+            if (document.hidden) {
+              console.log("⚠️ App is in background - quiz popup may not be visible");
+            }
           } else if (data.type === "session_joined") {
             console.log("✅ Session join confirmed:", data);
           } else if (data.type === "meeting_ended") {
