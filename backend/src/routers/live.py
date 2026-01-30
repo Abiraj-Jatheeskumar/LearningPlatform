@@ -86,7 +86,24 @@ async def trigger_question(meeting_id: str):
         
         # Now check participants using ALL possible session IDs
         # This ensures we find students regardless of which ID they used to join
+        print(f"\n🔍 DEBUG: Checking for participants with session IDs: {session_ids_to_check}")
+        
+        # Get ALL active WebSocket connections for debugging
+        all_stats = ws_manager.get_all_stats()
+        all_session_rooms = all_stats.get("session_rooms", {})
+        print(f"🔍 DEBUG: All active session rooms in backend: {list(all_session_rooms.keys())}")
+        for room_id, room_info in all_session_rooms.items():
+            print(f"   Room '{room_id}': {room_info.get('participant_count', 0)} participants")
+        
         participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
+        print(f"🔍 DEBUG: Found {len(participants)} participants using get_session_participants_by_multiple_ids")
+        
+        if not participants:
+            print(f"⚠️ WARNING: No participants found!")
+            print(f"   Requested meeting_id: {meeting_id}")
+            print(f"   Session IDs checked: {session_ids_to_check}")
+            print(f"   Active rooms: {list(all_session_rooms.keys())}")
+            print(f"\n💡 HINT: Student WebSocket must connect to one of: {session_ids_to_check}")
         
         # 🔍 DETAILED DEBUGGING: Show session_rooms dictionary keys
         print(f"\n{'='*60}")
