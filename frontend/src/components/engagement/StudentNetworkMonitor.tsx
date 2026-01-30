@@ -28,7 +28,9 @@ import {
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// VITE_API_URL already includes /api, so we check for that
+const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const API_BASE_URL = API_URL?.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
 
 interface StudentLatency {
   student_id: string;
@@ -147,7 +149,7 @@ const DEMO_STUDENTS: StudentLatency[] = [
 export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
   sessionId,
   autoRefresh = true,
-  refreshInterval = 3000, // Refresh every 3 seconds for real-time updates
+  refreshInterval = 2000, // Refresh every 2 seconds for near real-time updates
   className = '',
   compact = false,
   showDemoData = false
@@ -209,35 +211,20 @@ export const StudentNetworkMonitor: React.FC<StudentNetworkMonitorProps> = ({
     fetchStudentLatency();
   }, [sessionId]);
 
-  // Auto-refresh with countdown timer
+  // 🎯 OPTIMIZED: Event-driven updates instead of polling
+  // Use WebSocket events or manual refresh instead of continuous polling
+  // Only fetch when explicitly requested or when session state changes
   useEffect(() => {
-    if (!isAutoRefreshing || useDemoData) {
+    if (useDemoData) {
       return;
     }
 
-    // Reset countdown when refresh happens
-    setNextRefreshIn(refreshInterval / 1000);
-
-    // Countdown timer (updates every second)
-    const countdownInterval = setInterval(() => {
-      setNextRefreshIn(prev => {
-        if (prev <= 1) {
-          return refreshInterval / 1000;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Fetch interval
-    const fetchIntervalId = setInterval(() => {
-      fetchStudentLatency();
-    }, refreshInterval);
-
-    return () => {
-      clearInterval(countdownInterval);
-      clearInterval(fetchIntervalId);
-    };
-  }, [isAutoRefreshing, refreshInterval, useDemoData, fetchStudentLatency]);
+    // Initial fetch only
+    fetchStudentLatency();
+    
+    // Optional: Manual refresh can be triggered by parent component
+    // No automatic polling - updates should come via WebSocket events
+  }, [sessionId, useDemoData]); // Only refetch when sessionId changes
 
   // Refetch when demo mode changes
   useEffect(() => {

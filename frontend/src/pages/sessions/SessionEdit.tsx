@@ -17,7 +17,9 @@ export const SessionEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_BACKEND_URL;
+  // VITE_API_URL already includes /api, so we check for that
+  const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
+  const API_BASE = API_URL?.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
   const isInstructor = user?.role === "instructor" || user?.role === "admin";
 
   // ---------------------------------------
@@ -26,40 +28,58 @@ export const SessionEdit = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/session/${sessionId}`, {
+        const apiUrl = `${API_BASE}/api/sessions/${sessionId}`;
+        console.log('Fetching session from:', apiUrl);
+        
+        const res = await fetch(apiUrl, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
           },
         });
 
         const data = await res.json();
+        console.log('Session data received:', data);
 
         if (!res.ok) {
-          toast.error("Failed to load session");
+          console.error('Failed to load session:', data);
+          toast.error(data.detail || "Failed to load session");
+          return;
+        }
+
+        // Backend returns SessionOut model directly (FastAPI response_model)
+        if (!data || !data.title) {
+          console.error('Invalid session data received:', data);
+          toast.error("Session data is incomplete");
           return;
         }
 
         setInitialData({
-          title: data.title,
-          course: data.course,
-          courseCode: data.courseCode,
-          date: data.date,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          duration: data.duration,
-          description: data.description,
-          materials: data.materials || [],
+          title: data.title || '',
+          course: data.course || '',
+          courseCode: data.courseCode || '',
+          courseId: data.courseId,
+          date: data.date || '',
+          startTime: data.startTime || '',
+          endTime: data.endTime || '',
+          duration: data.duration || '',
+          description: data.description || '',
+          materials: Array.isArray(data.materials) ? data.materials : [],
         });
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching session:', err);
         toast.error("Error fetching session");
       } finally {
         setLoading(false);
       }
     };
 
-    load();
-  }, [sessionId]);
+    if (sessionId && API_BASE) {
+      load();
+    } else {
+      setLoading(false);
+      toast.error("Invalid session ID or API configuration");
+    }
+  }, [sessionId, API_BASE]);
 
   if (!isInstructor) {
     return (
@@ -106,13 +126,34 @@ export const SessionEdit = () => {
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/session/update/${sessionId}`, {
+      // Convert duration string to minutes (e.g., "90 min" -> 90)
+      const durationMatch = data.duration.match(/\d+/);
+      const durationMinutes = durationMatch ? parseInt(durationMatch[0]) : 90;
+
+      // Prepare the update payload
+      const updatePayload = {
+        title: data.title,
+        course: data.course,
+        courseCode: data.courseCode,
+        date: data.date,
+        time: data.startTime, // Backend uses 'time' field
+        startTime: data.startTime,
+        endTime: data.endTime,
+        durationMinutes: durationMinutes,
+        description: data.description,
+        materials: data.materials,
+      };
+
+      const apiUrl = `${API_BASE}/api/sessions/${sessionId}`;
+      console.log('Updating session at:', apiUrl);
+      
+      const res = await fetch(apiUrl, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(updatePayload),
       });
 
       const result = await res.json();

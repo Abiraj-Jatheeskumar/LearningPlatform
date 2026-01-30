@@ -7,10 +7,11 @@ from datetime import datetime
 
 from src.database.connection import db
 from src.middleware.auth import get_current_user, require_instructor
-from src.services.zoom_service import create_zoom_meeting, ZoomServiceError
+from src.services.zoom_service import create_zoom_meeting, list_zoom_meetings, get_zoom_meeting, ZoomServiceError
 from src.models.course import CourseModel
 from src.models.session_report_model import SessionReportModel
 from src.services.email_service import email_service
+from src.services.ws_manager import ws_manager
 
 router = APIRouter(prefix="/api/sessions", tags=["Sessions"])
 
@@ -22,8 +23,14 @@ class SessionCreate(BaseModel):
     courseId: Optional[str] = None  # Link to Course document for access control
     date: str          # "2025-11-25"
     time: str          # "10:00 AM - 11:00 AM" or "10:00"
+    startTime: Optional[str] = None  # Start time in HH:MM format
+    endTime: Optional[str] = None    # End time in HH:MM format
     durationMinutes: int
     timezone: str = "Asia/Colombo"
+    description: Optional[str] = None
+    materials: Optional[List[str]] = []
+    isStandalone: Optional[bool] = False  # True for standalone sessions
+    enrollmentKey: Optional[str] = None  # Enrollment key for standalone sessions
 
 
 class SessionOut(BaseModel):
@@ -36,6 +43,8 @@ class SessionOut(BaseModel):
     instructorId: Optional[str] = None  # Link to instructor user
     date: str
     time: str
+    startTime: Optional[str] = None  # Start time in HH:MM format
+    endTime: Optional[str] = None    # End time in HH:MM format
     duration: str
     status: str
     participants: Optional[int] = 0
@@ -45,6 +54,10 @@ class SessionOut(BaseModel):
     zoomMeetingId: Optional[str] = None
     join_url: Optional[str] = None
     start_url: Optional[str] = None
+    isStandalone: Optional[bool] = False
+    enrollmentKey: Optional[str] = None
+    description: Optional[str] = None
+    materials: Optional[List[str]] = []
 
 
 def _session_doc_to_out(doc, include_urls: bool = True) -> SessionOut:
@@ -58,6 +71,8 @@ def _session_doc_to_out(doc, include_urls: bool = True) -> SessionOut:
         instructorId=doc.get("instructorId"),
         date=doc["date"],
         time=doc["time"],
+        startTime=doc.get("startTime"),
+        endTime=doc.get("endTime"),
         duration=doc["duration"],
         status=doc.get("status", "upcoming"),
         participants=doc.get("participants", 0),
@@ -67,6 +82,10 @@ def _session_doc_to_out(doc, include_urls: bool = True) -> SessionOut:
         zoomMeetingId=str(doc.get("zoomMeetingId")) if doc.get("zoomMeetingId") else None,
         join_url=doc.get("join_url") if include_urls else None,
         start_url=doc.get("start_url") if include_urls else None,
+        isStandalone=doc.get("isStandalone", False),
+        enrollmentKey=doc.get("enrollmentKey"),
+        description=doc.get("description"),
+        materials=doc.get("materials", []),
     )
 
 
@@ -116,7 +135,11 @@ async def create_session(
             "instructorId": user["id"],  # Link to instructor user
             "date": payload.date,
             "time": payload.time,
+            "startTime": payload.startTime,
+            "endTime": payload.endTime,
             "duration": f"{payload.durationMinutes} minutes",
+            "description": payload.description,
+            "materials": payload.materials or [],
             "status": "upcoming",
             "participants": 0,
             "expectedParticipants": 0,
@@ -125,6 +148,9 @@ async def create_session(
             "zoomMeetingId": str(zoom["meeting_id"]),
             "join_url": zoom["join_url"],
             "start_url": zoom["start_url"],
+            "isStandalone": payload.isStandalone,  # Standalone session flag
+            "enrollmentKey": payload.enrollmentKey,  # Enrollment key for standalone sessions
+            "enrolledStudents": [],  # List of student IDs enrolled in this standalone session
             "createdAt": datetime.utcnow(),
         }
 
@@ -139,6 +165,191 @@ async def create_session(
     except Exception as e:
         print("Error creating session:", e)
         raise HTTPException(status_code=500, detail="Failed to create session")
+
+
+class SessionUpdate(BaseModel):
+    title: Optional[str] = None
+    course: Optional[str] = None
+    courseCode: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    startTime: Optional[str] = None
+    endTime: Optional[str] = None
+    durationMinutes: Optional[int] = None
+    description: Optional[str] = None
+    materials: Optional[List[str]] = None
+
+
+@router.put("/{session_id}", response_model=SessionOut)
+async def update_session(
+    session_id: str,
+    payload: SessionUpdate,
+    user: dict = Depends(require_instructor),
+):
+    """
+    Update an existing session.
+    Only the instructor who created the session can update it.
+    """
+    try:
+        # Find the session
+        session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Verify ownership
+        if session.get("instructorId") != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only edit your own sessions")
+        
+        # Prepare update data
+        update_data = {}
+        if payload.title is not None:
+            update_data["title"] = payload.title
+        if payload.course is not None:
+            update_data["course"] = payload.course
+        if payload.courseCode is not None:
+            update_data["courseCode"] = payload.courseCode
+        if payload.date is not None:
+            update_data["date"] = payload.date
+        if payload.time is not None:
+            update_data["time"] = payload.time
+        if payload.startTime is not None:
+            update_data["startTime"] = payload.startTime
+        if payload.endTime is not None:
+            update_data["endTime"] = payload.endTime
+        if payload.durationMinutes is not None:
+            update_data["duration"] = f"{payload.durationMinutes} minutes"
+        if payload.description is not None:
+            update_data["description"] = payload.description
+        if payload.materials is not None:
+            update_data["materials"] = payload.materials
+        
+        update_data["updatedAt"] = datetime.utcnow()
+        
+        # Update the session
+        await db.database.sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": update_data}
+        )
+        
+        # Fetch and return updated session
+        updated_session = await db.database.sessions.find_one({"_id": ObjectId(session_id)})
+        return _session_doc_to_out(updated_session)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("Error updating session:", e)
+        raise HTTPException(status_code=500, detail="Failed to update session")
+
+
+class EnrollmentRequest(BaseModel):
+    enrollmentKey: str
+
+
+@router.post("/enroll-by-key")
+async def enroll_by_key(
+    request: EnrollmentRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Enroll a student in a standalone session using an enrollment key.
+    Returns session details after successful enrollment.
+    """
+    try:
+        # Find session with matching enrollment key
+        session = await db.database.sessions.find_one({
+            "enrollmentKey": request.enrollmentKey.strip().upper(),
+            "isStandalone": True
+        })
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Invalid enrollment key. Please check and try again.")
+        
+        session_id = str(session["_id"])
+        user_id = user.get("id")
+        
+        # Check if student is already enrolled
+        if user_id in session.get("enrolledStudents", []):
+            return {
+                "success": True,
+                "message": "You are already enrolled in this session",
+                "sessionId": session_id,
+                "sessionTitle": session["title"]
+            }
+        
+        # Add student to enrolled students list
+        await db.database.sessions.update_one(
+            {"_id": session["_id"]},
+            {"$addToSet": {"enrolledStudents": user_id}}
+        )
+        
+        return {
+            "success": True,
+            "message": "Successfully enrolled in session",
+            "sessionId": session_id,
+            "sessionTitle": session["title"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("Error enrolling in session:", e)
+        raise HTTPException(status_code=500, detail="Failed to enroll in session")
+
+
+@router.post("/{session_id}/enroll")
+async def enroll_in_specific_session(
+    session_id: str,
+    request: EnrollmentRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Enroll a student in a specific standalone session using an enrollment key.
+    This is used when student clicks "Enter Key" for a specific session.
+    """
+    try:
+        # Find the session and verify enrollment key
+        session = await db.database.sessions.find_one({
+            "_id": ObjectId(session_id),
+            "isStandalone": True
+        })
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found or is not a standalone session")
+        
+        # Verify enrollment key matches
+        if session.get("enrollmentKey", "").upper() != request.enrollmentKey.strip().upper():
+            raise HTTPException(status_code=403, detail="Invalid enrollment key for this session")
+        
+        user_id = user.get("id")
+        
+        # Check if student is already enrolled
+        if user_id in session.get("enrolledStudents", []):
+            return {
+                "success": True,
+                "message": "You are already enrolled in this session",
+                "sessionId": session_id,
+                "sessionTitle": session["title"]
+            }
+        
+        # Add student to enrolled students list
+        await db.database.sessions.update_one(
+            {"_id": session["_id"]},
+            {"$addToSet": {"enrolledStudents": user_id}}
+        )
+        
+        return {
+            "success": True,
+            "message": "Successfully enrolled in session",
+            "sessionId": session_id,
+            "sessionTitle": session["title"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("Error enrolling in specific session:", e)
+        raise HTTPException(status_code=500, detail="Failed to enroll in session")
 
 
 @router.get("", response_model=List[SessionOut])
@@ -169,20 +380,32 @@ async def list_sessions(user: dict = Depends(get_current_user)):
         return [_session_doc_to_out(doc) for doc in sessions]
     
     else:
-        # Students see only sessions from courses they're enrolled in
+        # Students see:
+        # 1. Sessions from courses they're enrolled in
+        # 2. Standalone sessions they've enrolled in via enrollment key
         enrolled_courses = await CourseModel.find_enrolled_courses(user_id)
         enrolled_course_ids = [c["id"] for c in enrolled_courses]
         
-        if not enrolled_course_ids:
-            return []  # No enrolled courses = no sessions
+        all_sessions = []
         
-        cursor = db.database.sessions.find({
-            "courseId": {"$in": enrolled_course_ids}
+        # Get course-based sessions
+        if enrolled_course_ids:
+            cursor = db.database.sessions.find({
+                "courseId": {"$in": enrolled_course_ids}
+            }).sort("date", -1)
+            course_sessions = await cursor.to_list(length=None)
+            all_sessions.extend(course_sessions)
+        
+        # Get standalone sessions student is enrolled in
+        standalone_cursor = db.database.sessions.find({
+            "isStandalone": True,
+            "enrolledStudents": user_id
         }).sort("date", -1)
-        sessions = await cursor.to_list(length=None)
+        standalone_sessions = await standalone_cursor.to_list(length=None)
+        all_sessions.extend(standalone_sessions)
         
         # Include join URLs for enrolled students
-        return [_session_doc_to_out(doc, include_urls=True) for doc in sessions]
+        return [_session_doc_to_out(doc, include_urls=True) for doc in all_sessions]
 
 
 @router.get("/instructor/my-sessions", response_model=List[SessionOut])
@@ -226,20 +449,30 @@ async def get_session(session_id: str, user: dict = Depends(get_current_user)):
         user_id = user.get("id")
         
         # Access control
-        if user_role == "instructor":
-            if doc.get("instructorId") != user_id:
-                raise HTTPException(status_code=403, detail="You can only view your own sessions")
+        if user_role == "instructor" or user_role == "admin":
+            # Instructors and admins can view any session (needed for editing)
+            pass
         elif user_role == "student":
-            course_id = doc.get("courseId")
-            if course_id:
-                is_enrolled = await CourseModel.is_student_enrolled(course_id, user_id)
-                if not is_enrolled:
-                    raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+            # Students can only view sessions they're enrolled in
+            is_standalone = doc.get("isStandalone", False)
+            if is_standalone:
+                # For standalone sessions, check if student is enrolled
+                enrolled_students = doc.get("enrolledStudents", [])
+                if user_id not in enrolled_students:
+                    raise HTTPException(status_code=403, detail="You are not enrolled in this session")
+            else:
+                # For course-based sessions, check course enrollment
+                course_id = doc.get("courseId")
+                if course_id:
+                    is_enrolled = await CourseModel.is_student_enrolled(course_id, user_id)
+                    if not is_enrolled:
+                        raise HTTPException(status_code=403, detail="You are not enrolled in this course")
         
         return _session_doc_to_out(doc)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"Error fetching session: {e}")
         raise HTTPException(status_code=404, detail="Session not found")
 
 
@@ -404,6 +637,26 @@ async def start_session(
             }
         )
         
+        # 🎯 Broadcast session started event to all connected clients
+        # Use both session_id and zoomMeetingId to reach all participants
+        zoom_meeting_id = session.get("zoomMeetingId")
+        session_started_event = {
+            "type": "session_started",
+            "sessionId": session_id,
+            "zoomMeetingId": str(zoom_meeting_id) if zoom_meeting_id else None,
+            "status": "live",
+            "message": "Session has started",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Broadcast using zoomMeetingId if available
+        if zoom_meeting_id:
+            await ws_manager.broadcast_to_session(str(zoom_meeting_id), session_started_event)
+        # Also broadcast using MongoDB session_id
+        await ws_manager.broadcast_to_session(session_id, session_started_event)
+        
+        print(f"📢 Session started event broadcasted: session={session_id}, zoom={zoom_meeting_id}")
+        
         return {"success": True, "message": "Session started", "status": "live"}
         
     except HTTPException:
@@ -411,3 +664,112 @@ async def start_session(
     except Exception as e:
         print(f"Error starting session: {e}")
         raise HTTPException(status_code=500, detail="Failed to start session")
+
+
+@router.post("/sync-zoom-meetings")
+async def sync_zoom_meetings(
+    user: dict = Depends(require_instructor)
+):
+    """
+    Auto-sync previously scheduled Zoom meetings with the platform.
+    Fetches scheduled meetings from Zoom API and creates/updates session records.
+    """
+    try:
+        # Fetch scheduled meetings from Zoom
+        zoom_meetings = await list_zoom_meetings(page_size=100, type="scheduled")
+        
+        synced_count = 0
+        created_count = 0
+        updated_count = 0
+        
+        for zoom_meeting in zoom_meetings:
+            zoom_meeting_id = str(zoom_meeting.get("id"))
+            topic = zoom_meeting.get("topic", "Untitled Meeting")
+            start_time = zoom_meeting.get("start_time")
+            duration = zoom_meeting.get("duration", 60)
+            join_url = zoom_meeting.get("join_url")
+            start_url = zoom_meeting.get("start_url")
+            
+            # Check if session already exists with this Zoom meeting ID
+            existing_session = await db.database.sessions.find_one({
+                "zoomMeetingId": zoom_meeting_id,
+                "instructorId": user["id"]
+            })
+            
+            if existing_session:
+                # Update existing session with latest Zoom data
+                await db.database.sessions.update_one(
+                    {"_id": existing_session["_id"]},
+                    {
+                        "$set": {
+                            "title": topic,
+                            "join_url": join_url,
+                            "start_url": start_url,
+                            "duration": f"{duration} minutes",
+                            "updatedAt": datetime.utcnow()
+                        }
+                    }
+                )
+                updated_count += 1
+            else:
+                # Create new session from Zoom meeting
+                # Parse start_time to extract date and time
+                try:
+                    if start_time:
+                        dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                        date_str = dt.strftime("%Y-%m-%d")
+                        time_str = dt.strftime("%I:%M %p")
+                    else:
+                        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+                        time_str = datetime.utcnow().strftime("%I:%M %p")
+                except:
+                    date_str = datetime.utcnow().strftime("%Y-%m-%d")
+                    time_str = datetime.utcnow().strftime("%I:%M %p")
+                
+                new_session = {
+                    "title": topic,
+                    "course": "Synced from Zoom",
+                    "courseCode": "ZOOM_SYNC",
+                    "courseId": None,
+                    "instructor": f"{user.get('firstName', '')} {user.get('lastName', '')}".strip() or user.get("email", "Unknown Instructor"),
+                    "instructorId": user["id"],
+                    "date": date_str,
+                    "time": time_str,
+                    "startTime": dt.strftime("%H:%M") if start_time else None,
+                    "endTime": None,
+                    "duration": f"{duration} minutes",
+                    "status": "upcoming",
+                    "participants": 0,
+                    "expectedParticipants": 0,
+                    "engagement": 0,
+                    "recordingAvailable": False,
+                    "zoomMeetingId": zoom_meeting_id,
+                    "join_url": join_url,
+                    "start_url": start_url,
+                    "isStandalone": True,  # Mark as standalone since it's synced
+                    "enrollmentKey": None,
+                    "enrolledStudents": [],
+                    "createdAt": datetime.utcnow(),
+                    "syncedFromZoom": True
+                }
+                
+                await db.database.sessions.insert_one(new_session)
+                created_count += 1
+            
+            synced_count += 1
+        
+        return {
+            "success": True,
+            "message": f"Synced {synced_count} meetings from Zoom",
+            "syncedCount": synced_count,
+            "createdCount": created_count,
+            "updatedCount": updated_count
+        }
+        
+    except ZoomServiceError as ze:
+        raise HTTPException(status_code=400, detail=str(ze))
+    except Exception as e:
+        print(f"Error syncing Zoom meetings: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to sync Zoom meetings: {str(e)}")

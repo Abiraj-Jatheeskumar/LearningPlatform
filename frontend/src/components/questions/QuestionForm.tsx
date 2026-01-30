@@ -6,12 +6,16 @@ import { Question } from './QuestionBank';
 
 interface QuestionFormProps {
   question?: Question | null;
+  prefillQuestion?: Question | null;
+  prefillCategory?: string | null;
   onSave: (question: Question) => void;
   onCancel: () => void;
 }
 
 export const QuestionForm: React.FC<QuestionFormProps> = ({
   question,
+  prefillQuestion = null,
+  prefillCategory = null,
   onSave,
   onCancel
 }) => {
@@ -27,6 +31,28 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
 
   const [newTag, setNewTag] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const padOptions = (options: string[]) => {
+    const trimmed = options.filter(opt => opt.trim());
+    const padded = [...trimmed];
+    while (padded.length < 4) {
+      padded.push('');
+    }
+    return padded.slice(0, 6);
+  };
+
+  React.useEffect(() => {
+    if (!prefillQuestion || question) return;
+    setFormData({
+      question: prefillQuestion.question || '',
+      options: padOptions(prefillQuestion.options || []),
+      correctAnswer: prefillQuestion.correctAnswer ?? 0,
+      difficulty: prefillQuestion.difficulty || 'medium',
+      category: prefillCategory || prefillQuestion.category || '',
+      tags: prefillQuestion.tags || [],
+      timeLimit: prefillQuestion.timeLimit || 30
+    });
+  }, [prefillQuestion, prefillCategory, question]);
 
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...formData.options];

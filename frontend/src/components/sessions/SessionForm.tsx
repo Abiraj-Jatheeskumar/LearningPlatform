@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import { CalendarIcon, ClockIcon, FileTextIcon, PlusIcon, XIcon, UploadIcon, BookOpenIcon, AlertCircleIcon } from 'lucide-react';
-import { toast } from 'sonner';
-import { courseService, Course } from '../../services/courseService';
+import { CalendarIcon, ClockIcon, FileTextIcon, PlusIcon, XIcon, UploadIcon, BookOpenIcon } from 'lucide-react';
 
 export interface SessionMaterial {
   id: string;
@@ -27,6 +25,7 @@ export interface SessionFormData {
   duration: string;
   description: string;
   materials: SessionMaterial[];
+  isStandalone?: boolean;  // True for standalone sessions, false for course sessions
 }
 
 interface SessionFormProps {
@@ -34,80 +33,45 @@ interface SessionFormProps {
   onSubmit: (data: SessionFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  mode?: 'standalone' | 'course';  // Mode determines if enrollment key is needed
+  courseData?: {
+    id: string;
+    title: string;
+    code: string;
+  };
 }
 
 export const SessionForm: React.FC<SessionFormProps> = ({
   initialData,
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
+  mode = 'standalone',
+  courseData
 }) => {
   const [formData, setFormData] = useState<SessionFormData>({
     title: initialData?.title || '',
-    course: initialData?.course || '',
-    courseCode: initialData?.courseCode || '',
-    courseId: initialData?.courseId || '',
+    course: initialData?.course || courseData?.title || '',
+    courseCode: initialData?.courseCode || courseData?.code || '',
+    courseId: initialData?.courseId || courseData?.id || '',
     date: initialData?.date || '',
     startTime: initialData?.startTime || '',
     endTime: initialData?.endTime || '',
     duration: initialData?.duration || '90 min',
     description: initialData?.description || '',
-    materials: initialData?.materials || []
+    materials: initialData?.materials || [],
+    isStandalone: mode === 'standalone'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loadingCourses, setLoadingCourses] = useState(true);
 
-  // Fetch instructor's courses
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        setLoadingCourses(true);
-        const response = await courseService.getMyCourses();
-        // Only show published courses
-        const publishedCourses = (response.courses || []).filter(c => c.status === 'published');
-        setCourses(publishedCourses);
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
-      } finally {
-        setLoadingCourses(false);
-      }
-    };
-    fetchCourses();
-  }, []);
-
-  // Handle course selection
-  const handleCourseSelect = (courseId: string) => {
-    const selectedCourse = courses.find(c => c.id === courseId);
-    if (selectedCourse) {
-      setFormData({
-        ...formData,
-        courseId: selectedCourse.id,
-        course: selectedCourse.title,
-        courseCode: selectedCourse.category || selectedCourse.title.substring(0, 6).toUpperCase()
-      });
-    } else {
-      setFormData({
-        ...formData,
-        courseId: '',
-        course: '',
-        courseCode: ''
-      });
-    }
-  };
+  // No need to fetch courses for standalone mode anymore
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
-    }
-    if (!formData.course.trim()) {
-      newErrors.course = 'Course is required';
-    }
-    if (!formData.courseCode.trim()) {
-      newErrors.courseCode = 'Course code is required';
     }
     if (!formData.date) {
       newErrors.date = 'Date is required';
@@ -129,7 +93,10 @@ export const SessionForm: React.FC<SessionFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      onSubmit({
+        ...formData,
+        isStandalone: mode === 'standalone'
+      });
     }
   };
 
@@ -172,84 +139,41 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900">Session Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {mode === 'course' ? 'Add Meeting to Course' : 'Meeting Information'}
+          </h2>
+          {mode === 'course' && courseData && (
+            <p className="text-sm text-gray-500 mt-1">
+              Creating session for: <span className="font-medium text-indigo-600">{courseData.title}</span>
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Course Selection */}
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <label className="block text-sm font-medium text-indigo-900 mb-2 flex items-center">
-              <BookOpenIcon className="h-4 w-4 mr-2" />
-              Select Course *
-            </label>
-            {loadingCourses ? (
-              <p className="text-sm text-indigo-600">Loading your courses...</p>
-            ) : courses.length === 0 ? (
-              <div className="flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <AlertCircleIcon className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+          {/* Course Info Display - For Course Mode */}
+          {mode === 'course' && courseData && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <BookOpenIcon className="h-5 w-5 text-green-600 mr-2" />
                 <div>
-                  <p className="text-sm font-medium text-yellow-800">No published courses found</p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    You need to create and publish a course first. Only enrolled students will be able to see sessions for that course.
-                  </p>
+                  <p className="text-sm font-medium text-green-900">{courseData.title}</p>
+                  <p className="text-xs text-green-700">Course Code: {courseData.code}</p>
                 </div>
               </div>
-            ) : (
-              <>
-                <select
-                  value={formData.courseId || ''}
-                  onChange={(e) => handleCourseSelect(e.target.value)}
-                  className="block w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                >
-                  <option value="">-- Select a course --</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.title} ({course.enrolledStudents?.length || 0} students enrolled)
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-indigo-600 mt-2">
-                  ℹ️ Only students enrolled in this course will be able to see and join this session.
-                </p>
-              </>
-            )}
-            {errors.courseId && <p className="text-sm text-red-600 mt-1">{errors.courseId}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Session Title *
-              </label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Machine Learning: Neural Networks"
-                error={errors.title}
-              />
+              <p className="text-xs text-green-600 mt-2">
+                ✓ Students enrolled in this course can access this session without a separate enrollment key.
+              </p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Course Code
-              </label>
-              <Input
-                value={formData.courseCode}
-                onChange={(e) => setFormData({ ...formData, courseCode: e.target.value })}
-                placeholder="Auto-filled from course"
-                disabled={!!formData.courseId}
-              />
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Course Name
+              Meeting Title *
             </label>
             <Input
-              value={formData.course}
-              onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-              placeholder="Auto-filled from course"
-              disabled={!!formData.courseId}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g., Machine Learning: Neural Networks"
+              error={errors.title}
             />
           </div>
 
@@ -469,4 +393,3 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     </form>
   );
 };
-

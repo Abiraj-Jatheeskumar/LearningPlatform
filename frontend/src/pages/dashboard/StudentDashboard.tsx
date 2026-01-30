@@ -231,34 +231,6 @@ const QuizPopup = ({ quiz, onClose, onAnswerSubmitted, networkStrength }: QuizPo
   );
 };
 
-// --------------------------------------
-// DEFAULT DASHBOARD CONTENT
-// --------------------------------------
-const recentActivities = [
-  {
-    id: "1",
-    type: "session",
-    title: "Database Management Systems",
-    course: "CS202: Database Systems",
-    date: "2023-10-10",
-    engagement: "High",
-  },
-  {
-    id: "2",
-    type: "quiz",
-    title: "Mid-term Assessment",
-    course: "CS301: Machine Learning Fundamentals",
-    date: "2023-10-08",
-    score: "85%",
-  },
-];
-
-const performanceData = {
-  engagementScore: 85,
-  attendanceRate: 92,
-  questionsAsked: 12,
-  quizAverage: 88,
-};
 
 // --------------------------------------
 // MAIN COMPONENT
@@ -270,7 +242,9 @@ export const StudentDashboard = () => {
   
   // 🎯 Session WebSocket state - only joined sessions receive quizzes
   const [sessionWs, setSessionWs] = useState<WebSocket | null>(null);
-  const [connectedSessionId, setConnectedSessionId] = useState<string | null>(null);
+  const [connectedSessionId, setConnectedSessionId] = useState<string | null>(
+    localStorage.getItem('connectedSessionId')
+  );
   
   // 📊 Session quiz tracking - resets each session
   const [sessionQuizStats, setSessionQuizStats] = useState({
@@ -294,24 +268,45 @@ export const StudentDashboard = () => {
         : user.firstName || user.lastName || user.email?.split('@')[0] || 'Student')
     : 'Student';
 
+  // 📶 Network monitoring state - only enabled when student actually joins Zoom meeting
+  const [networkMonitoringEnabled, setNetworkMonitoringEnabled] = useState(false);
+  
   const {
     isMonitoring: isLatencyMonitoring,
     currentRtt,
     quality: connectionQuality,
     stats: latencyStats,
+    stopMonitoring,
   } = useLatencyMonitor({
     sessionId: connectedSessionId, // Only monitor when connected to a session
     studentId: user?.id,
     studentName: studentDisplayName, // Use proper display name
     userRole: 'student', // Only student data is stored in database
-    enabled: !!connectedSessionId && !!user?.id, // Enable only when in a session
+    enabled: networkMonitoringEnabled && !!connectedSessionId && !!user?.id, // Enable ONLY when explicitly enabled AND in a session
     pingInterval: 3000, // Ping every 3 seconds for faster updates
     reportInterval: 5000, // Report to server every 5 seconds
     onQualityChange: handleConnectionQualityChange
   });
+  
+  // Notify when monitoring starts (only when explicitly enabled)
+  useEffect(() => {
+    if (isLatencyMonitoring && connectedSessionId && networkMonitoringEnabled) {
+      console.log('📶 Network monitoring ACTIVE:', {
+        sessionId: connectedSessionId,
+        studentId: user?.id,
+        studentName: studentDisplayName
+      });
+    }
+  }, [isLatencyMonitoring, networkMonitoringEnabled]); // Only trigger when monitoring status changes
 
   // ===========================================================
-  // ⭐ LOAD REAL SESSIONS FROM BACKEND
+  // 🎯 REMOVED: AUTO-CONNECT TO LIVE SESSION
+  // Network monitoring must start ONLY when student clicks "Join Now"
+  // Students must explicitly join meetings - no automatic connections
+  // ===========================================================
+
+  // ===========================================================
+  // ⭐ LOAD REAL SESSIONS FROM BACKEND - Event-driven updates via WebSocket
   // ===========================================================
   useEffect(() => {
     const loadSessions = async () => {
@@ -320,11 +315,13 @@ export const StudentDashboard = () => {
       const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
       setSessions(filtered.slice(0, 5)); // Show max 5
     };
+    
+    // Initial load only - no polling
     loadSessions();
     
-    const interval = setInterval(loadSessions, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
-  }, []);
+    // Sessions will be updated via WebSocket events (session_started, meeting_ended, etc.)
+    // No polling interval - updates are event-driven
+  }, []); // Only load once on mount
 
   // ===========================================================
   // 🎯 JOIN ZOOM MEETING + CONNECT TO SESSION WEBSOCKET
@@ -346,6 +343,15 @@ export const StudentDashboard = () => {
     const sessionKey = session.zoomMeetingId || session.id;
     const wsBase = import.meta.env.VITE_WS_URL;
     
+    console.log('🎯 Joining session:', {
+      sessionTitle: session.title,
+      sessionKey: sessionKey,
+      zoomMeetingId: session.zoomMeetingId,
+      sessionId: session.id,
+      studentId: studentId,
+      studentName: studentName
+    });
+    
     // Include student name and email as query parameters for report generation
     const encodedName = encodeURIComponent(studentName);
     const encodedEmail = encodeURIComponent(studentEmail);
@@ -365,6 +371,11 @@ export const StudentDashboard = () => {
     ws.onopen = () => {
       console.log(`✅ Connected to session ${sessionKey} WebSocket`);
       setConnectedSessionId(sessionKey);
+      localStorage.setItem('connectedSessionId', sessionKey);
+      
+      // 🎯 START NETWORK MONITORING ONLY AFTER SUCCESSFUL WEBSOCKET CONNECTION
+      // This ensures monitoring starts only when student actually joins
+      setNetworkMonitoringEnabled(true);
       
       // 📊 Reset session quiz stats for new session
       setSessionQuizStats({
@@ -381,18 +392,64 @@ export const StudentDashboard = () => {
       // Play a subtle sound to confirm connection
       playNotificationSound();
       
-      alert(`✅ Joined session "${session.title}"! You will receive quiz notifications.`);
+      // Show success notification
+      toast.success(`✅ Joined "${session.title}" - Network monitoring started`);
     };
     
     ws.onclose = () => {
       console.log(`🔌 Session ${sessionKey} WebSocket closed`);
+      
+      // 🎯 STOP NETWORK MONITORING when WebSocket closes (student left meeting)
+      if (networkMonitoringEnabled) {
+        stopMonitoring();
+        setNetworkMonitoringEnabled(false);
+        console.log('📶 Network monitoring stopped - student left meeting');
+      }
+      
+      // Clear connection state
       if (connectedSessionId === sessionKey) {
         setConnectedSessionId(null);
+        localStorage.removeItem('connectedSessionId');
+      }
+      
+      // Auto-reconnect logic for maintaining real-time consistency (only if still in session)
+      if (connectedSessionId === sessionKey) {
+        console.log('🔄 Attempting to reconnect WebSocket...');
+        
+        // Attempt reconnection after 1 second
+        setTimeout(() => {
+          if (connectedSessionId === sessionKey) { // Only reconnect if still supposed to be connected
+            console.log('🔄 Reconnecting to session WebSocket...');
+            const reconnectWs = new WebSocket(sessionWsUrl);
+            
+            reconnectWs.onopen = () => {
+              console.log(`✅ Reconnected to session ${sessionKey} WebSocket`);
+              setSessionWs(reconnectWs);
+              
+              // Re-enable network monitoring on successful reconnect
+              setNetworkMonitoringEnabled(true);
+              
+              // Re-register with server
+              reconnectWs.send(JSON.stringify({
+                type: "reconnect",
+                sessionId: sessionKey,
+                studentId: studentId,
+                studentName: studentName,
+                studentEmail: studentEmail
+              }));
+            };
+            
+            reconnectWs.onmessage = ws.onmessage; // Reuse same message handler
+            reconnectWs.onerror = ws.onerror;
+            reconnectWs.onclose = ws.onclose; // Will trigger cleanup again if needed
+          }
+        }, 1000);
       }
     };
     
     ws.onerror = (err) => {
       console.error("Session WS ERROR:", err);
+      // Error will trigger onclose, which handles reconnection
     };
     
     ws.onmessage = (event) => {
@@ -427,6 +484,44 @@ export const StudentDashboard = () => {
           setIncomingQuiz(data);
         } else if (data.type === "session_joined") {
           console.log("✅ Session join confirmed:", data);
+        } else if (data.type === "participant_joined" || data.type === "participant_left") {
+          // Real-time participant status update - refresh session list to show updated participant count
+          console.log(`👥 Participant ${data.type === 'participant_joined' ? 'joined' : 'left'}:`, data.studentName || data.studentId);
+          // Optionally refresh sessions to show updated participant counts
+          // This will be handled by the auto-refresh interval already in place
+        } else if (data.type === "meeting_ended") {
+          console.log("🔴 [StudentDashboard] Meeting ended event received:", data);
+          toast.info("🔴 Meeting has ended", {
+            description: "The host has ended the meeting",
+            duration: 5000,
+          });
+          // Stop network monitoring
+          if (networkMonitoringEnabled) {
+            stopMonitoring();
+            setNetworkMonitoringEnabled(false);
+          }
+          // Clear connection state
+          setConnectedSessionId(null);
+          localStorage.removeItem('connectedSessionId');
+          // Close WebSocket
+          if (sessionWs) {
+            sessionWs.close();
+            setSessionWs(null);
+          }
+          // Update sessions list (event-driven, no API call needed)
+          setSessions(prev => prev.map(s => 
+            (s.id === data.sessionId || s.zoomMeetingId === data.zoomMeetingId) 
+              ? { ...s, status: 'completed' as const }
+              : s
+          ).filter(s => s.status === 'upcoming' || s.status === 'live').slice(0, 5));
+        } else if (data.type === "session_started") {
+          console.log("🟢 [StudentDashboard] Session started event received:", data);
+          // Update sessions list (event-driven, no API call needed)
+          setSessions(prev => prev.map(s => 
+            (s.id === data.sessionId || s.zoomMeetingId === data.zoomMeetingId) 
+              ? { ...s, status: 'live' as const }
+              : s
+          ));
         }
       } catch (e) {
         console.error("Session WS JSON ERROR:", e);
@@ -436,14 +531,20 @@ export const StudentDashboard = () => {
     setSessionWs(ws);
   };
 
-  // Cleanup session WebSocket on unmount
+  // Cleanup session WebSocket and network monitoring on unmount or when leaving
   useEffect(() => {
     return () => {
+      // Stop network monitoring when component unmounts
+      if (networkMonitoringEnabled) {
+        stopMonitoring();
+        setNetworkMonitoringEnabled(false);
+      }
+      // Close WebSocket connection
       if (sessionWs) {
         sessionWs.close();
       }
     };
-  }, [sessionWs]);
+  }, [sessionWs, networkMonitoringEnabled, stopMonitoring]);
 
   // ===========================================================
   // ⭐ GLOBAL WebSocket — Receive Notifications (fallback)
@@ -546,19 +647,14 @@ export const StudentDashboard = () => {
 
       {/* Performance Summary */}
       <div className="mb-8 text-white rounded-xl shadow-lg p-6" style={{ background: 'linear-gradient(to right, #3B82F6, #2563eb)' }}>
-        <div className="flex justify-between">
-          <div>
-            <h2 className="text-xl font-bold">Your Learning Summary</h2>
-            <p className="mt-1" style={{ color: '#d1f5e8' }}>
-              You are in <span className="font-semibold">Active Participants</span>
-            </p>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-white bg-opacity-25 text-sm font-medium">
-            {performanceData.engagementScore}% Engagement
-          </span>
+        <div>
+          <h2 className="text-xl font-bold">Your Learning Summary</h2>
+          <p className="mt-1" style={{ color: '#d1f5e8' }}>
+            You are in <span className="font-semibold">Active Participants</span>
+          </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Network Strength - Shows connection quality when in session */}
           <div className="bg-white bg-opacity-10 rounded-lg p-4">
             <WifiIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
@@ -601,29 +697,24 @@ export const StudentDashboard = () => {
               </span>
             </p>
           </div>
-
-          <div className="bg-white bg-opacity-10 rounded-lg p-4">
-            <CalendarIcon className="h-6 w-6" style={{ color: '#b8e6d4' }} />
-            <p className="text-sm font-medium">Next Class</p>
-            <p className="text-lg font-bold">7 days</p>
-          </div>
         </div>
       </div>
 
-      {/* Upcoming + Recent */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* REAL Upcoming Sessions */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900">Your Sessions</h3>
+      {/* Meetings Section */}
+      <div>
+        {/* MEETINGS SECTIONS */}
+        <div className="space-y-4">
+          {/* Header with View All Link */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">Your Meetings</h3>
             <Link to="/dashboard/sessions">
               <span className="text-sm hover:opacity-80" style={{ color: '#3B82F6' }}>View All</span>
             </Link>
           </div>
-          
+
           {/* 📶 Show connection status banner when connected */}
           {connectedSessionId && (
-            <div className="mx-4 mb-4 p-3 rounded-lg" style={{ backgroundColor: '#eff6ff', borderColor: '#3B82F6', borderWidth: '1px' }}>
+            <div className="p-3 rounded-lg bg-white shadow" style={{ borderColor: '#3B82F6', borderWidth: '1px' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3B82F6' }}></div>
@@ -645,79 +736,120 @@ export const StudentDashboard = () => {
           )}
 
           {sessions.length === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500">
-              <p className="text-sm">No upcoming sessions</p>
+            <div className="bg-white shadow rounded-lg px-4 py-8 text-center text-gray-500">
+              <p className="text-sm">No upcoming meetings</p>
             </div>
           ) : (
-            sessions.map((session) => {
-              const sessionKey = session.zoomMeetingId || session.id;
-              const isConnectedToThis = connectedSessionId === sessionKey;
-              
-              return (
-                <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#eff6ff' } : {}}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
-                          {session.title}
-                        </p>
-                        {session.status === 'live' && (
-                          <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
-                        )}
-                        {isConnectedToThis && (
-                          <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#3B82F6' }}>CONNECTED</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {session.course} • {session.instructor}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                        <CalendarIcon className="h-3 w-3" />
-                        {session.date} • {session.time}
-                      </p>
-                    </div>
-                    <Button
-                      variant={isConnectedToThis ? 'secondary' : session.status === 'live' ? 'primary' : 'outline'}
-                      size="sm"
-                      leftIcon={isConnectedToThis ? <WifiIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
-                      onClick={() => handleJoinSession(session)}
-                    >
-                      {isConnectedToThis ? 'Joined' : session.status === 'live' ? 'Join' : 'Join'}
-                    </Button>
+            <>
+              {/* STANDALONE MEETINGS SECTION */}
+              {sessions.filter(s => s.isStandalone === true).length > 0 && (
+                <div className="bg-white shadow rounded-lg">
+                  <div className="px-4 py-3 border-b">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="text-indigo-600"></span>
+                      Standalone Meetings
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Meetings you've enrolled in with a key
+                    </p>
                   </div>
+                  {sessions.filter(s => s.isStandalone === true).map((session) => {
+                    const sessionKey = session.zoomMeetingId || session.id;
+                    const isConnectedToThis = connectedSessionId === sessionKey;
+                    
+                    return (
+                      <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#eff6ff' } : {}}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
+                                {session.title}
+                              </p>
+                              {session.status === 'live' && (
+                                <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
+                              )}
+                              {isConnectedToThis && (
+                                <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#3B82F6' }}>CONNECTED</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {session.course} • {session.instructor}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                              <CalendarIcon className="h-3 w-3" />
+                              {session.date} • {session.time}
+                            </p>
+                          </div>
+                          <Button
+                            variant={isConnectedToThis ? 'secondary' : session.status === 'live' ? 'primary' : 'outline'}
+                            size="sm"
+                            leftIcon={isConnectedToThis ? <WifiIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                            onClick={() => handleJoinSession(session)}
+                          >
+                            {isConnectedToThis ? 'Joined' : session.status === 'live' ? 'Join' : 'Join'}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })
+              )}
+
+              {/* COURSE MEETINGS SECTION */}
+              {sessions.filter(s => !s.isStandalone).length > 0 && (
+                <div className="bg-white shadow rounded-lg">
+                  <div className="px-4 py-3 border-b">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="text-blue-600"></span>
+                      Course Meetings
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Meetings from your enrolled courses
+                    </p>
+                  </div>
+                  {sessions.filter(s => !s.isStandalone).map((session) => {
+                    const sessionKey = session.zoomMeetingId || session.id;
+                    const isConnectedToThis = connectedSessionId === sessionKey;
+                    
+                    return (
+                      <div key={session.id} className="px-4 py-4 border-t hover:bg-gray-50" style={isConnectedToThis ? { backgroundColor: '#eff6ff' } : {}}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
+                                {session.title}
+                              </p>
+                              {session.status === 'live' && (
+                                <Badge variant="danger" className="bg-red-600 text-white text-xs">LIVE</Badge>
+                              )}
+                              {isConnectedToThis && (
+                                <Badge variant="success" className="text-white text-xs" style={{ backgroundColor: '#3B82F6' }}>CONNECTED</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {session.course} • {session.instructor}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                              <CalendarIcon className="h-3 w-3" />
+                              {session.date} • {session.time}
+                            </p>
+                          </div>
+                          <Button
+                            variant={isConnectedToThis ? 'secondary' : session.status === 'live' ? 'primary' : 'outline'}
+                            size="sm"
+                            leftIcon={isConnectedToThis ? <WifiIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                            onClick={() => handleJoinSession(session)}
+                          >
+                            {isConnectedToThis ? 'Joined' : session.status === 'live' ? 'Join' : 'Join'}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
-        </div>
-
-        {/* Activity */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-          </div>
-
-          {recentActivities.map((activity) => (
-            <div key={activity.id} className="px-4 py-4 border-t">
-              <p className="text-sm font-medium" style={{ color: '#3B82F6' }}>
-                {activity.title}
-              </p>
-              <p className="text-xs text-gray-500">{activity.course}</p>
-              <p className="text-xs mt-1 text-gray-500">{activity.date}</p>
-
-              {activity.type === "session" && (
-                <p className="text-xs mt-1 font-medium" style={{ color: '#3B82F6' }}>
-                  Engagement: {activity.engagement}
-                </p>
-              )}
-
-              {activity.type === "quiz" && (
-                <p className="text-xs mt-1 font-medium" style={{ color: '#3B82F6' }}>
-                  Score: {activity.score}
-                </p>
-              )}
-            </div>
-          ))}
         </div>
       </div>
     </div>

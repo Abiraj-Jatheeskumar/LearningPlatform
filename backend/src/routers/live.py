@@ -34,38 +34,144 @@ async def trigger_question(meeting_id: str):
         if not questions:
             return {"success": False, "message": "No questions found in DB"}
 
-        # 2) Pick one question randomly
-        q = random.choice(questions)
-
-        # 3) Prepare WebSocket broadcast message
-        message = {
-            "type": "quiz",
-            "questionId": str(q["_id"]),
-            "question": q["question"],
-            "options": q["options"],
-            "timeLimit": q.get("timeLimit", 30),
-            "difficulty": q.get("difficulty", "medium"),
-            "category": q.get("category", "General"),
-            "sessionId": meeting_id,
-            "timestamp": datetime.now().isoformat()
-        }
+        # 2) Get all participants in this session
+        # Students might be connected using either zoomMeetingId or MongoDB sessionId
+        # Check both to find all connected students
+        participants = ws_manager.get_session_participants(meeting_id)
+        session_ids_to_check = [meeting_id]
+        effective_meeting_id = meeting_id
+        
+        # If no participants found with meeting_id, try to find the session and check both IDs
+        if not participants:
+            try:
+                # Try to find the session document to get both IDs
+                session_doc = None
+                
+                # Try as integer first (Zoom IDs are usually integers)
+                if meeting_id.isdigit():
+                    try:
+                        session_doc = await db.database.sessions.find_one({"zoomMeetingId": int(meeting_id)})
+                    except:
+                        pass
+                
+                # Try as string
+                if not session_doc:
+                    session_doc = await db.database.sessions.find_one({"zoomMeetingId": meeting_id})
+                
+                # Try as MongoDB ObjectId
+                if not session_doc:
+                    try:
+                        if len(meeting_id) == 24:
+                            session_doc = await db.database.sessions.find_one({"_id": ObjectId(meeting_id)})
+                    except:
+                        pass
+                
+                if session_doc:
+                    # Get both zoomMeetingId and MongoDB sessionId
+                    zoom_id = str(session_doc.get("zoomMeetingId", "")) if session_doc.get("zoomMeetingId") else None
+                    mongo_id = str(session_doc["_id"])
+                    
+                    # Add both IDs to check list
+                    if zoom_id and zoom_id not in session_ids_to_check:
+                        session_ids_to_check.append(zoom_id)
+                    if mongo_id and mongo_id not in session_ids_to_check:
+                        session_ids_to_check.append(mongo_id)
+                    
+                    # Get participants from all possible session IDs
+                    participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
+                    
+                    if participants:
+                        # Use the session ID that has the most participants
+                        participant_counts = {}
+                        for p in participants:
+                            sid = p.get("sessionId", meeting_id)
+                            participant_counts[sid] = participant_counts.get(sid, 0) + 1
+                        
+                        if participant_counts:
+                            effective_meeting_id = max(participant_counts.items(), key=lambda x: x[1])[0]
+                            print(f"📍 Found {len(participants)} participants across multiple session IDs")
+                            print(f"   Using session ID: {effective_meeting_id} (has {participant_counts[effective_meeting_id]} participants)")
+                    else:
+                        print(f"⚠️ No participants found in any session room: {session_ids_to_check}")
+            except Exception as lookup_error:
+                print(f"⚠️ Error looking up session: {lookup_error}")
+                import traceback
+                traceback.print_exc()
+        
+        if not participants:
+            return {"success": False, "message": "No students connected to this session. Make sure students have joined the meeting from the dashboard."}
+        
+        # Update meeting_id to the effective one for sending messages
+        meeting_id = effective_meeting_id
 
         # Debug: Show session room stats before sending
         all_stats = ws_manager.get_all_stats()
         print(f"📊 WebSocket Stats BEFORE broadcast:")
         print(f"   Session rooms: {all_stats.get('session_rooms', {})}")
         print(f"   Target session: {meeting_id}")
+        print(f"   Participants: {len(participants)} students")
         
-        # 🎯 4) Send ONLY to students in this session room (not global broadcast!)
-        # Only students who clicked "Join" and connected to /ws/session/<meetingId>/<studentId> will receive
-        ws_sent_count = await ws_manager.broadcast_to_session(meeting_id, message)
+        # 3) Send DIFFERENT random question to EACH student
+        # Filter out instructor connections - instructors have studentId starting with "instructor_" or have role="instructor"
+        student_participants = []
+        for p in participants:
+            student_id = p.get("studentId", "")
+            # Skip instructor connections (instructors connect with IDs like "instructor_xxx")
+            if student_id.startswith("instructor_") or "instructor" in student_id.lower():
+                print(f"   ⏭️ Skipping instructor: {student_id}")
+                continue
+            student_participants.append(p)
         
-        # Get participant list for response
-        participants = ws_manager.get_session_participants(meeting_id)
+        if not student_participants:
+            return {"success": False, "message": "No students found in session (only instructor connected)"}
+        
+        ws_sent_count = 0
+        sent_questions = []
+        
+        # Send individual random question to each student
+        # Use the session_id that each student is actually connected with (from participant data)
+        for participant in student_participants:
+            student_id = participant.get("studentId")
+            # Get the session_id this student is connected with (could be zoomMeetingId or MongoDB sessionId)
+            student_session_id = participant.get("sessionId", meeting_id)
+            
+            # Pick a random question for this student
+            q = random.choice(questions)
+            
+            # Prepare individual message for this student
+            message = {
+                "type": "quiz",
+                "questionId": str(q["_id"]),
+                "question": q["question"],
+                "options": q["options"],
+                "timeLimit": q.get("timeLimit", 30),
+                "difficulty": q.get("difficulty", "medium"),
+                "category": q.get("category", "General"),
+                "sessionId": student_session_id,
+                "studentId": student_id,  # Include student ID so they know it's for them
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Send to this student using their actual session_id
+            sent = await ws_manager.send_to_student_in_session(student_session_id, student_id, message)
+            
+            # If failed, try with the effective meeting_id as fallback
+            if not sent and student_session_id != meeting_id:
+                sent = await ws_manager.send_to_student_in_session(meeting_id, student_id, message)
+                if sent:
+                    print(f"   ✅ Sent using fallback session_id: {meeting_id}")
+            if sent:
+                ws_sent_count += 1
+                sent_questions.append({
+                    "studentId": student_id,
+                    "studentName": participant.get("studentName"),
+                    "questionId": str(q["_id"]),
+                    "question": q["question"]
+                })
+                print(f"   ✅ Sent question to {participant.get('studentName', student_id)}: {q['question'][:50]}...")
 
-        print(f"✅ Question sent to SESSION {meeting_id}: {ws_sent_count} students")
-        print(f"   Participants: {[p.get('studentId', 'unknown') for p in participants]}")
-        print(f"   Message sent: {message}")
+        print(f"✅ Questions sent to SESSION {meeting_id}: {ws_sent_count} students (each got a different random question)")
+        print(f"   Participants: {[p.get('studentName', p.get('studentId', 'unknown')) for p in student_participants]}")
 
         # 5) Optionally send Web Push Notifications to subscribed students in this session
         # (For now, push is still global - can be made session-specific later)
@@ -82,9 +188,9 @@ async def trigger_question(meeting_id: str):
             "websocketSent": ws_sent_count,
             "pushSent": push_sent_count,
             "totalReached": ws_sent_count + push_sent_count,
-            "participants": participants,
-            "sentQuestion": message,
-            "message": f"Quiz sent to {ws_sent_count} students in session {meeting_id}"
+            "participants": student_participants,
+            "sentQuestions": sent_questions,  # List of questions sent to each student
+            "message": f"Quiz sent to {ws_sent_count} students in session {meeting_id} (each received a different random question)"
         }
 
     except Exception as e:

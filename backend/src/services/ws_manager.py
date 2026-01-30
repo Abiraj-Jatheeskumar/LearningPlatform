@@ -74,7 +74,7 @@ class WebSocketManager:
             mongo_session_id = session_id  # Default to provided ID
             zoom_meeting_id = None
             
-            if database:
+            if database is not None:
                 session_doc = None
                 
                 # Try multiple lookup methods to find the session
@@ -136,6 +136,20 @@ class WebSocketManager:
         print(f"✅ Student joined session room: session={session_id}, student={student_id}")
         print(f"   Session room now has {len(self.session_rooms[session_id])} participants")
 
+        # 🎯 Broadcast participant joined event to all connected clients (instructor + students)
+        join_event = {
+            "type": "participant_joined",
+            "sessionId": session_id,
+            "studentId": student_id,
+            "studentName": participant["studentName"],
+            "studentEmail": participant.get("studentEmail"),
+            "participantCount": len(self.session_rooms[session_id]),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Broadcast to all participants in this session (including instructor if connected)
+        await self.broadcast_to_session(session_id, join_event)
+
         return {
             "sessionId": session_id,
             "studentId": student_id,
@@ -147,6 +161,9 @@ class WebSocketManager:
     async def leave_session_room(self, session_id: str, student_id: str) -> bool:
         """Student leaves session room - will no longer receive quizzes"""
         if session_id in self.session_rooms and student_id in self.session_rooms[session_id]:
+            # Get participant info before marking as left
+            participant_info = self.session_rooms[session_id][student_id].copy()
+            
             # Mark as left instead of removing (for tracking)
             self.session_rooms[session_id][student_id]["status"] = "left"
             self.session_rooms[session_id][student_id]["leftAt"] = datetime.now().isoformat()
@@ -156,7 +173,7 @@ class WebSocketManager:
                 database = get_database()
                 mongo_session_id = session_id
                 
-                if database:
+                if database is not None:
                     session_doc = await database.sessions.find_one({"zoomMeetingId": int(session_id) if session_id.isdigit() else session_id})
                     if not session_doc:
                         from bson import ObjectId
@@ -171,6 +188,20 @@ class WebSocketManager:
                 print(f"✅ Participant left session in MongoDB: session={mongo_session_id}, student={student_id}")
             except Exception as e:
                 print(f"⚠️ Failed to update participant leave in MongoDB: {e}")
+            
+            # 🎯 Broadcast participant left event to all connected clients
+            leave_event = {
+                "type": "participant_left",
+                "sessionId": session_id,
+                "studentId": student_id,
+                "studentName": participant_info.get("studentName"),
+                "studentEmail": participant_info.get("studentEmail"),
+                "participantCount": len([p for p in self.session_rooms[session_id].values() if p.get("status") == "joined"]),
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Broadcast to all participants in this session
+            await self.broadcast_to_session(session_id, leave_event)
             
             print(f"👋 Student left session room: session={session_id}, student={student_id}")
             return True
@@ -213,15 +244,96 @@ class WebSocketManager:
                     "status": data.get("status")
                 })
         return participants
+    
+    def get_session_participants_by_multiple_ids(self, session_ids: List[str]) -> List[dict]:
+        """
+        Get all ACTIVE participants across multiple session IDs.
+        Used when students might be connected with different IDs (zoomMeetingId vs MongoDB sessionId).
+        """
+        all_participants = []
+        seen_student_ids = set()
+        
+        for session_id in session_ids:
+            if session_id in self.session_rooms:
+                for student_id, data in self.session_rooms[session_id].items():
+                    if data.get("status") == "joined" and student_id not in seen_student_ids:
+                        seen_student_ids.add(student_id)
+                        all_participants.append({
+                            "studentId": student_id,
+                            "studentName": data.get("studentName"),
+                            "studentEmail": data.get("studentEmail"),
+                            "joinedAt": data.get("joinedAt"),
+                            "status": data.get("status"),
+                            "sessionId": session_id  # Track which session ID they're connected with
+                        })
+        
+        return all_participants
 
     def get_session_participant_count(self, session_id: str) -> int:
         """Get count of active participants in session"""
         return len(self.get_session_participants(session_id))
 
+    async def send_to_student_in_session(self, session_id: str, student_id: str, message: dict) -> bool:
+        """
+        Send a message to a SPECIFIC student in a session room.
+        Used for sending individual random questions to each student.
+        Returns True if sent successfully, False otherwise.
+        """
+        if session_id not in self.session_rooms:
+            print(f"⚠️ No participants in session {session_id}")
+            return False
+        
+        if student_id not in self.session_rooms[session_id]:
+            print(f"⚠️ Student {student_id} not found in session {session_id}")
+            return False
+        
+        participant = self.session_rooms[session_id][student_id]
+        
+        # Only send to JOINED students (not "left")
+        if participant.get("status") != "joined":
+            print(f"⚠️ Student {student_id} is not in joined status")
+            return False
+        
+        websocket = participant.get("websocket")
+        if not websocket:
+            print(f"⚠️ No WebSocket connection for student {student_id}")
+            return False
+        
+        # Check if WebSocket is still open before sending
+        try:
+            # Check WebSocket state - FastAPI WebSocket may have client_state or application_state
+            try:
+                if hasattr(websocket, 'client_state'):
+                    if websocket.client_state.name != 'CONNECTED':
+                        print(f"   ⚠️ WebSocket for {student_id} is not connected (state: {websocket.client_state.name})")
+                        return False
+                elif hasattr(websocket, 'application_state'):
+                    if websocket.application_state.name != 'CONNECTED':
+                        print(f"   ⚠️ WebSocket for {student_id} is not connected (state: {websocket.application_state.name})")
+                        return False
+            except (AttributeError, Exception):
+                # If state checking fails, proceed with send attempt (will be caught by outer try-except)
+                pass
+            
+            await websocket.send_json(message)
+            print(f"   ✅ Sent to {participant.get('studentName', student_id)}")
+            return True
+        except Exception as e:
+            error_msg = str(e)
+            # Check for common closed connection errors
+            if 'websocket.close' in error_msg or 'closed' in error_msg.lower() or '1005' in error_msg:
+                print(f"   ⚠️ WebSocket for {student_id} is closed, removing from session")
+                # Mark as left and remove from session
+                await self.leave_session_room(session_id, student_id)
+            else:
+                print(f"   ❌ Failed to send to {student_id}: {e}")
+            return False
+
     async def broadcast_to_session(self, session_id: str, message: dict) -> int:
         """
-        🎯 BROADCAST QUIZ TO SESSION ROOM ONLY
+        🎯 BROADCAST QUIZ TO SESSION ROOM ONLY - INSTANT DELIVERY
         Only students who have joined this session will receive the message
+        Optimized for zero-delay delivery with parallel sending
         """
         if session_id not in self.session_rooms:
             print(f"⚠️ No participants in session {session_id}")
@@ -229,6 +341,10 @@ class WebSocketManager:
 
         sent = 0
         dead_connections = []
+        
+        # Use asyncio.gather for parallel sending to ensure instant delivery
+        import asyncio
+        send_tasks = []
 
         for student_id, data in self.session_rooms[session_id].items():
             # Only send to JOINED students (not "left")
@@ -239,19 +355,58 @@ class WebSocketManager:
             if not websocket:
                 continue
 
-            try:
-                await websocket.send_json(message)
-                sent += 1
-                print(f"   ✅ Sent to {data.get('studentName', student_id)}")
-            except Exception as e:
-                print(f"   ❌ Failed to send to {student_id}: {e}")
-                dead_connections.append(student_id)
+            # Create async task for each send operation (parallel execution)
+            async def send_to_student(ws, sid, name):
+                try:
+                    # Check if WebSocket is still open before sending
+                    try:
+                        if hasattr(ws, 'client_state'):
+                            if ws.client_state.name != 'CONNECTED':
+                                print(f"   ⚠️ WebSocket for {sid} is not connected (state: {ws.client_state.name})")
+                                return False
+                        elif hasattr(ws, 'application_state'):
+                            if ws.application_state.name != 'CONNECTED':
+                                print(f"   ⚠️ WebSocket for {sid} is not connected (state: {ws.application_state.name})")
+                                return False
+                    except (AttributeError, Exception):
+                        # If state checking fails, proceed with send attempt (will be caught by outer try-except)
+                        pass
+                    
+                    await ws.send_json(message)
+                    print(f"   ✅ Sent to {name or sid}")
+                    return True
+                except Exception as e:
+                    error_msg = str(e)
+                    # Check for common closed connection errors
+                    if 'websocket.close' in error_msg or 'closed' in error_msg.lower() or '1005' in error_msg:
+                        print(f"   ⚠️ WebSocket for {sid} is closed")
+                    else:
+                        print(f"   ❌ Failed to send to {sid}: {e}")
+                    return False
+
+            send_tasks.append(send_to_student(websocket, student_id, data.get('studentName')))
+
+        # Send to all students in parallel for instant delivery
+        if send_tasks:
+            results = await asyncio.gather(*send_tasks, return_exceptions=True)
+            sent = sum(1 for r in results if r is True)
+            
+            # Track dead connections for cleanup
+            for i, (student_id, data) in enumerate(self.session_rooms[session_id].items()):
+                if data.get("status") == "joined" and i < len(results):
+                    if results[i] is False or isinstance(results[i], Exception):
+                        dead_connections.append(student_id)
 
         # Clean up dead connections
         for student_id in dead_connections:
-            await self.leave_session_room(session_id, student_id)
+            try:
+                await self.leave_session_room(session_id, student_id)
+            except Exception as cleanup_error:
+                print(f"   ⚠️ Error cleaning up dead connection for {student_id}: {cleanup_error}")
+                # Force remove from session room if leave fails
+                self.remove_from_session_room(session_id, student_id)
 
-        print(f"📢 SESSION BROADCAST [{session_id}] → Sent to {sent} students")
+        print(f"📢 SESSION BROADCAST [{session_id}] → Sent to {sent} students INSTANTLY")
         return sent
 
     # =========================================================

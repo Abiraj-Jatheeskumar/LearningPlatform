@@ -13,6 +13,7 @@ import {
   RefreshCwIcon,
   CopyIcon,
   SettingsIcon,
+  VideoIcon,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -157,13 +158,6 @@ export const CourseList = () => {
         <div className="flex gap-2 mt-4 sm:mt-0">
           {isInstructor && (
             <>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/dashboard/instructor/courses')}
-                leftIcon={<SettingsIcon className="h-4 w-4" />}
-              >
-                Manage
-              </Button>
               <Button
                 onClick={() => navigate('/dashboard/courses/create')}
                 leftIcon={<PlusIcon className="h-4 w-4" />}
@@ -395,25 +389,34 @@ export const CourseList = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex space-x-2">
+                <div className="flex flex-col space-y-2">
                   <Link
                     to={`/dashboard/courses/${course.id}`}
-                    className="flex-1 text-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                    className="text-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
                   >
                     View Details
                   </Link>
                   {isInstructor && (
-                    <Link
-                      to={`/dashboard/instructor/courses`}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors"
-                    >
-                      Manage
-                    </Link>
+                    <div className="flex space-x-2">
+                      <Link
+                        to={`/dashboard/courses/${course.id}?tab=sessions&action=create`}
+                        className="flex-1 text-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors flex items-center justify-center"
+                      >
+                        <VideoIcon className="h-4 w-4 mr-1" />
+                        Create Session
+                      </Link>
+                      <Link
+                        to={`/dashboard/courses/${course.id}/edit`}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        Edit
+                      </Link>
+                    </div>
                   )}
                   {!isInstructor && (
                     <Link
                       to={`/dashboard/sessions`}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors"
+                      className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors text-center"
                     >
                       Sessions
                     </Link>

@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui/Button";
-import { BarChart3Icon, TargetIcon, PlayIcon, CalendarIcon, ClockIcon, WifiIcon, ActivityIcon, UsersIcon } from "lucide-react";
+import { TargetIcon, PlayIcon, CalendarIcon, ClockIcon, WifiIcon, ActivityIcon, UsersIcon } from "lucide-react";
 import { sessionService, Session } from "../../services/sessionService";
 import { Badge } from "../../components/ui/Badge";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
@@ -32,13 +33,13 @@ export const InstructorDashboard = () => {
     stats: latencyStats,
     shouldAdjustEngagement
   } = useLatencyMonitor({
-    sessionId: selectedSession?.id || 'instructor-view', // Use real session or placeholder for display
+    sessionId: selectedSession ? (selectedSession.zoomMeetingId || selectedSession.id) : 'instructor-view', // Use zoomMeetingId for consistency with students
     studentId: user?.id,
     studentName: `${user?.firstName} ${user?.lastName}`,
     userRole: 'instructor', // Instructor data is NOT stored in database (filtered by backend)
     enabled: true, // Always monitor so instructor can SEE their network quality
-    pingInterval: 5000,
-    reportInterval: 15000,
+    pingInterval: 3000, // Ping every 3 seconds for near real-time updates
+    reportInterval: 5000, // Report to server every 5 seconds for near real-time updates
     onQualityChange: handleConnectionQualityChange
   });
 
@@ -58,23 +59,139 @@ export const InstructorDashboard = () => {
         setSelectedSession(liveSession);
       }
     };
+    // Initial load only
     loadSessions();
     
-    const interval = setInterval(loadSessions, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    // Sessions will be updated via WebSocket events (session_started, meeting_ended, participant_joined, etc.)
+    // No polling interval - updates are event-driven for better performance
   }, []);
 
   // ================================
-  // ⭐ JOIN ZOOM MEETING (INSTRUCTOR)
+  // ⭐ REAL-TIME PARTICIPANT STATUS VIA WEBSOCKET
+  // Listen for join/leave events and update session list immediately
+  // ================================
+  useEffect(() => {
+    if (!selectedSession) return;
+
+    const sessionKey = selectedSession.zoomMeetingId || selectedSession.id;
+    if (!sessionKey) return;
+
+    // Connect to WebSocket to receive real-time participant updates
+    const wsBase = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'ws://localhost:8000';
+    const wsUrl = `${wsBase}/ws/session/${sessionKey}/instructor_${user?.id || 'monitor'}`;
+    
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log('✅ Instructor connected to session WebSocket for real-time updates');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === "participant_joined" || data.type === "participant_left") {
+          console.log(`👥 Real-time update: ${data.studentName || data.studentId} ${data.type === 'participant_joined' ? 'joined' : 'left'}`);
+          
+          // Immediately refresh sessions to show updated participant count
+          sessionService.getAllSessions().then(allSessions => {
+            const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
+            setSessions(filtered.slice(0, 5));
+            
+            // Update selected session if it's the one being monitored
+            const updatedSession = filtered.find(s => s.id === selectedSession.id);
+            if (updatedSession) {
+              setSelectedSession(updatedSession);
+            }
+          });
+        } else if (data.type === "meeting_ended") {
+          console.log("🔴 [InstructorDashboard] Meeting ended event received:", data);
+          toast.info("🔴 Meeting has ended", {
+            description: "The meeting has been ended",
+            duration: 5000,
+          });
+          // Refresh sessions to show updated status
+          sessionService.getAllSessions().then(allSessions => {
+            const filtered = allSessions.filter(s => s.status === 'upcoming' || s.status === 'live');
+            setSessions(filtered.slice(0, 5));
+            // Clear selected session if it was the one that ended
+            if (selectedSession && (selectedSession.id === data.sessionId || selectedSession.zoomMeetingId === data.zoomMeetingId)) {
+              setSelectedSession(null);
+            }
+          });
+        } else if (data.type === "session_started") {
+          console.log("🟢 [InstructorDashboard] Session started event received:", data);
+          // Update sessions list (event-driven, no API call needed)
+          setSessions(prev => {
+            const updated = prev.map(s => 
+              (s.id === data.sessionId || s.zoomMeetingId === data.zoomMeetingId) 
+                ? { ...s, status: 'live' as const }
+                : s
+            ).filter(s => s.status === 'upcoming' || s.status === 'live').slice(0, 5);
+            
+            // Auto-select the session that was just started
+            if (data.sessionId || data.zoomMeetingId) {
+              const startedSession = updated.find(s => 
+                s.id === data.sessionId || 
+                s.zoomMeetingId === data.zoomMeetingId ||
+                s.zoomMeetingId === data.sessionId
+              );
+              if (startedSession && startedSession.status === 'live') {
+                setSelectedSession(startedSession);
+              }
+            }
+            
+            return updated;
+          });
+        }
+      } catch (e) {
+        console.error("Instructor WS message error:", e);
+      }
+    };
+    
+    ws.onerror = (err) => {
+      console.error("Instructor WS error:", err);
+    };
+    
+    ws.onclose = () => {
+      console.log('🔌 Instructor WebSocket closed');
+    };
+    
+    return () => {
+      ws.close();
+    };
+  }, [selectedSession, user?.id]);
+
+  // ================================
+  // ⭐ START/JOIN ZOOM MEETING (INSTRUCTOR)
+  // Opens Zoom directly and starts network monitoring
   // ================================
   const handleJoinSession = (session: Session) => {
     if (!session.start_url) {
-      alert("❌ Zoom host start URL missing");
+      toast.error("❌ Zoom host start URL missing");
       return;
     }
+    
+    // Open Zoom meeting directly
     window.open(session.start_url, '_blank');
-    // Auto-select this session for triggering questions
+    
+    // Auto-select this session for triggering questions and network monitoring
     setSelectedSession(session);
+    
+    // Show notifications
+    toast.success(`🚀 Opening Zoom meeting: ${session.title}`);
+    toast.info(`📶 Network monitoring started for this session`);
+    
+    console.log('🎯 Instructor started meeting:', {
+      sessionTitle: session.title,
+      sessionId: session.id,
+      zoomMeetingId: session.zoomMeetingId,
+      status: session.status
+    });
+    
+    // Network monitoring will automatically start via StudentNetworkMonitor component
+    // which uses selectedSession.zoomMeetingId || selectedSession.id
+    // Student network parameters will be retrieved as soon as students join
   };
 
   // ================================
@@ -101,7 +218,7 @@ export const InstructorDashboard = () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
 
-      console.log(`🎯 Triggering question to session: ${meetingId} (${targetSession.title})`);
+      console.log(` Triggering question to session: ${meetingId} (${targetSession.title})`);
       
       const res = await axios.post(
         `${apiUrl}/api/live/trigger/${meetingId}`
@@ -112,7 +229,7 @@ export const InstructorDashboard = () => {
       if (res.data.success) {
         const sentCount = res.data.websocketSent || 0;
         const participants = res.data.participants || [];
-        alert(`🎯 Question sent to ${sentCount} students in "${targetSession.title}"!\n\nParticipants: ${participants.map((p: any) => p.studentId || p.studentName).join(', ') || 'None connected yet'}`);
+        alert(` Question sent to ${sentCount} students in "${targetSession.title}"!\n\nParticipants: ${participants.map((p: any) => p.studentId || p.studentName).join(', ') || 'None connected yet'}`);
       } else {
         alert(`⚠️ ${res.data.message || 'Failed to send question'}`);
       }
@@ -152,84 +269,11 @@ export const InstructorDashboard = () => {
               {selectedSession ? 'Trigger Quiz' : 'Select Session'}
             </Button>
           </div>
-
-          <Link to="/dashboard/instructor/analytics">
-            <Button variant="primary" leftIcon={<BarChart3Icon className="h-4 w-4" />}>
-              View Analytics
-            </Button>
-          </Link>
         </div>
       </div>
 
       {/* ================= CARDS SECTION ================= */}
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
-        {/* Active Courses */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3"></div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Active Courses
-                </dt>
-                <dd>
-                  <div className="text-lg font-medium text-gray-900">3</div>
-                </dd>
-              </dl>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <a className="text-sm font-medium text-indigo-700 hover:text-indigo-900" href="#">
-              View all
-            </a>
-          </div>
-        </div>
-
-        {/* Upcoming Sessions */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3"></div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Upcoming Sessions
-                </dt>
-                <dd>
-                  <div className="text-lg font-medium text-gray-900">4</div>
-                </dd>
-              </dl>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <a className="text-sm font-medium text-indigo-700 hover:text-indigo-900" href="#">
-              View all
-            </a>
-          </div>
-        </div>
-
-        {/* Total Students */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5 flex items-center">
-            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3"></div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Students
-                </dt>
-                <dd>
-                  <div className="text-lg font-medium text-gray-900">124</div>
-                </dd>
-              </dl>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <a className="text-sm font-medium text-indigo-700 hover:text-indigo-900" href="#">
-              View details
-            </a>
-          </div>
-        </div>
-
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-1">
         {/* 📶 Connection Quality Card */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
@@ -288,79 +332,167 @@ export const InstructorDashboard = () => {
         </div>
       </div>
 
-      {/* ================= REAL UPCOMING SESSION LIST ================= */}
+      {/* ================= REAL UPCOMING SESSION LIST - TWO SECTIONS ================= */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Your Sessions</h2>
+          <h2 className="text-lg font-medium text-gray-900">Your Meetings</h2>
           <Link to="/dashboard/sessions">
             <Button variant="outline" size="sm">View All</Button>
           </Link>
         </div>
         
-        <div className="mt-2 bg-white shadow overflow-hidden sm:rounded-md">
-          {sessions.length === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500">
-              <p>No upcoming sessions</p>
-              <Link to="/dashboard/sessions/create">
-                <Button variant="primary" className="mt-4">Create Your First Session</Button>
-              </Link>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {sessions.map((session) => (
-                <li key={session.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-indigo-600 truncate">
-                          {session.title}
-                        </p>
-                        {session.status === 'live' && (
-                          <Badge variant="danger" className="bg-red-600 text-white">LIVE</Badge>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500 flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <CalendarIcon className="h-4 w-4" />
-                          {session.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          {session.time}
-                        </span>
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {session.course} ({session.courseCode})
-                      </p>
-                    </div>
-                    
-                    <div className="ml-4 flex gap-2">
-                      {/* 🎯 Trigger Quiz Button - Only joined students receive */}
-                      {session.status === 'live' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          leftIcon={<TargetIcon className="h-4 w-4" />}
-                          onClick={() => handleTriggerQuestion(session)}
-                        >
-                          Trigger Quiz
-                        </Button>
-                      )}
-                      <Button
-                        variant={session.status === 'live' ? 'primary' : 'outline'}
-                        size="sm"
-                        leftIcon={<PlayIcon className="h-4 w-4" />}
-                        onClick={() => handleJoinSession(session)}
-                      >
-                        {session.status === 'live' ? 'Join' : 'Start'}
-                      </Button>
-                    </div>
+        {sessions.length === 0 ? (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md px-4 py-8 text-center text-gray-500">
+            <p>No upcoming meetings</p>
+            <Link to="/dashboard/sessions/create">
+              <Button variant="primary" className="mt-4">Create Your First Meeting</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* STANDALONE MEETINGS SECTION */}
+            {sessions.filter(s => s.isStandalone === true).length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-lg"></span>
+                  <div>
+                    <h3 className="text-md font-semibold text-gray-900">Standalone Meetings</h3>
+                    <p className="text-xs text-gray-500">Meetings with enrollment keys</p>
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                </div>
+                <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                  <ul className="divide-y divide-gray-200">
+                    {sessions.filter(s => s.isStandalone === true).map((session) => (
+                      <li key={session.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-indigo-600 truncate">
+                                {session.title}
+                              </p>
+                              {session.status === 'live' && (
+                                <Badge variant="danger" className="bg-red-600 text-white">LIVE</Badge>
+                              )}
+                            </div>
+                            <p className="mt-1 text-sm text-gray-500 flex items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-4 w-4" />
+                                {session.date}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <ClockIcon className="h-4 w-4" />
+                                {session.time}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {session.course} ({session.courseCode})
+                            </p>
+                          </div>
+                          
+                          <div className="ml-4 flex gap-2">
+                            {/* 🎯 Trigger Quiz Button - Only joined students receive */}
+                            {session.status === 'live' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                leftIcon={<TargetIcon className="h-4 w-4" />}
+                                onClick={() => handleTriggerQuestion(session)}
+                              >
+                                Trigger Quiz
+                              </Button>
+                            )}
+                            {/* Start Meeting button - Only show when meeting is NOT live */}
+                            {session.status !== 'live' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<PlayIcon className="h-4 w-4" />}
+                                onClick={() => handleJoinSession(session)}
+                              >
+                                Start Meeting
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* COURSE MEETINGS SECTION */}
+            {sessions.filter(s => !s.isStandalone).length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-lg"></span>
+                  <div>
+                    <h3 className="text-md font-semibold text-gray-900">Course Meetings</h3>
+                    <p className="text-xs text-gray-500">Meetings from your courses</p>
+                  </div>
+                </div>
+                <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                  <ul className="divide-y divide-gray-200">
+                    {sessions.filter(s => !s.isStandalone).map((session) => (
+                      <li key={session.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-indigo-600 truncate">
+                                {session.title}
+                              </p>
+                              {session.status === 'live' && (
+                                <Badge variant="danger" className="bg-red-600 text-white">LIVE</Badge>
+                              )}
+                            </div>
+                            <p className="mt-1 text-sm text-gray-500 flex items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-4 w-4" />
+                                {session.date}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <ClockIcon className="h-4 w-4" />
+                                {session.time}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {session.course} ({session.courseCode})
+                            </p>
+                          </div>
+                          
+                          <div className="ml-4 flex gap-2">
+                            {/* 🎯 Trigger Quiz Button - Only joined students receive */}
+                            {session.status === 'live' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                leftIcon={<TargetIcon className="h-4 w-4" />}
+                                onClick={() => handleTriggerQuestion(session)}
+                              >
+                                Trigger Quiz
+                              </Button>
+                            )}
+                            {/* Start Meeting button - Only show when meeting is NOT live */}
+                            {session.status !== 'live' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<PlayIcon className="h-4 w-4" />}
+                                onClick={() => handleJoinSession(session)}
+                              >
+                                Start Meeting
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ================= CONNECTION QUALITY DETAILED PANEL ================= */}
@@ -435,7 +567,7 @@ export const InstructorDashboard = () => {
           <StudentNetworkMonitor
             sessionId={selectedSession.zoomMeetingId || selectedSession.id}
             autoRefresh={true}
-            refreshInterval={5000}
+            refreshInterval={2000}
             className=""
           />
         ) : sessions.length > 0 ? (

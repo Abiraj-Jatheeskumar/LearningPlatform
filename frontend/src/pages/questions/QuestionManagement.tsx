@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useState, useEffect } from 'react';
 import { QuestionBank, Question } from '../../components/questions/QuestionBank';
 import { QuestionForm } from '../../components/questions/QuestionForm';
 import { Card } from '../../components/ui/Card';
@@ -9,10 +7,10 @@ import { toast } from 'sonner';
 import { questionService, CreateQuestionData } from '../../services/questionService';
 
 export const QuestionManagement = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [prefillQuestion, setPrefillQuestion] = useState<Question | null>(null);
+  const [prefillCategory, setPrefillCategory] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -25,7 +23,11 @@ export const QuestionManagement = () => {
     try {
       setIsLoading(true);
       const fetchedQuestions = await questionService.getAllQuestions();
-      setQuestions(fetchedQuestions);
+      const normalized = fetchedQuestions.map((q) => ({
+        ...q,
+        createdAt: q.createdAt || new Date().toISOString()
+      })) as Question[];
+      setQuestions(normalized);
     } catch (error) {
       console.error('Error loading questions:', error);
       toast.error('Failed to load questions. Please try again.');
@@ -35,66 +37,49 @@ export const QuestionManagement = () => {
       setIsLoading(false);
     }
   };
-  
-  // Mock questions data - fallback if API fails
-  const mockQuestions: Question[] = [
-    {
-      id: '1',
-      question: 'What is the primary purpose of backpropagation in neural networks?',
-      options: [
-        'To initialize weights randomly',
-        'To update weights based on error gradients',
-        'To add more layers to the network',
-        'To visualize the network structure'
-      ],
-      correctAnswer: 1,
-      difficulty: 'medium',
-      category: 'Neural Networks',
-      tags: ['backpropagation', 'training', 'gradients'],
-      timeLimit: 30,
-      createdAt: '2023-10-01'
-    },
-    {
-      id: '2',
-      question: 'Which normalization technique is used in database design?',
-      options: [
-        'First Normal Form (1NF)',
-        'Second Normal Form (2NF)',
-        'Third Normal Form (3NF)',
-        'All of the above'
-      ],
-      correctAnswer: 3,
-      difficulty: 'easy',
-      category: 'Database Design',
-      tags: ['normalization', 'database'],
-      timeLimit: 25,
-      createdAt: '2023-10-02'
-    },
-    {
-      id: '3',
-      question: 'What is the time complexity of binary search?',
-      options: [
-        'O(n)',
-        'O(log n)',
-        'O(n log n)',
-        'O(n²)'
-      ],
-      correctAnswer: 1,
-      difficulty: 'medium',
-      category: 'Algorithms',
-      tags: ['search', 'complexity', 'binary'],
-      timeLimit: 20,
-      createdAt: '2023-10-03'
-    }
-  ];
 
   const handleAddQuestion = () => {
+    let prefillQuestion: Question | null = null;
+    let chosenCategory: string | null = null;
+    if (questions.length > 0) {
+      const useRandom = window.confirm(
+        'Select a random question? Click OK for Random, Cancel for Related.'
+      );
+      if (useRandom) {
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        prefillQuestion = questions[randomIndex];
+        chosenCategory = 'Random';
+      } else {
+        const categoryInput = window.prompt(
+          'Enter a category for a related question (e.g., Database Design):'
+        );
+        if (categoryInput !== null) {
+          const trimmed = categoryInput.trim();
+          if (trimmed) {
+            const related = questions.filter(
+              q => q.category?.toLowerCase() === trimmed.toLowerCase()
+            );
+            if (related.length > 0) {
+              const randomIndex = Math.floor(Math.random() * related.length);
+              prefillQuestion = related[randomIndex];
+              chosenCategory = trimmed;
+            } else {
+              toast.info('No related questions found. Opening empty form.');
+            }
+          }
+        }
+      }
+    }
     setEditingQuestion(null);
+    setPrefillQuestion(prefillQuestion);
+    setPrefillCategory(chosenCategory);
     setShowForm(true);
   };
 
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
+    setPrefillQuestion(null);
+    setPrefillCategory(null);
     setShowForm(true);
   };
 
@@ -113,7 +98,10 @@ export const QuestionManagement = () => {
   };
 
   const handleSaveQuestion = async (question: Question) => {
+    
     try {
+      console.log('📝 Saving question:', question);
+      
       const questionData: CreateQuestionData = {
         question: question.question,
         options: question.options,
@@ -131,7 +119,9 @@ export const QuestionManagement = () => {
       } else {
         // Create new question
         // MongoDB will automatically create the database and collection
+        console.log('📝 Creating new question...');
         await questionService.createQuestion(questionData);
+        console.log('✅ Question created successfully');
         toast.success('Question created successfully');
       }
       
@@ -139,15 +129,35 @@ export const QuestionManagement = () => {
       await loadQuestions();
       setShowForm(false);
       setEditingQuestion(null);
-    } catch (error) {
-      console.error('Error saving question:', error);
-      toast.error(editingQuestion ? 'Failed to update question. Please try again.' : 'Failed to create question. Please try again.');
+      setPrefillQuestion(null);
+      setPrefillCategory(null);
+    } catch (error: any) {
+      console.error('❌ Error saving question:', error);
+      
+      // Extract detailed error message
+      let errorMessage = editingQuestion 
+        ? 'Failed to update question.' 
+        : 'Failed to create question.';
+      
+      if (error?.message) {
+        errorMessage += ` ${error.message}`;
+      }
+      
+      // Show specific error details if available
+      if (error?.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      
+      console.error('📝 Error details:', errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingQuestion(null);
+    setPrefillQuestion(null);
+    setPrefillCategory(null);
   };
 
   // Statistics
@@ -229,6 +239,8 @@ export const QuestionManagement = () => {
       {showForm ? (
         <QuestionForm
           question={editingQuestion}
+          prefillQuestion={prefillQuestion}
+          prefillCategory={prefillCategory}
           onSave={handleSaveQuestion}
           onCancel={handleCancel}
         />
@@ -243,7 +255,7 @@ export const QuestionManagement = () => {
             onAddQuestion={handleAddQuestion}
             onEditQuestion={handleEditQuestion}
             onDeleteQuestion={handleDeleteQuestion}
-            onTriggerQuestion={(question) => {
+            onTriggerQuestion={() => {
               // Could navigate to a live session with this question pre-loaded
               toast.info('Navigate to a live session to trigger questions');
             }}

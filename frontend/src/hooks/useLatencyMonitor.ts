@@ -16,8 +16,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// API base URL - handle VITE_API_URL that already includes /api
+const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const API_BASE_URL = API_URL?.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
 
 export type ConnectionQuality = 'excellent' | 'good' | 'fair' | 'poor' | 'critical' | 'unknown';
 
@@ -57,8 +58,8 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     studentName,
     userRole = 'student', // Default to student if not specified
     enabled = true,
-    pingInterval = 3000, // Ping every 3 seconds
-    reportInterval = 10000, // Report to server every 10 seconds
+    pingInterval = 3000, // Ping every 3 seconds for near real-time updates
+    reportInterval = 5000, // Report to server every 5 seconds for near real-time updates
     maxSamples = 30,
     onQualityChange
   } = options;
@@ -273,12 +274,16 @@ export function useLatencyMonitor(options: LatencyMonitorOptions) {
     };
 
     // Initial ping and immediate report so instructor sees student name immediately
+    // This ensures network parameters are captured immediately when students join
     doPing().then(() => {
-      // Report immediately after first ping (with slight delay to ensure data is collected)
+      // Report immediately after first ping (no delay for instant capture)
+      reportToServer();
+      console.log(`📶 Initial latency report sent immediately for student: ${studentName || studentId}`);
+      
+      // Also send a second report after 500ms to ensure data is visible
       setTimeout(() => {
         reportToServer();
-        console.log(`📶 Initial latency report sent for student: ${studentName || studentId}`);
-      }, 1000);
+      }, 500);
     });
 
     // Set up intervals
