@@ -1,0 +1,10 @@
+*.md
+frontend/
+aws/
+*.sh
+deploy-to-ec2.sh
+ec2-setup.sh
+monitor-app.sh
+update-app.sh
+backend/ml_models/
+backend/test_ai_questions.py
