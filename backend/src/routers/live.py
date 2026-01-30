@@ -88,6 +88,19 @@ async def trigger_question(meeting_id: str):
         # This ensures we find students regardless of which ID they used to join
         participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
         
+        # 🔍 DETAILED DEBUGGING: Show session_rooms dictionary keys
+        print(f"\n{'='*60}")
+        print(f"🔍 DEBUGGING: What's in session_rooms?")
+        all_stats = ws_manager.get_all_stats()
+        all_session_keys = list(all_stats.get('session_rooms', {}).keys())
+        print(f"   session_rooms has {len(all_session_keys)} keys:")
+        for key in all_session_keys:
+            room = all_stats.get('session_rooms', {}).get(key, {})
+            print(f"      📌 '{key}' → {len(room)} participants")
+        print(f"\n   session_ids_to_check: {session_ids_to_check}")
+        print(f"   Do any match? {any(sid in all_session_keys for sid in session_ids_to_check)}")
+        print(f"{'='*60}\n")
+        
         if participants:
             # Use the session ID that has the most participants
             participant_counts = {}
@@ -101,10 +114,7 @@ async def trigger_question(meeting_id: str):
                 print(f"   Using session ID: {effective_meeting_id} (has {participant_counts[effective_meeting_id]} participants)")
         else:
             print(f"⚠️ No participants found in any session room: {session_ids_to_check}")
-            # Show all active session rooms for debugging
-            all_stats = ws_manager.get_all_stats()
-            all_rooms = list(all_stats.get('session_rooms', {}).keys())
-            print(f"   All active session rooms: {all_rooms}")
+            print(f"   But session_rooms contains: {all_session_keys}")
         
         if not participants:
             return {"success": False, "message": "No students connected to this session. Make sure students have joined the meeting from the dashboard."}
@@ -373,6 +383,22 @@ async def poll_quiz(session_id: str, studentId: str):
         current_quiz = session_doc.get("current_quiz")
         if not current_quiz:
             return {"hasNewQuiz": False}
+        
+        # ⏰ CHECK EXPIRATION: Quizzes expire after 30 seconds
+        triggered_at = current_quiz.get("triggeredAt")
+        if triggered_at:
+            from dateutil import parser
+            trigger_time = parser.isoparse(triggered_at)
+            time_elapsed = (datetime.now() - trigger_time.replace(tzinfo=None)).total_seconds()
+            
+            if time_elapsed > 30:  # 30 second expiration
+                print(f"⏰ Quiz expired ({time_elapsed:.1f}s old), clearing from session")
+                # Clear the expired quiz
+                await db.database.sessions.update_one(
+                    {"_id": session_doc["_id"]},
+                    {"$unset": {"current_quiz": ""}}
+                )
+                return {"hasNewQuiz": False, "message": "Quiz expired"}
         
         # Check if student has already answered this quiz
         quiz_id = current_quiz.get("questionId")
