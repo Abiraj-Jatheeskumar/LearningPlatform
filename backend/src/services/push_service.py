@@ -157,11 +157,7 @@ class PushNotificationService:
             "url": "/dashboard/student",  # URL to open when notification is clicked
             "icon": "/favicon.ico",
             "badge": "/favicon.ico",
-            "data": {
-                "questionId": quiz_data.get("questionId"),
-                "sessionId": quiz_data.get("sessionId"),
-                "timeLimit": quiz_data.get("timeLimit", 20)
-            }
+            "data": quiz_data  # Send the ENTIRE quiz object so clicking notification can show the modal
         }
         
         return await self.send_to_all_students(payload)
