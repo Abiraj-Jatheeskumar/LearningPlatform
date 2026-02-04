@@ -35,12 +35,7 @@ self.addEventListener('push', function(event) {
       vibrate: [200, 100, 200],
       tag: 'quiz-notification',
       requireInteraction: true,  // Keeps notification visible until user interacts
-      data: {
-        url: data.url || '/dashboard/student',
-        questionId: data.data?.questionId,
-        sessionId: data.data?.sessionId,
-        timestamp: Date.now()
-      },
+      data: data.data || data,  // Store the ENTIRE quiz data object for notification click
       actions: [
         {
           action: 'answer',
@@ -97,10 +92,9 @@ self.addEventListener('notificationclick', function(event) {
   const quizData = event.notification.data;
   console.log('📦 Quiz data from notification:', quizData);
   
-  // Build URL with quiz data as query parameter
+  // Build URL with quiz data as query parameter (for new window case)
   let urlToOpen = '/dashboard/student';
   if (quizData && quizData.questionId) {
-    // Encode the entire notification data as base64
     const encodedQuizData = btoa(JSON.stringify(quizData));
     urlToOpen = `/dashboard/student?showQuiz=${encodedQuizData}`;
     console.log('🔗 Opening URL with quiz:', urlToOpen);
@@ -111,17 +105,19 @@ self.addEventListener('notificationclick', function(event) {
       type: 'window',
       includeUncontrolled: true
     }).then(function(clientList) {
+      console.log('🔍 Found', clientList.length, 'client windows');
+      
       // Check if there's already a window/tab open
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        const clientUrl = new URL(client.url);
         
-        // If we find an existing tab, focus it and navigate to the quiz page
+        // If we find an existing tab, focus it and send quiz data
         if ('focus' in client) {
-          console.log('✅ Focusing existing window');
+          console.log('✅ Focusing existing window and sending quiz data');
           return client.focus().then(() => {
-            // Send message to client to show quiz
+            // Send message to client to show quiz immediately
             if (quizData && quizData.questionId) {
+              console.log('📤 Posting SHOW_QUIZ message to client');
               client.postMessage({
                 type: 'SHOW_QUIZ',
                 quiz: quizData
@@ -131,9 +127,9 @@ self.addEventListener('notificationclick', function(event) {
         }
       }
       
-      // If no existing tab, open a new one
+      // If no existing tab, open a new one with quiz data in URL
       if (clients.openWindow) {
-        console.log('✅ Opening new window with quiz');
+        console.log('✅ Opening new window with quiz in URL');
         return clients.openWindow(urlToOpen);
       }
     })
