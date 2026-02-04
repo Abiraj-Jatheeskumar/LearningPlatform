@@ -66,7 +66,8 @@ async def trigger_question(meeting_id: str):
             
             # If we found the session document, get both IDs
             if session_doc:
-                zoom_id = str(session_doc.get("zoomMeetingId", "")) if session_doc.get("zoomMeetingId") else None
+                zoom_id_raw = session_doc.get("zoomMeetingId")
+                zoom_id = str(zoom_id_raw) if zoom_id_raw is not None else None
                 mongo_id = str(session_doc["_id"])
                 
                 # Add both IDs to check list (avoid duplicates)
@@ -92,8 +93,8 @@ async def trigger_question(meeting_id: str):
         all_stats = ws_manager.get_all_stats()
         all_session_rooms = all_stats.get("session_rooms", {})
         print(f"🔍 DEBUG: All active session rooms in backend: {list(all_session_rooms.keys())}")
-        for room_id, room_info in all_session_rooms.items():
-            print(f"   Room '{room_id}': {room_info.get('participant_count', 0)} participants")
+        for room_id, participant_count in all_session_rooms.items():
+            print(f"   Room '{room_id}': {participant_count} participants")
         
         participants = ws_manager.get_session_participants_by_multiple_ids(session_ids_to_check)
         print(f"🔍 DEBUG: Found {len(participants)} participants using get_session_participants_by_multiple_ids")
