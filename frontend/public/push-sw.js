@@ -87,12 +87,23 @@ self.addEventListener('notificationclick', function(event) {
   
   event.notification.close();
   
-  const urlToOpen = event.notification.data?.url || '/dashboard/student';
-  
   // Handle action buttons
   if (event.action === 'dismiss') {
     console.log('User dismissed notification');
     return;
+  }
+  
+  // Get quiz data from notification
+  const quizData = event.notification.data;
+  console.log('📦 Quiz data from notification:', quizData);
+  
+  // Build URL with quiz data as query parameter
+  let urlToOpen = '/dashboard/student';
+  if (quizData && quizData.questionId) {
+    // Encode the entire notification data as base64
+    const encodedQuizData = btoa(JSON.stringify(quizData));
+    urlToOpen = `/dashboard/student?showQuiz=${encodedQuizData}`;
+    console.log('🔗 Opening URL with quiz:', urlToOpen);
   }
   
   event.waitUntil(
@@ -109,9 +120,12 @@ self.addEventListener('notificationclick', function(event) {
         if ('focus' in client) {
           console.log('✅ Focusing existing window');
           return client.focus().then(() => {
-            // Navigate to the quiz page
-            if (client.navigate) {
-              return client.navigate(urlToOpen);
+            // Send message to client to show quiz
+            if (quizData && quizData.questionId) {
+              client.postMessage({
+                type: 'SHOW_QUIZ',
+                quiz: quizData
+              });
             }
           });
         }
@@ -119,7 +133,7 @@ self.addEventListener('notificationclick', function(event) {
       
       // If no existing tab, open a new one
       if (clients.openWindow) {
-        console.log('✅ Opening new window');
+        console.log('✅ Opening new window with quiz');
         return clients.openWindow(urlToOpen);
       }
     })

@@ -331,6 +331,41 @@ export const StudentDashboard = () => {
   }, [connectedSessionId, user?.id, shownQuizIds]);
 
   // ===========================================================
+  // 🔔 CHECK FOR QUIZ IN URL (from notification click)
+  // ===========================================================
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const encodedQuiz = urlParams.get('showQuiz');
+    
+    if (encodedQuiz) {
+      try {
+        const quizData = JSON.parse(atob(encodedQuiz));
+        console.log('📬 Quiz from notification URL:', quizData);
+        setIncomingQuiz(quizData);
+        
+        // Clean up URL
+        window.history.replaceState({}, '', '/dashboard/student');
+      } catch (error) {
+        console.error('Error parsing quiz from URL:', error);
+      }
+    }
+    
+    // Listen for messages from service worker
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'SHOW_QUIZ') {
+        console.log('📬 Quiz from service worker message:', event.data.quiz);
+        setIncomingQuiz(event.data.quiz);
+      }
+    };
+    
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+    
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, []);
+  
+  // ===========================================================
   // ⭐ LOAD SESSIONS AND AUTO-CONNECT TO LIVE SESSIONS
   // Students automatically receive quizzes from any live session they're enrolled in
   // No need to click "Join" button - connection is automatic
