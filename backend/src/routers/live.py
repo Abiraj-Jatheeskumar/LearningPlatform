@@ -113,8 +113,8 @@ async def trigger_question(meeting_id: str):
         all_session_keys = list(all_stats.get('session_rooms', {}).keys())
         print(f"   session_rooms has {len(all_session_keys)} keys:")
         for key in all_session_keys:
-            room = all_stats.get('session_rooms', {}).get(key, {})
-            print(f"      📌 '{key}' → {len(room)} participants")
+            participant_count = all_stats.get('session_rooms', {}).get(key, 0)
+            print(f"      📌 '{key}' → {participant_count} participants")
         print(f"\n   session_ids_to_check: {session_ids_to_check}")
         print(f"   Do any match? {any(sid in all_session_keys for sid in session_ids_to_check)}")
         print(f"{'='*60}\n")
