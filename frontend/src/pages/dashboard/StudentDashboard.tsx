@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
 import { ConnectionQualityBadge } from "../../components/engagement/ConnectionQualityIndicator";
 import { joinSession, getConnectedSessionId, isConnectedToSession } from "../../services/sessionWebSocketService";
+import { initializePushNotifications } from "../../services/pushNotificationService";
 
 // =====================================================
 // 🔔 NOTIFICATION HELPERS
@@ -385,8 +386,28 @@ export const StudentDashboard = () => {
       }
     };
     
+    // Initialize push notifications for background delivery
+    const setupPushNotifications = async () => {
+      try {
+        console.log('🔔 Initializing push notifications...');
+        const success = await initializePushNotifications();
+        if (success) {
+          console.log('✅ Push notifications enabled - you\'ll receive quizzes even when tab is inactive');
+          toast.success('Notifications enabled', {
+            description: 'You\'ll receive quiz alerts even when this tab is inactive',
+            duration: 3000,
+          });
+        } else {
+          console.log('⚠️ Push notifications not available');
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize push notifications:', error);
+      }
+    };
+    
     // Initial load only - no polling
     loadSessions();
+    setupPushNotifications();
     
     // Sessions will be updated via WebSocket events (session_started, meeting_ended, etc.)
     // No polling interval - updates are event-driven
