@@ -76,8 +76,9 @@ export const AIQuestionGenerator = ({ onQuestionsGenerated }: AIQuestionGenerato
       formData.append('file', selectedFile);
       formData.append('category', category.trim());
 
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://learning-platform-backend-2026-21c17163e87a.herokuapp.com';
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://127.0.0.1:3001/api/questions/generate-from-file', {
+      const response = await fetch(`${apiUrl}/api/questions/generate-from-file`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
