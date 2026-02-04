@@ -25,7 +25,15 @@ self.addEventListener('push', function(event) {
 
   try {
     const data = event.data.json();
-    console.log('📦 Push data:', data);
+    console.log('📦 Raw push data received:', data);
+    console.log('📦 data.data:', data.data);
+    
+    // Extract the quiz data - it's in data.data from the backend
+    const quizData = data.data || {};
+    console.log('🎯 Quiz data extracted:', quizData);
+    console.log('   - question:', quizData.question);
+    console.log('   - options:', quizData.options);
+    console.log('   - questionId:', quizData.questionId);
     
     const title = data.title || '📝 New Quiz Question';
     const options = {
@@ -35,7 +43,7 @@ self.addEventListener('push', function(event) {
       vibrate: [200, 100, 200],
       tag: 'quiz-notification',
       requireInteraction: true,  // Keeps notification visible until user interacts
-      data: data.data || data,  // Store the ENTIRE quiz data object for notification click
+      data: quizData,  // Store the quiz data (already extracted from data.data)
       actions: [
         {
           action: 'answer',
@@ -50,7 +58,7 @@ self.addEventListener('push', function(event) {
 
     console.log('🔔 SHOWING NOTIFICATION NOW!');
     console.log('Title:', title);
-    console.log('Options:', options);
+    console.log('Notification data will be:', options.data);
     
     event.waitUntil(
       self.registration.showNotification(title, options).then(() => {
