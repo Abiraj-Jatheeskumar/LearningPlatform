@@ -524,16 +524,33 @@ export const StudentDashboard = () => {
         console.error('❌ [AUTO-CONNECT] WebSocket error:', error);
       },
       onClose: () => {
-        console.log('🔴 [AUTO-CONNECT] WebSocket closed');
+        console.log('🔴 [AUTO-CONNECT] WebSocket closed - attempting reconnect...');
         if (connectedSessionId === sessionKey) {
           setConnectedSessionId(null);
           // Network monitoring already disabled for auto-connect
         }
+        
+        // Auto-reconnect after 2 seconds
+        setTimeout(() => {
+          console.log('🔄 [AUTO-RECONNECT] Reconnecting to session...');
+          autoConnectToSession(session);
+        }, 2000);
       }
     });
     
     if (ws) {
       setSessionWs(ws);
+      
+      // 🔄 Send keepalive ping every 30 seconds to prevent timeout
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          console.log('💓 [KEEPALIVE] Sending ping to keep connection alive');
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000); // 30 seconds
+      
+      // Clean up interval when component unmounts
+      return () => clearInterval(pingInterval);
     }
   };
 
