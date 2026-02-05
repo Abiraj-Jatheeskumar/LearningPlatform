@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
 import { ConnectionQualityBadge } from "../../components/engagement/ConnectionQualityIndicator";
 import { joinSession, getConnectedSessionId, isConnectedToSession, getWebSocketBaseUrl } from "../../services/sessionWebSocketService";
-import { initializePushNotifications } from "../../services/pushNotificationService";
+import { initPushNotifications } from "../../services/pushNotificationService";
 
 // =====================================================
 // 🔔 NOTIFICATION HELPERS
@@ -390,7 +390,7 @@ export const StudentDashboard = () => {
     const setupPushNotifications = async () => {
       try {
         console.log('🔔 Initializing push notifications...');
-        const success = await initializePushNotifications();
+        const success = await initPushNotifications();
         if (success) {
           console.log('✅ Push notifications enabled - you\'ll receive quizzes even when tab is inactive');
           toast.success('Notifications enabled', {
