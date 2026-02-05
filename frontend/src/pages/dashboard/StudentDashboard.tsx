@@ -418,7 +418,8 @@ export const StudentDashboard = () => {
   // Student receives quizzes without opening Zoom
   // ===========================================================
   const autoConnectToSession = (session: Session) => {
-    const studentId = user?.id || `STUDENT_${Date.now()}`;
+    // Always use STUDENT_ prefix to avoid instructor filtering
+    const studentId = `STUDENT_${user?.id || Date.now()}`;
     const studentName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Unknown Student';
     const studentEmail = user?.email || '';
     const sessionKey = session.zoomMeetingId || session.id;
@@ -598,7 +599,8 @@ export const StudentDashboard = () => {
   useEffect(() => {
     if (!user) return;
 
-    const studentId = user?.id || `STUDENT_${Date.now()}`;
+    // Always use STUDENT_ prefix to avoid instructor filtering
+    const studentId = `STUDENT_${user?.id || Date.now()}`;
     const wsBase = getWebSocketBaseUrl(); // Use the shared function that handles fallback
     const socketUrl = `${wsBase}/ws/global/${studentId}`;
 
