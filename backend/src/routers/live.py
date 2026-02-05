@@ -165,18 +165,22 @@ async def trigger_question(meeting_id: str):
         # Filter out instructor connections - instructors have studentId starting with "instructor_" or have role="instructor"
         student_participants = []
         print(f"\n🔍 Filtering participants to find students:")
+        print(f"📋 RAW PARTICIPANT DATA:")
+        for i, p in enumerate(participants):
+            print(f"   [{i+1}] {json.dumps(p, indent=6)}")
+        
         for p in participants:
             student_id = p.get("studentId", "")
             student_name = p.get("studentName", "Unknown")
-            print(f"   Checking: ID={student_id}, Name={student_name}")
+            print(f"\n   🔍 Checking: ID={student_id}, Name={student_name}")
             
             # Skip instructor connections (instructors connect with IDs like "instructor_xxx")
             if student_id.startswith("instructor_"):
-                print(f"   ⏭️ Skipping instructor (starts with 'instructor_'): {student_id}")
+                print(f"      ⏭️ SKIPPED: Starts with 'instructor_' prefix")
                 continue
             
             # Add student to list
-            print(f"   ✅ Adding student: {student_name} ({student_id})")
+            print(f"      ✅ ADDED as student")
             student_participants.append(p)
         
         print(f"\n📊 Filter results: {len(participants)} total → {len(student_participants)} students")
