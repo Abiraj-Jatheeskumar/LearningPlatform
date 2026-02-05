@@ -16,7 +16,7 @@ import { sessionService, Session } from "../../services/sessionService";
 import { toast } from "sonner";
 import { useLatencyMonitor, ConnectionQuality } from "../../hooks/useLatencyMonitor";
 import { ConnectionQualityBadge } from "../../components/engagement/ConnectionQualityIndicator";
-import { joinSession, getConnectedSessionId, isConnectedToSession } from "../../services/sessionWebSocketService";
+import { joinSession, getConnectedSessionId, isConnectedToSession, getWebSocketBaseUrl } from "../../services/sessionWebSocketService";
 import { initializePushNotifications } from "../../services/pushNotificationService";
 
 // =====================================================
@@ -599,7 +599,7 @@ export const StudentDashboard = () => {
     if (!user) return;
 
     const studentId = user?.id || `STUDENT_${Date.now()}`;
-    const wsBase = import.meta.env.VITE_WS_URL;
+    const wsBase = getWebSocketBaseUrl(); // Use the shared function that handles fallback
     const socketUrl = `${wsBase}/ws/global/${studentId}`;
 
     console.log("Connecting Global WS:", socketUrl);
